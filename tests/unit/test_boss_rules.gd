@@ -74,6 +74,7 @@ func test_toughness_regen_waits_2s_and_scales_with_hp() -> void:
 	advance(60)
 	assert_near(boss().toughness, 60.0, 0.05, "滿血時每秒回 10")
 	sim = CombatSim.new(1)
+	sim.boss.phase = 2  # 半血時一階段會轉場（韌性回滿），這裡直接看二階段
 	sim.boss.hp = roundi(VeltharisData.MAX_HP * 0.5)
 	sim.boss.toughness = 50.0
 	sim.boss.last_toughness_damage = sim.combat_frame

@@ -65,12 +65,22 @@ var last_short_stagger := -100000
 ## 最近一個結束的動作（測試與統計用）
 var last_action := &""
 
+# --- 墜王之躍（boss §5.2） ---
+## 起跳時的位置與目前的落點（落地前 0.3 秒鎖定）
+var _takeoff_pos := Vector2.ZERO
+var landing_target := Vector2.ZERO
+## 落點落在玩家前方這個距離（從起跳方向算），讓 Boss 落在玩家面前而不是頭上
+const LEAP_LAND_OFFSET := 40.0
+
 
 func _init(owner_sim: CombatSim) -> void:
 	_sim_ref = weakref(owner_sim)
 
 
 func tick() -> void:
+	if state == State.DEAD:
+		return
+	_check_phase_transition()
 	_tick_state()
 	_regen_toughness()
 	if not (state == State.ATTACK and current_hit_index() >= 0 and in_hold(current_hit_index(), state_elapsed())):
@@ -109,8 +119,14 @@ func _tick_state() -> void:
 			if e >= Frames.of(PlayerData.EXECUTE_TIME):
 				toughness = VeltharisData.MAX_TOUGHNESS
 				enter_state(State.RISING)
+				_check_phase_transition()  # 處決把 HP 打到一半以下：起身直接換成轉場
 		State.RISING:
 			if e >= Frames.of(VeltharisData.RISE_TIME):
+				_end_action(true)
+		State.TRANSITION:
+			if e >= Frames.of(VeltharisData.TRANSITION_TIME):
+				phase = 2
+				sim.emit(&"boss_phase2", {"pos": pos})
 				_end_action(true)
 
 
@@ -129,17 +145,54 @@ func enter_state(s: State) -> void:
 
 ## 是否有實體碰撞（騰空時沒有）
 func has_body() -> bool:
-	return state != State.DEAD
+	return state != State.DEAD and not is_airborne()
 
 
-## 能否被鎖定／輔助瞄準
+## 能否被鎖定／輔助瞄準（騰空中仍可鎖定）
 func is_targetable() -> bool:
 	return state != State.DEAD
 
 
-## 能否被玩家的攻擊打中
+## 能否被玩家的攻擊打中（轉場無敵 §11.5、騰空 §5.2、被處決中）
 func can_be_hit() -> bool:
-	return state != State.DEAD and state != State.EXECUTED
+	return state not in [State.DEAD, State.EXECUTED, State.TRANSITION] and not is_airborne()
+
+
+## 墜王之躍的騰空期間（起跳到落地前一幀）
+func is_airborne() -> bool:
+	if state != State.ATTACK or move == null or move.airborne_start < 0.0:
+		return false
+	var e := state_elapsed()
+	return e >= Frames.of(move.airborne_start) and e < _hit_starts[0]
+
+
+## 落點：玩家前方 LEAP_LAND_OFFSET（從起跳位置看過去），並夾回場內、推出柱子（落點陰影就是實際落點）
+static func leap_target(from: Vector2, player_pos: Vector2) -> Vector2:
+	var d := player_pos - from
+	if d.length() <= LEAP_LAND_OFFSET:
+		return ArenaGeometry.resolve(from, VeltharisData.HURT_RADIUS)
+	return ArenaGeometry.resolve(player_pos - d.normalized() * LEAP_LAND_OFFSET, VeltharisData.HURT_RADIUS)
+
+
+## §11.5：HP 降到 50% 以下進入第二階段。失衡、被處決中等處決結束（起身直接換成轉場）。
+func _check_phase_transition() -> void:
+	if phase != 1 or hp > roundi(VeltharisData.MAX_HP * VeltharisData.PHASE2_HP_RATIO):
+		return
+	if state in [State.BROKEN, State.EXECUTED, State.TRANSITION, State.DEAD]:
+		return
+	move = null
+	_punish_at = -1
+	toughness = VeltharisData.MAX_TOUGHNESS
+	enter_state(State.TRANSITION)
+	sim.feedback(&"boss_break", pos + Vector2(0, -40))
+	sim.emit(&"boss_transition", {"pos": pos})
+
+
+func _die() -> void:
+	move = null
+	_punish_at = -1
+	enter_state(State.DEAD)
+	sim.emit(&"boss_dead", {"pos": pos})
 
 
 ## 失衡中、玩家在受擊圓邊緣 48px 內（不限方向）時可以處決（§11.4）
@@ -299,7 +352,8 @@ func _tick_walk() -> void:
 
 ## 玩家架勢崩潰（★2、§6.2 規則 1）：立刻中斷目前的動作，0.1 秒反應後出裁決突刺
 func on_player_posture_break() -> void:
-	if mode != Mode.AI or state in [State.BOUNCED, State.STAGGER, State.BROKEN, State.EXECUTED, State.RISING, State.DEAD]:
+	if mode != Mode.AI or state in [State.BOUNCED, State.STAGGER, State.BROKEN, State.EXECUTED, State.RISING,
+			State.TRANSITION, State.DEAD]:
 		return
 	_schedule_punish(&"judgment_thrust")
 
@@ -335,6 +389,9 @@ func start_move(m: BossMoveData) -> void:
 		_danger_sent.append(false)
 	_face_player()
 	enter_state(State.ATTACK)
+	if m.airborne_start >= 0.0:
+		_takeoff_pos = pos
+		landing_target = leap_target(pos, sim.player.pos)
 	ai.record_move(m.id)
 	sim.emit(&"boss_attack", {"move": m.id, "pos": pos})
 
@@ -369,8 +426,10 @@ func _tick_attack() -> void:
 	var start := _hit_starts[i]
 	var lock_at := start - Frames.of(hit.lock_before)
 	if e < start:
+		if move.airborne_start >= 0.0:
+			_tick_leap(e, start, lock_at)
 		# 起手：鎖定前追蹤玩家方向；延遲停住期間不移動（姿勢靜止），但方向照常追蹤到鎖定點
-		if e < lock_at:
+		elif e < lock_at:
 			_face_player()
 			if not in_hold(i, e):
 				_advance_toward_player()
@@ -384,6 +443,18 @@ func _tick_attack() -> void:
 		if hit.lunge_distance > 0.0:
 			# 判定期間：突刺前進
 			pos += facing * (hit.lunge_distance / Frames.of(hit.active))
+
+
+## 墜王之躍：下蹲（0.7 秒）→ 騰空（0.8 秒）飛向落點；落點追蹤玩家到落地前 0.3 秒鎖定
+func _tick_leap(e: int, land_at: int, lock_at: int) -> void:
+	var air_from := Frames.of(move.airborne_start)
+	if e < lock_at:
+		_face_player()
+		landing_target = leap_target(_takeoff_pos, sim.player.pos)
+	if e < air_from:
+		return
+	var t := float(e - air_from + 1) / float(land_at - air_from)
+	pos = _takeoff_pos.lerp(landing_target, clampf(t, 0.0, 1.0))
 
 
 ## 延遲版的停住期間（★8：維持清楚的靜止姿勢：舉劍停在最高點、不移動）
@@ -465,7 +536,8 @@ func preview_hitbox() -> Dictionary:
 	var e := state_elapsed()
 	var start := _hit_starts[i]
 	var windup := windup_start(i)
-	return {"hit": hit, "origin": pos, "dir": facing, "shape": hit.shape, "active": e >= start,
+	var origin := landing_target if move.airborne_start >= 0.0 else pos
+	return {"hit": hit, "origin": origin, "dir": facing, "shape": hit.shape, "active": e >= start,
 		"resolved": _hit_resolved[i], "progress": clampf(float(e - windup) / maxf(start - windup, 1), 0.0, 1.0),
 		"ring_radius": ring_radius(hit, e - start) if e >= start else 0.0}
 
@@ -554,8 +626,11 @@ func _regen_toughness() -> void:
 ## 出招的起手與判定期間一律霸體。
 func receive_player_hit(atk: PlayerAttackData) -> void:
 	hp = maxi(hp - atk.damage, 0)
-	_lose_toughness(atk.toughness)
 	sim.emit(&"boss_hit", {"damage": atk.damage, "attack": atk.id, "pos": pos})
+	if hp <= 0:
+		_die()
+		return
+	_lose_toughness(atk.toughness)
 	if atk.can_short_stagger and _can_short_stagger():
 		move = null
 		last_short_stagger = sim.combat_frame
@@ -588,3 +663,5 @@ func receive_execution() -> void:
 	hp = maxi(hp - dmg, 0)
 	sim.feedback(&"execution", pos + Vector2(0, -40))
 	sim.emit(&"execution_hit", {"pos": pos, "damage": dmg})
+	if hp <= 0:
+		_die()

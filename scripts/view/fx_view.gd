@@ -2,6 +2,8 @@ extends Node2D
 ## 短暫特效層（畫在角色之上）：刀光、命中火花、鎖定準星等。
 ## 特效以 _process 的 delta 播放：頓幀（只停戰鬥模擬）期間繼續；F2 慢動作時一起變慢。只讀取 sim 的狀態與事件。
 
+const BossView := preload("res://scripts/view/boss_view.gd")
+
 var arena: CombatArena
 ## 每個特效：{kind, pos, dir, t, life, ...}
 var _fx: Array[Dictionary] = []
@@ -63,6 +65,27 @@ func _draw() -> void:
 				var c2: Color = e["color"]
 				c2.a *= 1.0 - k
 				draw_arc(e["pos"], lerpf(e["r0"], e["r1"], k), 0, TAU, 32, c2, 2.0)
+			&"ember_stream":
+				_draw_ember_stream(e, k)
+
+
+## 勝利：紅色餘燼沿弧線從 Boss 流向主角
+func _draw_ember_stream(e: Dictionary, k: float) -> void:
+	var from: Vector2 = e["from"]
+	var to := arena.sim.player.pos + Vector2(0, -22)
+	var t: float = e["t"]
+	var n := 26
+	for i in n:
+		var ph := fmod(t * 0.9 + float(i) / n, 1.0)
+		if ph > k * 1.6 + 0.05:
+			continue  # 一開始只有前面幾顆，慢慢變多
+		var mid := (from + to) * 0.5 + Vector2(sin(i * 1.7) * 40.0, -50.0)
+		var a := from.lerp(mid, ph)
+		var b := mid.lerp(to, ph)
+		var p := a.lerp(b, ph)
+		var c := Palette.BOSS_EMBER.lerp(Color(1, 0.3, 0.2), ph)
+		c.a = 0.9 * (1.0 - absf(ph - 0.5) * 1.2) * (1.0 - maxf(k - 0.85, 0.0) * 6.0)
+		draw_rect(Rect2(p.round() - Vector2(1, 1), Vector2(2 + (i % 2), 2 + (i % 2))), c)
 
 
 ## 刀光依玩家的狀態與幀數畫出（頓幀時跟著凍結）：輕攻擊的判定期間與收招開頭、突刺期間。
@@ -126,9 +149,9 @@ func _draw_slash(pos: Vector2, dir: Vector2, arc_deg: float, r: float, reverse: 
 ## §13：鎖定中目標身上顯示準星
 func _draw_lock_reticle() -> void:
 	var sim: CombatSim = arena.sim
-	if not sim.player.locked:
+	if not sim.player.locked or arena.end_state != &"" or sim.player.state == PlayerSim.State.DEAD:
 		return
-	var c := sim.boss.pos + Vector2(0, -60)
+	var c := sim.boss.pos + Vector2(0, -60 + BossView.leap_lift(sim.boss))
 	var pulse := 1.0 + 0.15 * sin(Time.get_ticks_msec() * 0.008)
 	var s := 7.0 * pulse
 	var col := Color(1, 1, 1, 0.9)

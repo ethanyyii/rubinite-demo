@@ -11,6 +11,8 @@ const SWORD_LEN := 17.0
 var arena: CombatArena
 var _flash_red := 0.0
 var _flash_white := 0.0
+## 擊敗 Boss 後鎧甲多一道紅色裂紋（combat-design §15、player-knight §1）；重試後保留
+var ember_crack := false
 var _stagger_tint := 0.0
 
 
@@ -100,6 +102,10 @@ func _draw_body(p: PlayerSim, offset := Vector2.ZERO, alpha := 1.0, height := H)
 	# 羽飾
 	draw_colored_polygon(PackedVector2Array([top + Vector2(-2, -40), top + Vector2(2, -40),
 		top + Vector2(-roundf(f.x * 6) + 1, -47)]), Palette.PLAYER_PLUME)
+	if ember_crack:
+		# 執魂侵蝕：一道紅色裂紋爬上鎧甲
+		draw_polyline(PackedVector2Array([top + Vector2(3, -12), top + Vector2(1, -18), top + Vector2(4, -23),
+			top + Vector2(2, -29)]), Color(1.0, 0.25, 0.15), 1.0)
 
 
 ## 擊飛（拋物線）、倒地、死亡：身體橫躺

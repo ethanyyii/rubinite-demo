@@ -10,13 +10,25 @@ func test_perfect_bot_beats_phase1_without_damage() -> void:
 		assert_eq(r["blocked"], 0, "種子 %d：沒有普通格擋（全部完美彈返）" % seed_value)
 
 
+func test_perfect_bot_beats_whole_fight_without_damage() -> void:
+	# M5 驗收：完美機器人零傷害打完整場（兩個階段）
+	for seed_value in [1, 2, 3, 4]:
+		var r := FightRunner.run(seed_value, PerfectBot.new(), 600.0, 0)
+		assert_eq(r["result"], &"win", "種子 %d：打完整場（%s）" % [seed_value, r["result"]])
+		assert_eq(r["damage_taken"], 0, "種子 %d：零傷害" % seed_value)
+
+
 func test_threat_prediction_matches_actual_hit_frame() -> void:
 	# 預測的「第一次碰到玩家」的幀，就是實際結算的幀（玩家不動）
-	for id: StringName in VeltharisData.moves(1):
+	for key: String in ["1:royal_sweep", "1:twin_slash", "1:oath_cleave", "1:oath_cleave_delayed", "1:judgment_thrust",
+			"1:quick_combo_3", "1:quick_combo_2", "1:ash_impact", "2:triple_slash", "2:ash_spin", "2:double_impact", "2:kings_leap"]:
+		var phase := int(key.get_slice(":", 0))
+		var id := StringName(key.get_slice(":", 1))
 		var sim := CombatSim.new(3)
+		sim.boss.phase = phase
 		sim.boss.pos = Vector2(0, -20)
 		sim.player.pos = Vector2(0, 50)
-		sim.boss.start_move(VeltharisData.move(1, id))
+		sim.boss.start_move(VeltharisData.move(phase, id))
 		var predicted := -1
 		var actual := -1
 		for i in 200:
@@ -44,8 +56,8 @@ func test_human_bot_parameters_match_plan() -> void:
 
 
 func test_perfect_bot_vs_every_move_at_many_distances() -> void:
-	# 審查 M4-2：手動模式逐招、多個距離與角度，完美機器人都零傷害（★9 的實證）
-	for phase in [1]:
+	# 審查 M4-2：手動模式逐招、多個距離與角度，完美機器人都零傷害（★9 的實證）；M5 加入第二階段
+	for phase in [1, 2]:
 		for id: StringName in VeltharisData.moves(phase):
 			for dist in [40.0, 70.0, 100.0, 140.0, 180.0, 235.0]:
 				for ang in [0.0, 1.2]:
@@ -64,3 +76,25 @@ func test_perfect_bot_vs_every_move_at_many_distances() -> void:
 								blocked += 1
 					assert_eq(sim.player.hp, PlayerData.MAX_HP, "%s 距離 %.0f 角度 %.1f：完美機器人被打中" % [id, dist, ang])
 					assert_eq(blocked, 0, "%s 距離 %.0f 角度 %.1f：完美機器人出現普通格擋" % [id, dist, ang])
+
+
+func test_perfect_bot_vs_kings_leap_from_far_and_near_pillars() -> void:
+	# 審查 M5：整場對戰裡完美機器人很少遇到墜王之躍，這裡直接從遠處、柱子旁測
+	var cases := [[Vector2(-300, -60), Vector2(250, 110)], [Vector2(300, -100), Vector2(-250, 120)],
+		[Vector2(0, -170), Vector2(236, 125)], [Vector2(-250, 100), Vector2(262, -70)], [Vector2(0, 160), Vector2(0, -150)]]
+	for c in cases:
+		var sim := CombatSim.new(21)
+		sim.boss.set_manual()
+		sim.boss.phase = 2
+		sim.boss.pos = c[0]
+		sim.player.pos = c[1]
+		sim.boss.queue_move(&"kings_leap")
+		var bot := PerfectBot.new()
+		var blocked := 0
+		for i in 240:
+			sim.step(bot.decide(sim))
+			for e in sim.events:
+				if e["type"] == &"block":
+					blocked += 1
+		assert_eq(sim.player.hp, PlayerData.MAX_HP, "墜王之躍 %s → %s：被打中" % [c[0], c[1]])
+		assert_eq(blocked, 0, "墜王之躍 %s → %s：普通格擋" % [c[0], c[1]])

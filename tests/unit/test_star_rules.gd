@@ -126,10 +126,11 @@ func test_star5_unblockable_passes_any_point_faster_than_dodge_iframes() -> void
 func test_star6_super_armor_and_stagger_cooldown() -> void:
 	assert_true(VeltharisData.SHORT_STAGGER_COOLDOWN >= 3.0)
 	var heavy := PlayerData.heavy_thrust()
-	# 起手與判定期間：受傷、被削韌，但不會僵直
-	for id: StringName in VeltharisData.moves(1):
-		var m: BossMoveData = VeltharisData.moves(1)[id]
+	# 起手與判定期間：受傷、被削韌，但不會僵直（兩個階段的每一招）
+	for m in _all_moves():
+		var id := m.id
 		sim = CombatSim.new(1)
+		sim.boss.phase = 2 if VeltharisData.move(1, id) != m else 1
 		sim.player.pos = Vector2(0, 170)
 		sim.boss.pos = Vector2(0, -150)
 		sim.god_mode = true

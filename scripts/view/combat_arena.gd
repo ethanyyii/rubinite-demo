@@ -36,6 +36,12 @@ var sfx: Node
 var screen_flash: Control
 var pillar_views: Array[Node2D] = []
 
+## §14 死亡與重試、勝利演出：&"" 戰鬥中、&"death"、&"victory"
+var end_state := &""
+var _end_frame := 0
+## 勝利：吸收餘燼的演出時間，之後顯示「再戰」（勝利或死亡後 3 秒內可以重試，plan §1）
+const VICTORY_ABSORB_TIME := 2.5
+
 
 func _ready() -> void:
 	InputFrame.use_all_joypads()
@@ -125,9 +131,66 @@ func _build() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	sim.step(InputFrame.from_devices())
+	var input := InputFrame.from_devices()
+	if end_state == &"victory" and input.attack_pressed and retry_prompt_visible():
+		# 按下再戰：這個按鍵不帶進新的一場（否則重置後第一幀就會揮劍）
+		request_retry()
+		return
+	sim.step(input)
 	for e in sim.events:
 		_dispatch(e)
+	_update_end_flow()
+
+
+## §14：死亡動畫 1.5 秒 → 顯示「再戰」0.5 秒 → 重置（從死亡到可以操作 2 秒，目標 ≤ 3 秒）。
+## 勝利：吸收餘燼 2.5 秒後顯示「再戰（按攻擊鍵）」，按下就重置。
+func _update_end_flow() -> void:
+	if end_state == &"":
+		if sim.player.state == PlayerSim.State.DEAD:
+			end_state = &"death"
+			_end_frame = sim.frame
+		elif sim.boss.state == BossSim.State.DEAD:
+			end_state = &"victory"
+			_end_frame = sim.frame
+			_start_victory()
+		return
+	var elapsed := sim.frame - _end_frame
+	match end_state:
+		&"death":
+			if elapsed >= Frames.of(PlayerData.DEATH_TIME + PlayerData.RETRY_PROMPT_TIME):
+				reset_battle()
+		&"victory":
+			if elapsed == Frames.of(VICTORY_ABSORB_TIME * 0.8):
+				player_view.ember_crack = true
+
+
+
+func retry_prompt_visible() -> bool:
+	var elapsed := sim.frame - _end_frame
+	match end_state:
+		&"death":
+			return elapsed >= Frames.of(PlayerData.DEATH_TIME)
+		&"victory":
+			return elapsed >= Frames.of(VICTORY_ABSORB_TIME)
+	return false
+
+
+## 勝利後按下再戰：只在提示出現後有效（演出期間按的攻擊鍵不算，避免跳過勝利畫面）
+func request_retry() -> void:
+	if end_state == &"victory" and retry_prompt_visible():
+		reset_battle()
+
+
+## 死亡或勝利之後經過的物理幀（畫面用）
+func end_elapsed() -> int:
+	return sim.frame - _end_frame
+
+
+## 勝利：Boss 的執魂（紅色餘燼）流進主角體內
+func _start_victory() -> void:
+	sfx.play(&"execution", -6.0, 0.7)
+	fx.add(&"ember_stream", {"from": sim.boss.pos + Vector2(0, -60)}, VICTORY_ABSORB_TIME)
+	fx.sparks(sim.boss.pos + Vector2(0, -50), Color(0.6, 0.58, 0.55), 40, 60.0, 1.6, Vector2.UP, 0.8)
 
 
 ## 事件 → 特效、音效、震動（combat-design §6、§12）
@@ -182,6 +245,17 @@ func _dispatch(e: Dictionary) -> void:
 			sfx.play(&"danger")
 		&"boss_stagger":
 			fx.sparks(e["pos"] + Vector2(0, -60), Color(1.0, 0.6, 0.3), 8, 80.0, 0.25)
+		&"boss_transition":
+			# 階段轉換：單膝跪地後起身，火焰更猛烈（boss §5）
+			sfx.play(&"boss_break", 0.0, 0.8)
+			fx.add(&"flash_ring", {"pos": e["pos"] + Vector2(0, -50), "r0": 20.0, "r1": 110.0, "color": Palette.BOSS_EMBER}, 0.6)
+		&"boss_phase2":
+			fx.sparks(e["pos"] + Vector2(0, -70), Palette.BOSS_EMBER, 30, 140.0, 0.7)
+			camera.add_shake(4.0, 0.3)
+		&"boss_dead":
+			camera.add_shake(5.0, 0.4)
+		&"player_dead":
+			sfx.play(&"knockdown", 0.0, 0.7)
 		&"boss_break":
 			# 失衡：紅火暗下、火星散落（§12）
 			sfx.play(&"boss_break")
@@ -199,6 +273,7 @@ func _dispatch(e: Dictionary) -> void:
 
 ## 重置戰鬥（F5；死亡後重試也走這裡）
 func reset_battle() -> void:
+	end_state = &""
 	sim.reset(randi())
 	hud.reset_trails()
 	fx.clear()

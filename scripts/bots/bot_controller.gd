@@ -34,6 +34,8 @@ static func predict_threats(sim: CombatSim) -> Array[Dictionary]:
 				var can_move := b.move.startup_advance_speed / Frames.FPS * maxi(lock_at - e, 0)
 				var target := maxf(b.move.advance_stop_distance, d - can_move)
 				origin = p - dir * target
+		if b.move.airborne_start >= 0.0:
+			origin = b.landing_target  # 墜王之躍：在落點落地（落點追蹤玩家，玩家不動時就是現在的落點）
 		var overlap := -1
 		# 突刺：目前已經前進的步數（這一幀的判定已經結算過，從下一幀開始預測）
 		var steps_done := e - start + 1 if e >= start else 0

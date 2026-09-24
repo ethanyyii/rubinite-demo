@@ -57,9 +57,43 @@ func _draw() -> void:
 	var by := size.y - 30.0
 	draw_string(font, Vector2(bx, by - 3), BOSS_NAME, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.UI_TEXT)
 	_bar(Rect2(bx, by, w, 6), float(sim.boss.hp) / VeltharisData.MAX_HP, _boss_hp_trail / VeltharisData.MAX_HP, Palette.UI_BOSS_HP)
+	# 第二階段的分界（HP 50%）
+	var notch := bx + roundf(w * VeltharisData.PHASE2_HP_RATIO)
+	draw_line(Vector2(notch, by - 2), Vector2(notch, by + 7), Palette.UI_FRAME, 1.0)
 	var t := sim.boss.toughness / VeltharisData.MAX_TOUGHNESS
-	_bar(Rect2(bx, by + 9, w, 3), t, t, Palette.UI_TOUGHNESS)
+	var tcol := Palette.UI_TOUGHNESS
+	if sim.boss.state == BossSim.State.BROKEN:
+		tcol = Palette.UI_POSTURE_LOW if floori(Time.get_ticks_msec() / 120.0) % 2 == 0 else Palette.UI_TOUGHNESS
+	_bar(Rect2(bx, by + 9, w, 3), t, t, tcol)
 	_draw_offscreen_danger(sim)
+	_draw_end_overlay(font)
+
+
+## §14：死亡後「再戰」；勝利後「勝利」與再戰提示
+func _draw_end_overlay(font: Font) -> void:
+	match arena.end_state:
+		&"death":
+			var k := clampf(float(arena.end_elapsed()) / Frames.of(PlayerData.DEATH_TIME), 0.0, 1.0)
+			draw_rect(Rect2(Vector2.ZERO, size), Color(0.15, 0.0, 0.0, 0.45 * k))
+			if arena.retry_prompt_visible():
+				_center_text(font, "再戰", 28, size.y * 0.45, Palette.UI_TEXT)
+		&"victory":
+			var k2 := clampf(float(arena.end_elapsed()) / Frames.of(1.0), 0.0, 1.0)
+			var gold := Palette.BOSS_CROWN
+			gold.a = k2
+			_center_text(font, "勝利", 28, size.y * 0.3, gold)
+			var sub := Palette.UI_TEXT
+			sub.a = k2
+			_center_text(font, "吸收了墮誓之王的執魂", 10, size.y * 0.3 + 18, sub)
+			if arena.retry_prompt_visible():
+				_center_text(font, "再戰（按攻擊鍵）", 12, size.y * 0.55, Palette.UI_TEXT)
+
+
+func _center_text(font: Font, text: String, font_size: int, y: float, color: Color) -> void:
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var pos := Vector2((size.x - w) * 0.5, y)
+	draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0, 0, 0, color.a * 0.9))
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
 ## Boss 在畫面外時（場地 400px 高、Boss 120px 高，玩家在最南端時 Boss 可能整個出畫面），

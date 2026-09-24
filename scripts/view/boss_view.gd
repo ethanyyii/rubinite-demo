@@ -20,6 +20,11 @@ func setup(owner_arena: CombatArena) -> void:
 func _process(delta: float) -> void:
 	var b: BossSim = arena.sim.boss
 	position = b.pos.round()
+	# 死亡：跪地後化為灰燼消散（boss §8.2，程式做）
+	if b.state == BS.DEAD:
+		modulate.a = 1.0 - clampf(float(b.state_elapsed()) / Frames.of(1.6), 0.0, 1.0)
+	else:
+		modulate.a = 1.0
 	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	_flash_white = maxf(_flash_white - real_dt, 0.0)
 	queue_redraw()
@@ -35,10 +40,15 @@ func _draw() -> void:
 	var tg := b.telegraph()
 	var pose := compute_pose(b)
 	var body_off: Vector2 = pose["body"]
-	DrawUtil.fill_ellipse(self, Vector2(0, 2), Vector2(R + 8, 10), Palette.SHADOW, 24)
+	var lift := _leap_lift(b)
+	if b.move != null and b.move.airborne_start >= 0.0 and b.state == BS.ATTACK and b.state_elapsed() < b.hit_start_frame(0):
+		_draw_landing_shadow(b)
+	DrawUtil.fill_ellipse(self, Vector2(0, 2), Vector2(R + 8, 10) * (1.0 - 0.5 * clampf(-lift / 70.0, 0.0, 1.0)), Palette.SHADOW, 24)
 	if b.state == BS.EXECUTED:
 		_draw_fallen(side)
 		return
+	if lift < 0.0:
+		draw_set_transform(Vector2(0, lift))
 	var sword_behind: bool = pose["behind"]
 	if sword_behind:
 		_draw_sword(b, pose, tg)
@@ -47,6 +57,56 @@ func _draw() -> void:
 		_draw_sword(b, pose, tg)
 	if tg == TG.DANGER:
 		_draw_danger_star(body_off)
+	if b.phase == 2 or b.state == BS.TRANSITION:
+		_draw_flames(b, pose)
+	draw_set_transform(Vector2.ZERO)
+
+
+## 墜王之躍的騰空高度（負值往上）。準星也用這個跟著升高
+static func leap_lift(b: BossSim) -> float:
+	return _leap_lift(b)
+
+
+static func _leap_lift(b: BossSim) -> float:
+	if not b.is_airborne():
+		return 0.0
+	var air_from := Frames.of(b.move.airborne_start)
+	var land := b.hit_start_frame(0)
+	var t := float(b.state_elapsed() - air_from) / float(land - air_from)
+	return -sin(PI * t) * 70.0
+
+
+## 落點陰影：追蹤玩家，越接近落地越小；縮到最小的瞬間就是落地時機（boss §5.2）
+func _draw_landing_shadow(b: BossSim) -> void:
+	var local := b.landing_target - b.pos
+	var land := b.hit_start_frame(0)
+	var k := clampf(float(b.state_elapsed()) / float(land), 0.0, 1.0)
+	var r := lerpf(64.0, 30.0, k)
+	DrawUtil.fill_ellipse(self, local, Vector2(r, r * 0.45), Color(0, 0, 0, 0.25 + 0.3 * k), 28)
+	DrawUtil.stroke_ellipse(self, local, Vector2(r, r * 0.45), Color(0.8, 0.2, 0.1, 0.5 + 0.4 * k), 1.0, 28)
+
+
+## 第二階段：大劍燃起更猛烈的火焰（boss §5）；轉場時全身冒火
+func _draw_flames(b: BossSim, pose: Dictionary) -> void:
+	var t := Time.get_ticks_msec() * 0.001
+	var hand: Vector2 = pose["hand"] + Vector2((pose["body"] as Vector2).x, 0)
+	var d: Vector2 = pose["dir"]
+	var length: float = pose["len"]
+	for i in 7:
+		var k := float(i) / 6.0
+		var base := hand + d * (12.0 + k * (length - 12.0))
+		var flick := sin(t * 18.0 + i * 1.7) * 2.0
+		var up := Vector2(0, -6.0 - 4.0 * absf(sin(t * 11.0 + i)))
+		var c := Palette.BOSS_EMBER.lerp(Color(1, 0.9, 0.4), 0.5 + 0.5 * sin(t * 9.0 + i))
+		c.a = 0.85
+		draw_line(base.round(), (base + up + Vector2(flick, 0)).round(), c, 2.0)
+	if b.state == BS.TRANSITION:
+		for i in 10:
+			var a := t * 4.0 + TAU * i / 10.0
+			var p := Vector2(cos(a) * 30.0, -60.0 + sin(a * 1.3) * 45.0)
+			var c2 := Palette.BOSS_EMBER
+			c2.a = 0.7
+			draw_rect(Rect2(p.round(), Vector2(2, 3)), c2)
 
 
 func _body_color(base: Color, tg: int) -> Color:
@@ -129,6 +189,14 @@ static func compute_pose(b: BossSim) -> Dictionary:
 			var k2 := 1.0 - clampf(float(b.state_elapsed()) / Frames.of(VeltharisData.SHORT_STAGGER_TIME), 0.0, 1.0)
 			pose["body"] = Vector2(-side * 5.0 * k2, -4.0 * k2)
 			pose["dir"] = rest.rotated(-side * 0.4 * k2)
+		BS.TRANSITION, BS.DEAD:
+			# 轉場：單膝跪地後起身（前半跪、後半站起）；死亡：跪地
+			var k4 := clampf(float(b.state_elapsed()) / Frames.of(VeltharisData.TRANSITION_TIME), 0.0, 1.0)
+			var kneel := 1.0 if b.state == BS.DEAD else clampf(2.0 - k4 * 2.0, 0.0, 1.0)
+			pose["body"] = Vector2(side * 2.0 * kneel, -34.0 * kneel)
+			pose["dir"] = Vector2(side * 0.2, 1.0).normalized().lerp(Vector2(side * 0.3, -1.0).normalized(), 1.0 - kneel).normalized()
+			pose["hand"] = Vector2(side * 24, lerpf(-58.0, -30.0, kneel))
+			pose["len"] = lerpf(BLADE, 34.0, kneel)
 		BS.BROKEN:
 			# 失衡：跪地，劍插在身旁
 			pose["body"] = Vector2(side * 2.0, -34.0)
@@ -258,7 +326,17 @@ static func _attack_pose(b: BossSim, pose: Dictionary, side: float) -> void:
 			else:
 				pose["dir"] = (-f).lerp(rest, 0.3).normalized()
 		&"C7":
-			pose["dir"] = up if not (phase_active or in_recovery) else f
+			# 墜王之躍：下蹲（身體變矮）→ 騰空舉劍 → 落地重擊劍插在前方
+			var air_from := Frames.of(m.airborne_start)
+			if phase_active or in_recovery:
+				pose["dir"] = f
+				pose["len"] = 90.0
+				pose["body"] = Vector2(0, -8)
+			elif e < air_from:
+				pose["body"] = Vector2(0, -14.0 * clampf(float(e) / air_from, 0.0, 1.0))
+				pose["dir"] = rest
+			else:
+				pose["dir"] = up
 	var sword_dir: Vector2 = pose["dir"]
 	if not pose.has("front"):
 		pose["behind"] = pose["behind"] or sword_dir.y < -0.6
