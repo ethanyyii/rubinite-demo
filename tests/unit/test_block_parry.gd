@@ -117,17 +117,17 @@ func test_perfect_parry_costs_nothing_and_breaks_toughness() -> void:
 	assert_eq(r, R.PERFECT)
 	assert_eq(player().hp, PlayerData.MAX_HP)
 	assert_near(player().posture, PlayerData.MAX_POSTURE, 0.001, "完美彈返不扣架勢")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 20, 0.001, "重擊中間：削韌 20")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - VeltharisData.PARRY_TOUGHNESS, 0.001, "重擊中間：削韌 20（tuning-log：26）")
 	sim = CombatSim.new(1)
 	before_each_positions()
 	held["block"] = false
 	_block_then_hit(4, _light_mid())
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 12, 0.001, "輕擊中間：削韌 12")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - VeltharisData.PARRY_TOUGHNESS_LIGHT_MID, 0.001, "輕擊中間：削韌 12（tuning-log：15）")
 	sim = CombatSim.new(1)
 	before_each_positions()
 	held["block"] = false
 	_block_then_hit(4, _light_last())
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 20, 0.001, "輕擊最後一擊：削韌 20")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - VeltharisData.PARRY_TOUGHNESS, 0.001, "輕擊最後一擊：削韌 20（tuning-log：26）")
 
 
 func test_perfect_parry_feedback_vs_normal_block() -> void:
@@ -172,7 +172,7 @@ func test_block_arc_is_front_180() -> void:
 func test_unblockable_ignores_block_and_parry() -> void:
 	var r := _block_then_hit(3, _unblockable())
 	assert_eq(r, R.HIT, "不可格擋攻擊：格擋無效")
-	assert_eq(player().hp, PlayerData.MAX_HP - 35)
+	assert_eq(player().hp, PlayerData.MAX_HP - _unblockable().damage)
 
 
 func test_posture_regen_after_1s_at_20_per_sec() -> void:

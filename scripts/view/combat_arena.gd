@@ -25,6 +25,8 @@ var debug_info := false
 var slow_motion := false
 var boss_manual := false
 var attack_preview := true
+## 除錯／效能量測用：設定後由機器人代替鍵盤手把操作主角（勝利後自動再戰）。遊玩時為 null
+var bot_driver: BotController = null
 
 var world: Node2D
 var player_view: Node2D
@@ -128,10 +130,14 @@ func _build() -> void:
 		driver.name = "Debug"
 		driver.setup(self)
 		add_child(driver)
+		_setup_perf_run()
 
 
 func _physics_process(_delta: float) -> void:
-	var input := InputFrame.from_devices()
+	var input := InputFrame.from_devices() if bot_driver == null else bot_driver.decide(sim)
+	if bot_driver != null and end_state == &"victory" and retry_prompt_visible():
+		request_retry()
+		return
 	if end_state == &"victory" and input.attack_pressed and retry_prompt_visible():
 		# 按下再戰：這個按鍵不帶進新的一場（否則重置後第一幀就會揮劍）
 		request_retry()
@@ -277,7 +283,30 @@ func reset_battle() -> void:
 	sim.reset(randi())
 	hud.reset_trails()
 	fx.clear()
+	if bot_driver != null:
+		bot_driver.reset()
 	_apply_boss_mode()
+
+
+## 效能量測（plan §7）：`godot --path . -- --perf=180 [--perf-out=res://….json]` 由擬人機器人代打、量測有畫面執行的幀率，
+## 結果寫成 JSON 後結束（預設 user://perf.json，不會蓋掉證據檔）。只在除錯建置有效。
+func _setup_perf_run() -> void:
+	var seconds := 0.0
+	var out := "user://perf.json"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--perf="):
+			seconds = float(a.get_slice("=", 1))
+		elif a.begins_with("--perf-out="):
+			out = a.get_slice("=", 1)
+	if seconds <= 0.0:
+		return
+	bot_driver = HumanBot.new(12345)
+	var rec := PerfRecorder.new()
+	rec.name = "PerfRecorder"
+	rec.duration = seconds
+	rec.arena = self
+	rec.out_path = out
+	add_child(rec)
 
 
 ## Boss 平常由 AI 控制；F3 切成手動出招（數字鍵指定下一招，練習彈返）

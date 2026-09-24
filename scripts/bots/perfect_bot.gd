@@ -15,6 +15,8 @@ const SAFE_FINISHER := 50
 const ATTACK_DIST := 46.0
 
 var stats := {"parry_attempts": 0, "dodges": 0, "executions": 0}
+## false：只防守不進攻（量測「只靠彈返破韌」用）
+var offense := true
 
 
 func decide(sim: CombatSim) -> InputFrame:
@@ -47,6 +49,8 @@ func decide(sim: CombatSim) -> InputFrame:
 		if overlap - now1 <= 14:
 			return f
 
+	if not offense:
+		return f
 	# 失衡：走近處決
 	if b.state == BossSim.State.BROKEN:
 		if b.can_be_executed(p.pos):

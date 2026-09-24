@@ -137,8 +137,8 @@ func test_heavy_full_charge_then_thrust() -> void:
 	advance(1)
 	assert_eq(player().state, S.THRUST, "放開即出招")
 	advance(20)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - 60, "重擊傷害 60")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 15, 0.001, "削韌 15")
+	assert_eq(boss().hp, VeltharisData.MAX_HP - 42, "重擊傷害 60（tuning-log：42）")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - PlayerData.heavy_thrust().toughness, 0.001, "削韌 15（tuning-log：10.5）")
 
 
 func test_thrust_distance_and_stops_on_contact() -> void:
@@ -169,7 +169,7 @@ func test_thrust_distance_and_stops_on_contact() -> void:
 	advance(13)
 	var moved := y0 - sim.player.pos.y
 	assert_true(moved < 72.0 - 1.0, "命中後停下（前進 %.1f）" % moved)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - 60)
+	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.heavy_thrust().damage)
 
 
 func test_charge_moves_slowly_and_cannot_run() -> void:

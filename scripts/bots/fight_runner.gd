@@ -4,7 +4,7 @@ extends RefCounted
 
 const R := CombatSim.BlockResult
 
-## 跑一場。stop_boss_hp：Boss HP 降到這個值以下就算「過關」（例如只驗第一階段時用 600）。
+## 跑一場。stop_boss_hp：Boss HP 降到這個值以下就算「過關」（例如只驗第一階段時用最大 HP 的一半）。
 static func run(seed_value: int, bot: BotController, max_seconds: float = 600.0, stop_boss_hp: int = 0) -> Dictionary:
 	var sim := CombatSim.new(seed_value)
 	sim.boss.set_ai()

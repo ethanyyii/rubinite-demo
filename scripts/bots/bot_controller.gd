@@ -88,5 +88,10 @@ static func earliest_danger(sim: CombatSim) -> int:
 	return now + min_startup
 
 
+## 新的一場開始（戰鬥幀從 0 重新算）時清掉機器人記住的狀態
+func reset() -> void:
+	pass
+
+
 func decide(_sim: CombatSim) -> InputFrame:
 	return InputFrame.new()

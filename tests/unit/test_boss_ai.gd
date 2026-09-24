@@ -83,6 +83,7 @@ func test_three_normal_blocks_then_ash_impact() -> void:
 			guard += 1
 			advance(1)
 			sim.player.posture = 10000.0
+			sim.player.hp = PlayerData.MAX_HP  # 被灰燼衝擊打中也不會死
 		assert_true(boss().ai.block_streak >= 3, "種子 %d：連續普通格擋到 3 次" % seed_value)
 		# 等目前這一招結束，看下一招
 		var n_before := _started_moves().size()
@@ -90,6 +91,7 @@ func test_three_normal_blocks_then_ash_impact() -> void:
 			guard += 1
 			advance(1)
 			sim.player.posture = 10000.0
+			sim.player.hp = PlayerData.MAX_HP  # 被灰燼衝擊打中也不會死
 		var next: StringName = _started_moves()[-1]
 		assert_eq(next, &"ash_impact", "種子 %d：連續普通格擋 3 次後的下一招" % seed_value)
 		if next == &"ash_impact":

@@ -1,5 +1,63 @@
 extends TestCase
 ## 戰鬥資料能被讀取，且與文件數值一致（M0：Resource 格式；★ 規則的掃描在 test_star_rules.gd）。
+## 表格裡寫的是文件值；M6 依 plan §7 調整過的數值在下面的 TUNED_* 對照（每一筆都記在 docs/tuning-log.md），
+## 並檢查調整幅度都在文件值的 ±30% 內。
+
+## tuning-log：Boss 每一擊的傷害 × 1.3，無條件捨去
+const TUNED_BOSS_DAMAGE_SCALE := 1.3
+## tuning-log：完美彈返的削韌 12 → 15、20 → 26
+const TUNED_PARRY_TOUGHNESS := {0: 0, 12: 15, 20: 26}
+## tuning-log：主角傷害
+const TUNED_PLAYER_DAMAGE := {15: 11, 25: 18, 60: 42}
+## tuning-log：主角攻擊的削韌 × 0.7
+const TUNED_PLAYER_TOUGHNESS := {2: 1.4, 6: 4.2, 15: 10.5}
+## tuning-log：單一常數 [文件值, 調整後]
+const TUNED_CONSTANTS := {
+	"VeltharisData.MAX_HP": [1200, 1560],
+	"VeltharisData.MAX_TOUGHNESS": [100.0, 70.0],
+	"VeltharisData.TOUGHNESS_REGEN_DELAY": [2.0, 2.6],
+	"VeltharisData.TOUGHNESS_REGEN_BASE": [10.0, 7.0],
+	"VeltharisData.EXECUTE_DAMAGE_RATIO": [0.15, 0.105],
+	"PlayerData.MAX_HP": [100, 72],
+	"PlayerData.HEAL_TIME": [0.9, 1.17],
+	"PlayerData.HEAL_AMOUNT": [35, 25],
+}
+
+
+static func tuned_boss_damage(doc: int) -> int:
+	return floori(doc * TUNED_BOSS_DAMAGE_SCALE + 0.000001)
+
+
+func _tuned(key: String) -> Variant:
+	return TUNED_CONSTANTS[key][1]
+
+
+func test_tuned_values_within_30_percent_of_doc() -> void:
+	# plan §7：只能在文件數值的 ±30% 內調整
+	for key: String in TUNED_CONSTANTS:
+		var pair: Array = TUNED_CONSTANTS[key]
+		var ratio := float(pair[1]) / float(pair[0])
+		assert_between(ratio, 0.7 - 0.000001, 1.3 + 0.000001, "%s：%s → %s" % [key, pair[0], pair[1]])
+	for table: Dictionary in [TUNED_PARRY_TOUGHNESS, TUNED_PLAYER_DAMAGE, TUNED_PLAYER_TOUGHNESS]:
+		for doc: int in table:
+			if doc == 0:
+				continue
+			var ratio := float(table[doc]) / float(doc)
+			assert_between(ratio, 0.7 - 0.000001, 1.3 + 0.000001, "%s → %s" % [doc, table[doc]])
+	for doc: int in [15, 24, 26, 28, 30, 32, 35]:
+		var ratio := float(tuned_boss_damage(doc)) / doc
+		assert_between(ratio, 1.0, 1.3 + 0.000001, "Boss 傷害 %d → %d" % [doc, tuned_boss_damage(doc)])
+	assert_near(VeltharisData.DAMAGE_SCALE, TUNED_BOSS_DAMAGE_SCALE)
+	assert_eq(VeltharisData.PARRY_TOUGHNESS_LIGHT_MID, TUNED_PARRY_TOUGHNESS[12])
+	assert_eq(VeltharisData.PARRY_TOUGHNESS, TUNED_PARRY_TOUGHNESS[20])
+
+
+## 文件表格的一列（[間隔, 判定, 傷害, 架勢, 削韌, 彈開, 類型, 命中效果]）換成調整後的值
+static func _tuned_row(r: Array) -> Array:
+	var out := r.duplicate()
+	out[2] = tuned_boss_damage(r[2])
+	out[4] = TUNED_PARRY_TOUGHNESS[r[4]]
+	return out
 
 
 func test_boss_moves_are_resources() -> void:
@@ -56,7 +114,7 @@ func test_phase1_hit_values_match_doc() -> void:
 		assert_eq(m.hits.size(), rows.size(), "%s 的擊數" % id)
 		for i in mini(rows.size(), m.hits.size()):
 			var h: BossHitData = m.hits[i]
-			var r: Array = rows[i]
+			var r: Array = _tuned_row(rows[i])
 			var got := [h.interval, h.active, h.damage, h.posture_damage, h.toughness_damage, h.bounce_time, h.attack_type, h.hit_effect]
 			for j in r.size():
 				if typeof(r[j]) == TYPE_FLOAT:
@@ -122,14 +180,14 @@ func test_player_attack_table_matches_doc() -> void:
 		assert_near(a.startup, r[0])
 		assert_near(a.active, r[1])
 		assert_near(a.recovery, r[2])
-		assert_eq(a.damage, r[3])
-		assert_eq(a.toughness, r[4])
+		assert_eq(a.damage, TUNED_PLAYER_DAMAGE[r[3]], "第 %d 段傷害（tuning-log）" % (i + 1))
+		assert_near(a.toughness, TUNED_PLAYER_TOUGHNESS[r[4]], 0.0001, "第 %d 段削韌（tuning-log）" % (i + 1))
 		assert_near(a.advance, r[5])
 		assert_eq(a.cancelable, i < 3, "第 %d 段取消規則" % (i + 1))
 		assert_eq(a.can_short_stagger, i == 3)
 	var heavy := PlayerData.heavy_thrust()
-	assert_eq(heavy.damage, 60)
-	assert_eq(heavy.toughness, 15)
+	assert_eq(heavy.damage, TUNED_PLAYER_DAMAGE[60], "重擊傷害（tuning-log）")
+	assert_near(heavy.toughness, TUNED_PLAYER_TOUGHNESS[15], 0.0001, "重擊削韌（tuning-log）")
 	assert_near(heavy.recovery, 0.5)
 	assert_near(heavy.advance, 72.0)
 	assert_false(heavy.cancelable)
@@ -183,7 +241,7 @@ func test_phase2_new_moves_match_doc() -> void:
 		assert_eq(m.hits.size(), rows.size(), "%s 的擊數" % id)
 		for i in mini(rows.size(), m.hits.size()):
 			var h: BossHitData = m.hits[i]
-			var r: Array = rows[i]
+			var r: Array = _tuned_row(rows[i])
 			var got := [h.interval, h.active, h.damage, h.posture_damage, h.toughness_damage, h.bounce_time, h.attack_type, h.hit_effect]
 			for j in r.size():
 				if typeof(r[j]) == TYPE_FLOAT:
@@ -198,18 +256,18 @@ func test_phase2_new_moves_match_doc() -> void:
 
 
 func test_boss_constants_match_doc() -> void:
-	assert_eq(VeltharisData.MAX_HP, 1200)
+	assert_eq(VeltharisData.MAX_HP, _tuned("VeltharisData.MAX_HP"))
 	assert_near(VeltharisData.HURT_RADIUS, 26.0)
 	assert_near(VeltharisData.WALK_SPEED, 60.0)
 	assert_near(VeltharisData.FAST_SPEED, 120.0)
-	assert_near(VeltharisData.MAX_TOUGHNESS, 100.0)
-	assert_near(VeltharisData.TOUGHNESS_REGEN_DELAY, 2.0)
-	assert_near(VeltharisData.TOUGHNESS_REGEN_BASE, 10.0)
+	assert_near(VeltharisData.MAX_TOUGHNESS, _tuned("VeltharisData.MAX_TOUGHNESS"))
+	assert_near(VeltharisData.TOUGHNESS_REGEN_DELAY, _tuned("VeltharisData.TOUGHNESS_REGEN_DELAY"))
+	assert_near(VeltharisData.TOUGHNESS_REGEN_BASE, _tuned("VeltharisData.TOUGHNESS_REGEN_BASE"))
 	assert_near(VeltharisData.TOUGHNESS_REGEN_FLOOR, 0.3)
 	assert_near(VeltharisData.SHORT_STAGGER_TIME, 0.3)
 	assert_near(VeltharisData.SHORT_STAGGER_COOLDOWN, 3.0)
 	assert_near(VeltharisData.BREAK_TIME, 3.0)
-	assert_near(VeltharisData.EXECUTE_DAMAGE_RATIO, 0.15)
+	assert_near(VeltharisData.EXECUTE_DAMAGE_RATIO, _tuned("VeltharisData.EXECUTE_DAMAGE_RATIO"))
 	assert_near(VeltharisData.RISE_TIME, 1.0)
 	assert_near(VeltharisData.PHASE2_HP_RATIO, 0.5)
 	assert_near(VeltharisData.TRANSITION_TIME, 1.5)
@@ -238,11 +296,11 @@ func test_ai_weights_match_doc() -> void:
 
 func test_player_constants_match_doc() -> void:
 	# §4
-	assert_eq(PlayerData.MAX_HP, 100)
+	assert_eq(PlayerData.MAX_HP, _tuned("PlayerData.MAX_HP"))
 	assert_near(PlayerData.MAX_POSTURE, 100.0)
 	assert_eq(PlayerData.HEAL_CHARGES, 3)
-	assert_eq(PlayerData.HEAL_AMOUNT, 35)
-	assert_near(PlayerData.HEAL_TIME, 0.9)
+	assert_eq(PlayerData.HEAL_AMOUNT, _tuned("PlayerData.HEAL_AMOUNT"))
+	assert_near(PlayerData.HEAL_TIME, _tuned("PlayerData.HEAL_TIME"))
 	assert_near(PlayerData.POSTURE_REGEN_DELAY, 1.0)
 	assert_near(PlayerData.POSTURE_REGEN_PER_SEC, 20.0)
 	# §5

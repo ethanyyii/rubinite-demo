@@ -1,5 +1,5 @@
 extends SceneTree
-## 批次模擬（plan §7）：godot --headless --path . -s res://tests/sim/run_batch.gd -- --bot=perfect --games=5 --stop-hp=600
+## 批次模擬（plan §7）：godot --headless --path . -s res://tests/sim/run_batch.gd -- --bot=perfect --games=5 --stop-hp=780
 ## 結果印在標準輸出，並寫到 docs/evidence/sim/<name>.json。
 
 func _initialize() -> void:
@@ -16,7 +16,9 @@ func _initialize() -> void:
 		if opts["bot"] == "perfect":
 			bot = PerfectBot.new()
 		else:
-			bot = HumanBot.new(int(opts["seed"]) * 7919 + g)
+			var hb := HumanBot.new(int(opts["seed"]) * 7919 + g)
+			hb.cautious = opts["bot"] == "human_cautious"
+			bot = hb
 		var r := FightRunner.run(int(opts["seed"]) + g, bot, float(opts["max-seconds"]), int(opts["stop-hp"]))
 		results.append(r)
 		print("game %d: %s  %.1fs  damage %d  boss_hp %d  perfect %d  blocked %d  hits %d  dodges %d  exec %d" % [g,

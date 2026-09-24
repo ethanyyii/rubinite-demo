@@ -39,14 +39,14 @@ func test_transition_at_half_hp() -> void:
 	assert_eq(boss().phase, 2, "進入第二階段")
 
 
-func test_transition_boundary_is_inclusive_600() -> void:
+func test_transition_boundary_is_inclusive_half() -> void:
 	sim.boss.set_ai()
 	sim.boss.hp = _half() + 1
 	advance(2)
-	assert_true(boss().state != BS.TRANSITION, "601 還在一階段")
+	assert_true(boss().state != BS.TRANSITION, "50% + 1 還在一階段")
 	sim.boss.hp = _half()
 	advance(1)
-	assert_eq(boss().state, BS.TRANSITION, "剛好 600（50%）就進入二階段")
+	assert_eq(boss().state, BS.TRANSITION, "剛好 50%（1560 時為 780）就進入二階段")
 
 
 func test_transition_interrupts_attack() -> void:

@@ -30,7 +30,7 @@ func test_sweep_hits_idle_player_on_first_active_frame() -> void:
 	assert_eq(player().hp, PlayerData.MAX_HP, "起手 0.8 秒（48 幀）內沒有判定")
 	advance(1)
 	assert_eq(boss().state_elapsed(), 48)
-	assert_eq(player().hp, PlayerData.MAX_HP - 28, "第 48 幀命中")
+	assert_eq(player().hp, PlayerData.MAX_HP - VeltharisData.move(1, &"royal_sweep").hits[0].damage, "第 48 幀命中")
 	assert_eq(player().state, S.LAUNCHED, "王權橫掃：擊飛倒地")
 
 
@@ -82,7 +82,7 @@ func test_perfect_parry_of_finisher_bounces_boss() -> void:
 	held["block"] = true
 	_to_move_frame(49)
 	assert_eq(boss().state, BS.BOUNCED, "單發重擊被完美彈返：Boss 彈開")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 20, 0.001)
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - VeltharisData.PARRY_TOUGHNESS, 0.001)
 	var start := boss().state_start
 	while boss().state == BS.BOUNCED:
 		advance(1)
@@ -110,13 +110,13 @@ func test_perfect_parry_of_middle_hit_continues_combo() -> void:
 	held["block"] = true
 	_to_move_frame(49)
 	assert_eq(boss().state, BS.ATTACK, "連段中間被彈返：繼續出招")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 20, 0.001)
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - VeltharisData.PARRY_TOUGHNESS, 0.001)
 	held["block"] = false
 	_to_move_frame(96)
 	held["block"] = true
 	_to_move_frame(103)
 	assert_eq(boss().state, BS.BOUNCED, "第二擊（最後一擊）被彈返：彈開")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 40, 0.001)
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 2 * VeltharisData.PARRY_TOUGHNESS, 0.001)
 
 
 func test_knocked_down_player_not_hit_by_rest_of_combo() -> void:

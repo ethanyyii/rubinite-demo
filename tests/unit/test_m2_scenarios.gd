@@ -4,7 +4,7 @@ extends SimTestCase
 const S := PlayerSim.State
 
 
-## 狂按攻擊：每 2 幀按一次，連打 10 秒。四段一輪，每輪 70 傷害、12 削韌，段數依序 1→2→3→4→1…
+## 狂按攻擊：每 2 幀按一次，連打 10 秒。四段一輪，每輪 70 傷害（tuning-log：51）、12 削韌，段數依序 1→2→3→4→1…
 func test_mash_attack_cycles_through_four_stages() -> void:
 	place_near_boss(46.0)
 	var stages: Array[int] = []
@@ -20,13 +20,17 @@ func test_mash_attack_cycles_through_four_stages() -> void:
 	for i in stages.size():
 		assert_eq(stages[i], i % 4, "第 %d 次出招應是第 %d 段" % [i + 1, i % 4 + 1])
 	assert_eq(hits, stages.size(), "每段都打中")
-	var dmg_table: Array[int] = [0, 15, 30, 45]
-	var tough_table: Array[int] = [0, 2, 4, 6]
+	var L := PlayerData.light_attacks()
+	var dmg_table: Array[int] = [0, L[0].damage, L[0].damage + L[1].damage, L[0].damage + L[1].damage + L[2].damage]
+	var cycle := dmg_table[3] + L[3].damage
+	var tough_table: Array[float] = [0.0, L[0].toughness, L[0].toughness + L[1].toughness,
+		L[0].toughness + L[1].toughness + L[2].toughness]
+	var cycle_tough := tough_table[3] + L[3].toughness
 	var full_cycles := floori(hits / 4.0)
 	var rem := hits % 4
-	assert_eq(VeltharisData.MAX_HP - boss().hp, full_cycles * 70 + dmg_table[rem], "傷害 = 完整輪數 × 70 + 零頭")
-	var expected_tough := float(full_cycles * 12 + tough_table[rem])
-	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, minf(expected_tough, 100.0), 0.001)
+	assert_eq(VeltharisData.MAX_HP - boss().hp, full_cycles * cycle + dmg_table[rem], "傷害 = 完整輪數 × 一輪 + 零頭")
+	var expected_tough := full_cycles * cycle_tough + tough_table[rem]
+	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, minf(expected_tough, VeltharisData.MAX_TOUGHNESS), 0.001)
 
 
 ## 兩段後用閃身取消，再打：閃身一定發生在第 2 段判定結束 3 幀後（最早的取消點）
@@ -71,8 +75,8 @@ func test_full_m2_routine_from_spawn() -> void:
 			press(&"attack")
 		else:
 			advance(1)
-	assert_eq(VeltharisData.MAX_HP - boss().hp, 70, "四段連擊 70")
-	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, 12.0, 0.001, "四段連擊削韌 12")
+	assert_eq(VeltharisData.MAX_HP - boss().hp, _combo_damage(), "四段連擊 70（tuning-log：51）")
+	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, _combo_toughness(), 0.001, "四段連擊削韌 12（tuning-log：8.4）")
 	# 往後閃（鎖定中遠離目標）
 	var d0 := sim.player.pos.distance_to(sim.boss.pos)
 	press(&"dodge")
@@ -83,6 +87,20 @@ func test_full_m2_routine_from_spawn() -> void:
 	advance(60)
 	held["heavy"] = false
 	advance(50)
-	assert_eq(VeltharisData.MAX_HP - boss().hp, 70 + 60, "加上重擊 60")
-	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, 12.0 + 15.0, 0.001, "加上削韌 15")
+	assert_eq(VeltharisData.MAX_HP - boss().hp, _combo_damage() + PlayerData.heavy_thrust().damage, "加上重擊 60（tuning-log：42）")
+	assert_near(VeltharisData.MAX_TOUGHNESS - boss().toughness, _combo_toughness() + PlayerData.heavy_thrust().toughness, 0.001, "加上削韌 15（tuning-log：10.5）")
 	assert_true(player().locked, "全程保持鎖定")
+
+
+func _combo_damage() -> int:
+	var total := 0
+	for a in PlayerData.light_attacks():
+		total += a.damage
+	return total
+
+
+func _combo_toughness() -> float:
+	var total := 0.0
+	for a in PlayerData.light_attacks():
+		total += a.toughness
+	return total

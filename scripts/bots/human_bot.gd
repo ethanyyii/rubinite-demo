@@ -16,11 +16,16 @@ const AIM := 4
 ## - 只在看得懂的空檔出手：Boss 被彈開、短僵直、失衡／處決／起身、出招收招、喘息走路；看到空檔後同樣要 0.25 秒反應；
 ## - Boss 起手預兆亮著（劍變紅、閃爍、危險）時不開新的連段；
 ## - 每個空檔打幾下是隨機的（1–4 下，權重如下），打完就收手；
-## - 安全幀數的估計有誤差（常態分布，標準差 6 幀）；第 4 段有 20% 機率貪刀；HP ≤ 45 時找安全的時機治療。
+## - 安全幀數的估計有誤差（常態分布，標準差 6 幀）；第 4 段有 20% 機率貪刀；血量少到「再被打一下就可能死」（≤ 這個階段 Boss 單擊的最大傷害）時找安全的時機治療。
 var safety_sigma_frames := 6.0
 var greed_finisher := 0.2
-var heal_below_hp := 45
+## 治療門檻：HP ≤ Boss 單擊最大傷害 + 這個餘裕
+var heal_margin := 0
 var hits_per_opening_weights := [0.2, 0.35, 0.25, 0.2]
+## 謹慎型（只用於報告的敏感度分析，不是 plan §7 的指標設定）：只在彈開、短僵直、起身時進攻，不打喘息與收招
+var cautious := false
+## 治療前要求的安全幀數 = 治療時間 + 這個餘裕（原本治療 54 幀時寫死 70 = 54 + 16）
+const HEAL_SAFETY_MARGIN := 16
 const SAFE_LIGHT := 21
 const SAFE_FINISHER := 50
 const ATTACK_DIST := 48.0
@@ -34,10 +39,21 @@ var _state_seen := 0
 var _chain_budget := 0
 var _chain_used := 0
 var stats := {"fooled": 0, "plans": 0}
+## 每個階段 Boss 單擊的最大傷害（治療門檻用）
+var _worst_hit := {}
 
 
 func _init(seed_value: int = 1) -> void:
 	rng.seed = seed_value
+
+
+func reset() -> void:
+	_plans.clear()
+	_holding_key = ""
+	_last_state = -1
+	_state_seen = 0
+	_chain_budget = 0
+	_chain_used = 0
 
 
 func decide(sim: CombatSim) -> InputFrame:
@@ -102,8 +118,8 @@ func decide(sim: CombatSim) -> InputFrame:
 
 	var safe := BotController.earliest_danger(sim) - now1 + roundi(rng.randfn(0.0, safety_sigma_frames))
 	# 治療：血少、而且看起來安全（離得遠，或 Boss 還有一段空檔）
-	if p.hp <= heal_below_hp and p.heals > 0 and p.state == PlayerSim.State.IDLE:
-		if dist > VeltharisData.HEAL_PUNISH_RANGE or safe >= 70:
+	if p.hp <= heal_threshold(b.phase) and p.heals > 0 and p.state == PlayerSim.State.IDLE:
+		if dist > VeltharisData.HEAL_PUNISH_RANGE or safe >= Frames.of(PlayerData.HEAL_TIME) + HEAL_SAFETY_MARGIN:
 			f.heal_pressed = true
 			return f
 		# 拉開距離再喝
@@ -135,8 +151,21 @@ func decide(sim: CombatSim) -> InputFrame:
 	return f
 
 
+## 治療門檻：這個階段 Boss 任何一擊的最大傷害（再被打一下就可能死）
+func heal_threshold(phase: int) -> int:
+	if not _worst_hit.has(phase):
+		var worst := 0
+		for id: StringName in VeltharisData.moves(phase):
+			for h: BossHitData in VeltharisData.moves(phase)[id].hits:
+				worst = maxi(worst, h.damage)
+		_worst_hit[phase] = worst
+	return int(_worst_hit[phase]) + heal_margin
+
+
 ## 看得懂的空檔
 func _is_opening(b: BossSim) -> bool:
+	if cautious:
+		return b.state in [BossSim.State.BOUNCED, BossSim.State.STAGGER, BossSim.State.RISING]
 	match b.state:
 		BossSim.State.BOUNCED, BossSim.State.STAGGER, BossSim.State.RISING, BossSim.State.WALK:
 			return true

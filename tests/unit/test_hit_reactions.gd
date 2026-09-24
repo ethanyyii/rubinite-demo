@@ -41,7 +41,7 @@ func test_frames() -> void:
 func test_light_hit_staggers() -> void:
 	var y0 := sim.player.pos.y
 	assert_eq(_hit(_light()), R.HIT)
-	assert_eq(player().hp, PlayerData.MAX_HP - 15)
+	assert_eq(player().hp, PlayerData.MAX_HP - _light().damage)
 	assert_eq(player().state, S.STAGGER)
 	assert_eq(sim.hitstop, Frames.of(0.06), "踉蹌頓幀 0.06 秒")
 	advance(20)
@@ -56,13 +56,13 @@ func test_stagger_can_be_hit_again() -> void:
 	_hit(_light())
 	advance(5)
 	assert_eq(_hit(_light()), R.HIT, "踉蹌中可以再被打中")
-	assert_eq(player().hp, PlayerData.MAX_HP - 30)
+	assert_eq(player().hp, PlayerData.MAX_HP - 2 * _light().damage)
 
 
 func test_knockdown_timeline_and_invulnerability() -> void:
 	var y0 := sim.player.pos.y
 	assert_eq(_hit(_knockdown()), R.HIT)
-	assert_eq(player().hp, PlayerData.MAX_HP - 32)
+	assert_eq(player().hp, PlayerData.MAX_HP - _knockdown().damage)
 	assert_eq(player().state, S.DOWN)
 	assert_eq(sim.hitstop, Frames.of(0.08), "倒地頓幀 0.08 秒")
 	assert_true(player().is_invulnerable(), "倒地瞬間起無敵 ★")
@@ -86,7 +86,7 @@ func test_launch_timeline() -> void:
 	var y0 := sim.player.pos.y
 	_hit(_launch())
 	assert_eq(player().state, S.LAUNCHED)
-	assert_eq(player().hp, PlayerData.MAX_HP - 28)
+	assert_eq(player().hp, PlayerData.MAX_HP - _launch().damage)
 	advance(20)
 	assert_eq(player().state, S.LAUNCHED)
 	assert_near(sim.player.pos.y - y0, PlayerData.LAUNCH_DISTANCE, 0.01, "0.35 秒飛出 64px")
@@ -153,23 +153,25 @@ func test_god_mode_ignores_hits() -> void:
 
 # --- 治療（§4） -------------------------------------------------------------------
 
-func test_heal_takes_54_frames_restores_35_and_consumes_charge() -> void:
+func test_heal_takes_heal_time_restores_amount_and_consumes_charge() -> void:
 	sim.player.hp = 40
 	press(&"heal")
 	assert_eq(player().state, S.HEAL)
 	assert_eq(player().heals, PlayerData.HEAL_CHARGES - 1, "開始時就消耗一次")
-	advance(53)
-	assert_eq(player().hp, 40, "0.9 秒結束時才回血")
+	var n := Frames.of(PlayerData.HEAL_TIME)
+	assert_eq(n, 70, "1.17 秒 = 70.2 幀 → 70（tuning-log：文件 0.9 秒 = 54 幀）")
+	advance(n - 1)
+	assert_eq(player().hp, 40, "治療時間結束時才回血")
 	assert_eq(player().state, S.HEAL)
 	advance(1)
-	assert_eq(player().hp, 75, "第 54 幀回 35")
+	assert_eq(player().hp, 40 + PlayerData.HEAL_AMOUNT, "最後一幀回 35（tuning-log：25）")
 	assert_eq(player().state, S.IDLE)
 
 
 func test_heal_caps_at_max_hp() -> void:
-	sim.player.hp = 90
+	sim.player.hp = PlayerData.MAX_HP - 10
 	press(&"heal")
-	advance(60)
+	advance(Frames.of(PlayerData.HEAL_TIME) + 5)
 	assert_eq(player().hp, PlayerData.MAX_HP)
 
 
@@ -197,7 +199,7 @@ func test_heal_interrupted_by_hit_loses_charge() -> void:
 	assert_eq(player().state, S.STAGGER)
 	assert_eq(player().heals, PlayerData.HEAL_CHARGES - 1, "被打斷時次數已消耗")
 	advance(60)
-	assert_eq(player().hp, 35, "被打斷不回血")
+	assert_eq(player().hp, 50 - _light().damage, "被打斷不回血")
 
 
 func test_no_heal_without_charges() -> void:

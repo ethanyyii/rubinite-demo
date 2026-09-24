@@ -8,7 +8,7 @@ extends Resource
 @export var recovery := 0.25
 @export var damage := 15
 ## 對 Boss 的削韌（combat-design §11.3）
-@export var toughness := 2
+@export var toughness := 2.0
 ## 判定期間前進的距離
 @export var advance := 6.0
 ## 收招期間能否用格擋或閃身取消（§8.3）

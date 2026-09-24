@@ -70,9 +70,10 @@ func test_toughness_regen_waits_2s_and_scales_with_hp() -> void:
 	sim.boss.toughness = 50.0
 	sim.boss.last_toughness_damage = sim.combat_frame
 	advance(Frames.of(VeltharisData.TOUGHNESS_REGEN_DELAY) - 1)
-	assert_near(boss().toughness, 50.0, 0.001, "2 秒內不回復")
+	assert_near(boss().toughness, 50.0, 0.001, "2 秒內不回復（tuning-log：2.6 秒）")
 	advance(60)
-	assert_near(boss().toughness, 60.0, 0.05, "滿血時每秒回 10")
+	var base := VeltharisData.TOUGHNESS_REGEN_BASE
+	assert_near(boss().toughness, 50.0 + base, 0.05, "滿血時每秒回 10（tuning-log：7）")
 	sim = CombatSim.new(1)
 	sim.boss.phase = 2  # 半血時一階段會轉場（韌性回滿），這裡直接看二階段
 	sim.boss.hp = roundi(VeltharisData.MAX_HP * 0.5)
@@ -80,11 +81,11 @@ func test_toughness_regen_waits_2s_and_scales_with_hp() -> void:
 	sim.boss.last_toughness_damage = sim.combat_frame
 	advance(Frames.of(VeltharisData.TOUGHNESS_REGEN_DELAY) - 1)
 	advance(60)
-	assert_near(boss().toughness, 50.0 + 10.0 * (0.3 + 0.7 * 0.5), 0.05, "半血時每秒回 6.5")
+	assert_near(boss().toughness, 50.0 + base * (0.3 + 0.7 * 0.5), 0.05, "半血時每秒回滿血時的 65%")
 
 
 func test_break_at_zero_toughness() -> void:
-	sim.boss.toughness = 2.0
+	sim.boss.toughness = 1.0
 	sim.boss.receive_player_hit(PlayerData.light_attacks()[0])
 	assert_eq(boss().state, BS.BROKEN, "韌性歸零：失衡")
 	assert_eq(sim.hitstop, Frames.of(0.15), "失衡頓幀 0.15 秒")
@@ -127,7 +128,7 @@ func test_execution_within_48px() -> void:
 	assert_eq(boss().state, BS.EXECUTED)
 	assert_true(player().is_invulnerable(), "處決期間玩家無敵")
 	advance(Frames.of(PlayerData.EXECUTE_HIT_TIME))
-	assert_eq(boss().hp, hp0 - roundi(VeltharisData.MAX_HP * 0.15), "處決傷害為最大 HP 的 15%")
+	assert_eq(boss().hp, hp0 - roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO), "處決傷害為最大 HP 的 15%（tuning-log：10.5%）")
 	assert_eq(sim.hitstop, Frames.of(0.25), "處決頓幀 0.25 秒")
 	while player().state == S.EXECUTE:
 		assert_true(player().is_invulnerable())
@@ -155,4 +156,4 @@ func test_execution_frame_counts() -> void:
 	assert_eq(Frames.of(PlayerData.EXECUTE_TIME), 60)
 	assert_eq(Frames.of(VeltharisData.BREAK_TIME), 180)
 	assert_eq(Frames.of(VeltharisData.RISE_TIME), 60)
-	assert_eq(roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO), 180)
+	assert_eq(roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO), 164, "1560 × 10.5% = 163.8 → 164（tuning-log）")

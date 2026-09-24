@@ -35,10 +35,10 @@ func test_light_1_hits_on_first_active_frame_only_once() -> void:
 	assert_eq(boss().hp, VeltharisData.MAX_HP, "起手 6 幀內沒有判定")
 	advance(1)
 	assert_eq(player().state_elapsed(), 6)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - 15, "第 6 幀（判定第一幀）命中")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - 2, 0.001)
+	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.light_attacks()[0].damage, "第 6 幀（判定第一幀）命中")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - PlayerData.light_attacks()[0].toughness, 0.001)
 	advance(4)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - 15, "同一段只打中一次")
+	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.light_attacks()[0].damage, "同一段只打中一次")
 
 
 func test_active_window_edges() -> void:
@@ -88,8 +88,8 @@ func test_full_combo_damage_and_toughness() -> void:
 		press(&"attack")
 		assert_eq(player().combo_index, i + 1)
 	advance(50)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - (15 + 15 + 15 + 25), "四段總傷害 70")
-	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - (2 + 2 + 2 + 6), 0.001, "四段總削韌 12")
+	assert_eq(boss().hp, VeltharisData.MAX_HP - (11 + 11 + 11 + 18), "四段總傷害 70（tuning-log：11 + 11 + 11 + 18 = 51）")
+	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - (1.4 + 1.4 + 1.4 + 4.2), 0.001, "四段總削韌 12（tuning-log：× 0.7 = 8.4）")
 	assert_eq(player().state, S.IDLE)
 
 

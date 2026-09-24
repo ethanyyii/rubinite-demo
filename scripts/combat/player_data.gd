@@ -3,11 +3,11 @@ extends RefCounted
 ## 主角的全部戰鬥數值（combat-design.md）。調整任何數值都要記在 docs/tuning-log.md。
 
 # §4 玩家資源
-const MAX_HP := 100
+const MAX_HP := 72  # tuning-log：文件 100
 const MAX_POSTURE := 100.0
 const HEAL_CHARGES := 3
-const HEAL_AMOUNT := 35
-const HEAL_TIME := 0.9
+const HEAL_AMOUNT := 25  # tuning-log：文件 35
+const HEAL_TIME := 1.17  # tuning-log：文件 0.9
 const POSTURE_REGEN_DELAY := 1.0
 const POSTURE_REGEN_PER_SEC := 20.0
 
@@ -92,27 +92,27 @@ static var _light: Array[PlayerAttackData] = []
 static var _heavy: PlayerAttackData
 
 
-## §8.1 輕攻擊四段
+## §8.1 輕攻擊四段（依 tuning-log 調整：傷害 15/15/15/25 → 11/11/11/18；削韌 2/2/2/6 → 1.4/1.4/1.4/4.2）
 static func light_attacks() -> Array[PlayerAttackData]:
 	if _light.is_empty():
 		_light = [
-			_atk(&"light_1", 0.10, 0.08, 0.25, 15, 2, 6.0, true, false, &"light_hit"),
-			_atk(&"light_2", 0.10, 0.08, 0.25, 15, 2, 6.0, true, false, &"light_hit"),
-			_atk(&"light_3", 0.12, 0.08, 0.28, 15, 2, 6.0, true, false, &"light_hit"),
-			_atk(&"light_4", 0.18, 0.10, 0.45, 25, 6, 14.0, false, true, &"finisher_hit"),
+			_atk(&"light_1", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
+			_atk(&"light_2", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
+			_atk(&"light_3", 0.12, 0.08, 0.28, 11, 1.4, 6.0, true, false, &"light_hit"),
+			_atk(&"light_4", 0.18, 0.10, 0.45, 18, 4.2, 14.0, false, true, &"finisher_hit"),
 		]
 	return _light
 
 
-## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手）
+## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手；依 tuning-log：傷害 60 → 42、削韌 15 → 10.5）
 static func heavy_thrust() -> PlayerAttackData:
 	if _heavy == null:
-		_heavy = _atk(&"heavy", 0.0, THRUST_TIME, 0.5, 60, 15, THRUST_DISTANCE, false, true, &"heavy_hit")
+		_heavy = _atk(&"heavy", 0.0, THRUST_TIME, 0.5, 42, 10.5, THRUST_DISTANCE, false, true, &"heavy_hit")
 	return _heavy
 
 
 static func _atk(id: StringName, startup: float, active: float, recovery: float, damage: int,
-		toughness: int, advance: float, cancelable: bool, stagger: bool, feedback: StringName) -> PlayerAttackData:
+		toughness: float, advance: float, cancelable: bool, stagger: bool, feedback: StringName) -> PlayerAttackData:
 	var a := PlayerAttackData.new()
 	a.id = id
 	a.startup = startup
