@@ -15,6 +15,7 @@ const FxView := preload("res://scripts/view/fx_view.gd")
 const HitboxPreview := preload("res://scripts/view/hitbox_preview_view.gd")
 const DebugDriver := preload("res://scripts/view/debug_driver.gd")
 const SfxPlayer := preload("res://scripts/audio/sfx_player.gd")
+const ScreenFlash := preload("res://scripts/view/screen_flash.gd")
 
 const SLOW_MOTION_SCALE := 0.25
 
@@ -32,10 +33,8 @@ var camera: Camera2D
 var hud: Control
 var fx: Node2D
 var sfx: Node
+var screen_flash: Control
 var pillar_views: Array[Node2D] = []
-## M3：Boss 還沒有 AI，平常是訓練木樁（定時出一招，數字鍵換招）；F3 切成手動出招
-var training_move := &"royal_sweep"
-const TRAINING_INTERVAL := 1.5
 
 
 func _ready() -> void:
@@ -101,6 +100,9 @@ func _build() -> void:
 	hud.name = "Hud"
 	hud_layer.add_child(hud)
 	hud.setup(self)
+	screen_flash = ScreenFlash.new()
+	screen_flash.name = "ScreenFlash"
+	hud_layer.add_child(screen_flash)
 
 	var debug_layer := CanvasLayer.new()
 	debug_layer.name = "DebugLayer"
@@ -178,6 +180,21 @@ func _dispatch(e: Dictionary) -> void:
 			sfx.play(&"boss_swing")
 		&"danger":
 			sfx.play(&"danger")
+		&"boss_stagger":
+			fx.sparks(e["pos"] + Vector2(0, -60), Color(1.0, 0.6, 0.3), 8, 80.0, 0.25)
+		&"boss_break":
+			# 失衡：紅火暗下、火星散落（§12）
+			sfx.play(&"boss_break")
+			fx.sparks(e["pos"] + Vector2(0, -60), Palette.BOSS_EMBER, 22, 110.0, 0.5)
+		&"player_execute":
+			sfx.play(&"swing_heavy", 0.0, 0.8)
+		&"execution_hit":
+			# 處決：白色閃光（§11.4、§12）
+			sfx.play(&"execution")
+			screen_flash.flash(Color(1, 1, 1, 0.85), 0.35)
+			fx.sparks(e["pos"] + Vector2(0, -40), Color(1, 1, 1), 30, 180.0, 0.5)
+			fx.sparks(e["pos"] + Vector2(0, -40), Palette.BOSS_EMBER, 20, 120.0, 0.6)
+			boss_view.flash_hit()
 
 
 ## 重置戰鬥（F5；死亡後重試也走這裡）
@@ -188,12 +205,12 @@ func reset_battle() -> void:
 	_apply_boss_mode()
 
 
-## M3：訓練木樁；F3 手動出招
+## Boss 平常由 AI 控制；F3 切成手動出招（數字鍵指定下一招，練習彈返）
 func _apply_boss_mode() -> void:
 	if boss_manual:
 		sim.boss.set_manual()
 	else:
-		sim.boss.set_training(training_move, TRAINING_INTERVAL)
+		sim.boss.set_ai()
 	camera.snap()
 
 
@@ -251,9 +268,6 @@ func _on_number_key(n: int) -> void:
 		return
 	if boss_manual:
 		sim.boss.queue_move(id)
-	else:
-		training_move = id
-		sim.boss.training_move = id
 
 
 ## 存下目前畫面（驗證證據用，plan §6）。factor 為整數倍放大，nearest 取樣。

@@ -190,3 +190,21 @@ func test_running_flag_clears_outside_idle() -> void:
 	_steps(1, Vector2.RIGHT, true, true)
 	assert_eq(sim.player.state, PlayerSim.State.BLOCK)
 	assert_false(sim.player.running, "格擋中不是奔跑")
+
+
+func test_player_squeezed_between_boss_and_wall_never_overlaps() -> void:
+	# 審查 M1-5：Boss 會移動之後，玩家被夾在 Boss 與牆之間也不能重疊
+	for case in [Vector2(0, 1), Vector2(1, 0), Vector2(-1, 0.3).normalized(), Vector2(0, -1)]:
+		sim = CombatSim.new(9)
+		var edge := ArenaGeometry.clamp_inside(case * 500.0, PlayerData.HURT_RADIUS)
+		sim.player.pos = edge
+		sim.boss.pos = edge - case * 40.0
+		for i in 120:
+			# Boss 一直往玩家（牆）的方向擠
+			sim.boss.pos += case * 2.0
+			sim.step(_move(case))
+			var d := sim.player.pos.distance_to(sim.boss.pos)
+			assert_true(d >= PlayerData.HURT_RADIUS + VeltharisData.HURT_RADIUS - 0.05, "方向 %s 第 %d 幀重疊（%.2f）" % [case, i, d])
+			assert_true(ArenaGeometry.is_inside(sim.player.pos, PlayerData.HURT_RADIUS), "玩家留在場內")
+			if d < 33.9:
+				return

@@ -54,8 +54,6 @@ var block_press_frame := -100000
 var block_press_perfect := false
 var block_release_frame := -100000
 var _block_prev := false
-## 連續普通格擋次數（AI 規則 3 用；完美彈返或被打中時歸零）
-var normal_block_streak := 0
 ## 最後一次完美彈返／普通格擋的戰鬥幀（畫面用：彈返姿勢）
 var last_parry_frame := -100000
 var last_block_frame := -100000
@@ -148,7 +146,7 @@ func is_invulnerable() -> bool:
 		State.DODGE:
 			var e := state_elapsed()
 			return e >= _dodge_inv_start and e < _dodge_inv_end
-		State.LAUNCHED, State.DOWN, State.GETUP:
+		State.LAUNCHED, State.DOWN, State.GETUP, State.EXECUTE:
 			return true
 	return sim.combat_frame < _invuln_until
 
@@ -241,6 +239,9 @@ func _advance_state(input: InputFrame) -> void:
 			if e >= Frames.of(PlayerData.POSTURE_BREAK_TIME):
 				_end_posture_break()
 				enter_state(State.IDLE)
+		State.EXECUTE:
+			if e >= Frames.of(PlayerData.EXECUTE_TIME):
+				enter_state(State.IDLE)
 		State.CHARGE:
 			if e >= _charge_frames and not charge_full:
 				charge_full = true
@@ -297,6 +298,9 @@ func can_start(action: StringName) -> bool:
 
 
 func _start_attack(input: InputFrame) -> void:
+	if sim.boss.can_be_executed(pos):
+		_start_execute()
+		return
 	if state == State.ATTACK:
 		combo_index = mini(combo_index + 1, PlayerData.light_attacks().size() - 1)
 	else:
@@ -307,6 +311,19 @@ func _start_attack(input: InputFrame) -> void:
 	_face_for_attack(input)
 	enter_state(State.ATTACK)
 	sim.emit(&"player_attack", {"stage": combo_index, "pos": pos, "dir": facing})
+
+
+## §11.4 處決：失衡的 Boss 受擊圓邊緣 48px 內按攻擊，不限方向。歷時 1 秒、全程無敵，
+## 突刺在 0.2 秒時命中（最大 HP 的 15%），接頓幀、震動與白色閃光。
+func _start_execute() -> void:
+	_clear_intent()
+	vel = Vector2.ZERO
+	var to := sim.boss.pos - pos
+	if to.length_squared() > 0.01:
+		facing = to.normalized()
+	enter_state(State.EXECUTE)
+	sim.boss.begin_execution()
+	sim.emit(&"player_execute", {"pos": pos, "dir": facing})
 
 
 func _start_charge() -> void:
@@ -378,6 +395,16 @@ func _run_state_frame(input: InputFrame) -> void:
 		State.DODGE:
 			if e < _dodge_frames:
 				pos += dodge_dir * (PlayerData.DODGE_DISTANCE / _dodge_frames)
+		State.EXECUTE:
+			var hit_at := Frames.of(PlayerData.EXECUTE_HIT_TIME)
+			if e < hit_at:
+				# 突刺貼近 Boss（停在身體接觸處）
+				var to := sim.boss.pos - pos
+				var gap := to.length() - (VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS + 2.0)
+				if gap > 0.0:
+					pos += to.normalized() * gap / (hit_at - e)
+			elif e == hit_at:
+				sim.boss.receive_execution()
 		_:
 			if state in LOCOMOTION_STATES:
 				_tick_locomotion(input)
@@ -443,7 +470,6 @@ func receive_boss_hit(hit: BossHitData, from: Vector2) -> int:
 		and HitGeometry.is_in_front(pos, facing, from, PlayerData.BLOCK_ARC_DEG)
 	if blocking:
 		if is_perfect_window_open():
-			normal_block_streak = 0
 			last_parry_frame = sim.combat_frame
 			return CombatSim.BlockResult.PERFECT
 		_normal_block(hit, from)
@@ -454,7 +480,6 @@ func receive_boss_hit(hit: BossHitData, from: Vector2) -> int:
 
 ## 普通格擋：不扣 HP；扣架勢；被推後 8px。架勢歸零即崩潰。
 func _normal_block(hit: BossHitData, from: Vector2) -> void:
-	normal_block_streak += 1
 	last_block_frame = sim.combat_frame
 	posture = maxf(posture - hit.posture_damage, 0.0)
 	last_posture_damage = sim.combat_frame
@@ -468,7 +493,6 @@ func _normal_block(hit: BossHitData, from: Vector2) -> void:
 
 ## 被打中：扣 HP，依命中效果踉蹌／倒地／擊飛倒地；架勢崩潰中一律倒地（§10）。
 func _take_hit(hit: BossHitData, from: Vector2) -> void:
-	normal_block_streak = 0
 	hp = maxi(hp - hit.damage, 0)
 	var effect := hit.hit_effect
 	if state == State.POSTURE_BREAK:

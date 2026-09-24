@@ -325,13 +325,23 @@ func test_consecutive_normal_blocks_counted() -> void:
 	advance(20)
 	for i in 3:
 		sim.apply_boss_hit(_light_mid(), sim.boss.pos)
-	assert_eq(player().normal_block_streak, 3, "連續普通格擋 3 次（AI 用）")
+	assert_eq(boss().ai.block_streak, 3, "連續普通格擋 3 次（AI 規則 3 用）")
 	held["block"] = false
 	advance(20)
 	held["block"] = true
 	advance(1)
 	sim.apply_boss_hit(_light_mid(), sim.boss.pos)
-	assert_eq(player().normal_block_streak, 0, "完美彈返重置")
+	assert_eq(boss().ai.block_streak, 0, "完美彈返重置")
+	held["block"] = false
+	advance(20)
+	held["block"] = true
+	advance(20)
+	sim.apply_boss_hit(_light_mid(), sim.boss.pos)
+	assert_eq(boss().ai.block_streak, 1)
+	held["block"] = false
+	advance(1)
+	sim.apply_boss_hit(_light_mid(), sim.boss.pos)
+	assert_eq(boss().ai.block_streak, 0, "被打中重置")
 
 
 func test_rearm_cannot_be_bypassed_during_parry_hitstop() -> void:

@@ -222,6 +222,8 @@ func _sword_dir(p: PlayerSim) -> Vector2:
 			return f.rotated(PI * 0.8)
 		S.DODGE:
 			return -p.dodge_dir.rotated(0.3)
+		S.EXECUTE:
+			return f
 	return f
 
 
@@ -232,9 +234,9 @@ func _draw_sword(p: PlayerSim) -> void:
 	# 持劍的手在身體外側，面向正上或正下時劍也不會被身體遮住
 	var side := 1.0 if f.x >= -0.2 else -1.0
 	var hand := Vector2(side * 9 + roundf(f.x * 2), -17 + roundf(f.y * 3))
-	if p.state == S.THRUST:
+	if p.state == S.THRUST or p.state == S.EXECUTE:
 		hand = Vector2(roundf(f.x * 8), -16 + roundf(f.y * 4))
-		length = 22.0
+		length = 22.0 if p.state == S.THRUST else 26.0
 	elif p.state == S.ATTACK:
 		# 揮砍時手在身體前方（面向上時在頭頂上方，劍不會被身體蓋住）
 		hand = (Vector2(0, -20) + f * 9).round()

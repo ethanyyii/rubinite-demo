@@ -20,9 +20,7 @@ func _draw() -> void:
 	if arena.slow_motion:
 		flags.append("F2 慢動作 0.25x")
 	if arena.boss_manual:
-		flags.append("F3 手動出招（數字鍵）")
-	elif arena.sim.boss.mode == BossSim.Mode.TRAINING:
-		flags.append("訓練木樁：%s（數字鍵換招）" % VeltharisData.move(arena.sim.boss.phase, arena.sim.boss.training_move).display_name)
+		flags.append("F3 手動出招（數字鍵 1–9、0）")
 	if arena.sim.god_mode:
 		flags.append("F4 無敵")
 	if not arena.attack_preview:

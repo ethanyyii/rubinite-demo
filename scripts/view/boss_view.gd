@@ -36,6 +36,9 @@ func _draw() -> void:
 	var pose := compute_pose(b)
 	var body_off: Vector2 = pose["body"]
 	DrawUtil.fill_ellipse(self, Vector2(0, 2), Vector2(R + 8, 10), Palette.SHADOW, 24)
+	if b.state == BS.EXECUTED:
+		_draw_fallen(side)
+		return
 	var sword_behind: bool = pose["behind"]
 	if sword_behind:
 		_draw_sword(b, pose, tg)
@@ -49,6 +52,10 @@ func _draw() -> void:
 func _body_color(base: Color, tg: int) -> Color:
 	if _flash_white > 0.0:
 		return base.lerp(Color.WHITE, 0.8)
+	var b: BossSim = arena.sim.boss
+	if b.state == BS.BROKEN or b.state == BS.EXECUTED:
+		# 失衡：身上的紅火暗下來（§11.4）
+		return base.darkened(0.45)
 	if tg == TG.DANGER:
 		# 危險預兆：全身閃白（快速脈動）
 		var k := 0.8 + 0.15 * sin(Time.get_ticks_msec() * 0.03)
@@ -80,6 +87,19 @@ func _draw_body(b: BossSim, side: float, off: Vector2, tg: int) -> void:
 		draw_colored_polygon(PackedVector2Array([Vector2(cx, top + 4), Vector2(cx + 6, top + 4), Vector2(cx + 3, top - 4)]), Palette.BOSS_CROWN)
 
 
+## 被處決：倒在地上（跪地片段的延伸，demo 簡化為橫躺）
+func _draw_fallen(side: float) -> void:
+	var c := Vector2(0, -20)
+	DrawUtil.fill_capsule_h(self, c + Vector2(0, 1), 58, 25, _body_color(Palette.BOSS_DARK, CombatTypes.Telegraph.NONE))
+	DrawUtil.fill_capsule_h(self, c, 56, 24, _body_color(Palette.BOSS, CombatTypes.Telegraph.NONE))
+	for x: float in [-4.0, 3.0, 10.0]:
+		var cx := -side * 50.0 + x
+		draw_colored_polygon(PackedVector2Array([Vector2(cx, -30), Vector2(cx + 5, -30), Vector2(cx + 2, -38)]), Palette.BOSS_CROWN)
+	_draw_blade(Vector2(side * 30, -8), Vector2(side, 0.15).normalized(), 70.0, Palette.GREATSWORD_DARK, false)
+	var ember := Palette.BOSS_EMBER.darkened(0.5)
+	draw_polyline(PackedVector2Array([c + Vector2(-20, -4), c + Vector2(-5, 2), c + Vector2(10, -3)]), ember, 1.0)
+
+
 ## 危險預兆：頭頂的白色星形圖示（色盲也能辨識的形狀）
 func _draw_danger_star(off: Vector2) -> void:
 	var c := Vector2(off.x, -H - 22 + off.y)
@@ -104,6 +124,23 @@ static func compute_pose(b: BossSim) -> Dictionary:
 	match b.state:
 		BS.ATTACK:
 			_attack_pose(b, pose, side)
+		BS.STAGGER:
+			# 短僵直：往後一縮
+			var k2 := 1.0 - clampf(float(b.state_elapsed()) / Frames.of(VeltharisData.SHORT_STAGGER_TIME), 0.0, 1.0)
+			pose["body"] = Vector2(-side * 5.0 * k2, -4.0 * k2)
+			pose["dir"] = rest.rotated(-side * 0.4 * k2)
+		BS.BROKEN:
+			# 失衡：跪地，劍插在身旁
+			pose["body"] = Vector2(side * 2.0, -34.0)
+			pose["dir"] = Vector2(side * 0.2, 1.0).normalized()
+			pose["hand"] = Vector2(side * 24, -30)
+			pose["len"] = 34.0
+		BS.RISING:
+			# 起身：從跪地慢慢站直
+			var k3 := clampf(float(b.state_elapsed()) / Frames.of(VeltharisData.RISE_TIME), 0.0, 1.0)
+			pose["body"] = Vector2(side * 2.0 * (1.0 - k3), -34.0 * (1.0 - k3))
+			pose["hand"] = Vector2(side * 22, lerpf(-30.0, -58.0, k3))
+			pose["len"] = lerpf(34.0, BLADE, k3)
 		BS.BOUNCED:
 			# 被彈開：頓幀期間（戰鬥幀不前進）劍停在指向玩家的碰撞位置（劍與劍碰撞），之後身體後仰、劍被震到上方
 			var k := clampf(float(b.state_elapsed()) / 10.0, 0.0, 1.0)
@@ -141,15 +178,25 @@ static func _attack_pose(b: BossSim, pose: Dictionary, side: float) -> void:
 	match hit.anim:
 		&"C1", &"C2":
 			var s := 1.0 if hit.anim == &"C1" else -1.0
-			var back := f.rotated(-1.9 * s)
 			var end := f.rotated(1.3 * s)
 			if in_recovery:
 				pose["dir"] = end.lerp(rest, _ease_back(rec)).normalized()
 			elif phase_active:
 				pose["dir"] = f.rotated(lerpf(-1.3, 1.3, q) * s)
 				pose["len"] = BLADE + 18.0
+			elif m.hits.size() == 1:
+				# 單發大橫掃：劍壓低、橫拉到身體外側（大動作，一看就知道只有一擊）
+				pose["dir"] = rest.lerp(Vector2(side * 1.0, 0.35).normalized(), p).normalized()
+				pose["hand"] = Vector2(side * 28, -44)
+				pose["len"] = BLADE + 10.0
+				pose["body"] = Vector2(-side * 3.0 * p, 0)
+				pose["behind"] = false
 			else:
-				pose["dir"] = rest.lerp(back, p).normalized()
+				# 連段的起手：劍直立扛在肩上（反手 C2 扛在另一側）
+				pose["dir"] = rest.lerp(Vector2(side * s * 0.4, -1.0).normalized(), p).normalized()
+				pose["hand"] = Vector2(side * s * 20, -70)
+				pose["behind"] = false
+				pose["front"] = true
 		&"C3":
 			if hit.shape == CombatTypes.Shape.RING:
 				# 插地：舉到頭頂後把劍插進腳前的地面
@@ -171,11 +218,13 @@ static func _attack_pose(b: BossSim, pose: Dictionary, side: float) -> void:
 				pose["len"] = lerpf(BLADE, 92.0, q)
 			else:
 				# 舉劍：延遲版在 hold_start 舉到最高點，停住期間姿勢完全靜止（★8）；
-				# 普通版在命中前 0.2 秒舉到最高點
+				# 普通版在命中前 0.2 秒舉到最高點。劍畫在身體前面，舉高的劍與延遲預兆才看得清楚
 				var raise_end := windup + Frames.of(hit.hold_start) if hit.is_delayed() else start - Frames.of(0.2)
 				var r := clampf(float(e - windup) / maxf(raise_end - windup, 1), 0.0, 1.0)
 				pose["dir"] = rest.lerp(up, r).normalized()
 				pose["hand"] = Vector2(side * 18, -64)
+				pose["behind"] = false
+				pose["front"] = true
 		&"C4":
 			if in_recovery:
 				pose["dir"] = f.lerp(rest, _ease_back(rec)).normalized()
@@ -184,9 +233,11 @@ static func _attack_pose(b: BossSim, pose: Dictionary, side: float) -> void:
 				pose["len"] = 100.0
 				pose["hand"] = Vector2(0, -50) + f * 12
 			else:
-				pose["dir"] = (-f).lerp(rest, 0.2).normalized()
-				pose["len"] = 60.0
-				pose["body"] = Vector2(f.x * 4, 0)
+				# 突刺預備：劍收到腰側、劍尖朝後，身體前傾（boss §4.4）
+				pose["dir"] = Vector2(-side, 0.15).lerp(-f, 0.3).normalized()
+				pose["hand"] = Vector2(side * 26, -44)
+				pose["len"] = 64.0
+				pose["body"] = Vector2(side * 3.0 * p, 0)
 		&"C5":
 			var low := f.rotated(2.6 * side)
 			if in_recovery:
@@ -209,7 +260,8 @@ static func _attack_pose(b: BossSim, pose: Dictionary, side: float) -> void:
 		&"C7":
 			pose["dir"] = up if not (phase_active or in_recovery) else f
 	var sword_dir: Vector2 = pose["dir"]
-	pose["behind"] = pose["behind"] or sword_dir.y < -0.6
+	if not pose.has("front"):
+		pose["behind"] = pose["behind"] or sword_dir.y < -0.6
 
 
 static func _ease_back(k: float) -> float:
@@ -231,6 +283,15 @@ func _draw_sword(b: BossSim, pose: Dictionary, tg: int) -> void:
 	var off: Vector2 = pose["body"]
 	var hand: Vector2 = pose["hand"] + Vector2(off.x, 0)
 	_draw_blade(hand, pose["dir"], pose["len"], color, glow)
+	if tg == TG.DELAYED:
+		# 延遲專屬預兆：劍身符文閃爍（沿劍身的白色光點輪流亮起）
+		var d: Vector2 = pose["dir"]
+		var n := 5
+		var lit := (b.state_elapsed() >> 1) % n
+		for k in n:
+			var pt := (hand + d * (14.0 + k * 11.0)).round()
+			var c := Color(1, 1, 1) if k == lit else Color(1, 0.85, 0.8, 0.8)
+			draw_rect(Rect2(pt - Vector2(1, 1), Vector2(3, 3)), c)
 
 
 func _draw_blade(hand: Vector2, dir: Vector2, length: float, color: Color, glow: bool) -> void:

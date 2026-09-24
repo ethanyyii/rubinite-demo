@@ -47,6 +47,24 @@ var training_interval := 2.0
 var _next_attack_frame := 0
 var _queued_move := &""
 
+# --- AI（boss §6） ---
+var ai := BossAI.new()
+## 走路（喘息、逼近、側移、後退）：模式、速度、結束幀、停下距離、側移方向
+var walk_mode := &"strafe"
+var walk_speed := VeltharisData.WALK_SPEED
+var _walk_until := 0
+var _walk_stop := 0.0
+var _strafe_sign := 1.0
+## 這次走路是不是喘息（§6.2 規則 5）：喘息一定走滿時間；逼近（AI 選到的動作）走到距離就立刻決定下一招
+var _walk_is_breather := false
+## 待執行的懲罰技（架勢崩潰、治療）：在這一幀開始；-1 表示沒有
+var _punish_at := -1
+var _punish_move := &""
+## 最後一次短僵直開始的幀（★6 冷卻 3 秒）
+var last_short_stagger := -100000
+## 最近一個結束的動作（測試與統計用）
+var last_action := &""
+
 
 func _init(owner_sim: CombatSim) -> void:
 	_sim_ref = weakref(owner_sim)
@@ -54,20 +72,46 @@ func _init(owner_sim: CombatSim) -> void:
 
 func tick() -> void:
 	_tick_state()
+	_regen_toughness()
 	if not (state == State.ATTACK and current_hit_index() >= 0 and in_hold(current_hit_index(), state_elapsed())):
 		draw_side = 1.0 if facing.x >= 0.0 else -1.0
 
 
 func _tick_state() -> void:
+	# 待執行的懲罰技（AI 反應 0.1 秒後）
+	if _punish_at >= 0 and sim.combat_frame >= _punish_at and state in [State.IDLE, State.WALK]:
+		var m := VeltharisData.move(phase, _punish_move)
+		_punish_at = -1
+		start_move(m)
+		return
+	var e := state_elapsed()
 	match state:
 		State.IDLE:
 			_face_player()
 			_decide()
+		State.WALK:
+			_tick_walk()
 		State.ATTACK:
 			_tick_attack()
 		State.BOUNCED:
-			if state_elapsed() >= _bounce_frames:
-				_end_action()
+			if e >= _bounce_frames:
+				_end_action(true)
+		State.STAGGER:
+			if e >= Frames.of(VeltharisData.SHORT_STAGGER_TIME):
+				_end_action(false)
+		State.BROKEN:
+			if e >= Frames.of(VeltharisData.BREAK_TIME):
+				# 3 秒內沒有處決：自行恢復，韌性回滿（§11.4）
+				toughness = VeltharisData.MAX_TOUGHNESS
+				sim.emit(&"boss_recover", {"pos": pos})
+				_end_action(true)
+		State.EXECUTED:
+			if e >= Frames.of(PlayerData.EXECUTE_TIME):
+				toughness = VeltharisData.MAX_TOUGHNESS
+				enter_state(State.RISING)
+		State.RISING:
+			if e >= Frames.of(VeltharisData.RISE_TIME):
+				_end_action(true)
 
 
 func state_name() -> String:
@@ -95,7 +139,12 @@ func is_targetable() -> bool:
 
 ## 能否被玩家的攻擊打中
 func can_be_hit() -> bool:
-	return state != State.DEAD
+	return state != State.DEAD and state != State.EXECUTED
+
+
+## 失衡中、玩家在受擊圓邊緣 48px 內（不限方向）時可以處決（§11.4）
+func can_be_executed(player_pos: Vector2) -> bool:
+	return state == State.BROKEN and player_pos.distance_to(pos) - VeltharisData.HURT_RADIUS <= PlayerData.EXECUTE_RANGE
 
 
 # --- 控制模式 -----------------------------------------------------------------------
@@ -118,12 +167,38 @@ func set_manual() -> void:
 	_queued_move = &""
 
 
+## AI（boss §6）。開場先喘息一下
+func set_ai() -> void:
+	mode = Mode.AI
+	start_breather(Frames.of(1.0))
+
+
+## 測試與開場用：進入喘息（走路），持續 frames 幀
+func start_breather(frames: int) -> void:
+	move = null
+	var dist := pos.distance_to(sim.player.pos)
+	_strafe_sign = 1.0 if sim.rng.randf() < 0.5 else -1.0
+	if dist > VeltharisData.NEAR_RANGE and not _player_is_down():
+		_start_walk(&"approach", VeltharisData.WALK_SPEED, frames, VeltharisData.NEAR_RANGE - 20.0)
+	else:
+		_start_walk(&"strafe", VeltharisData.WALK_SPEED, frames, 0.0)
+	_walk_is_breather = true
+
+
+## 測試用：下一幀立刻決定下一個動作
+func decide_now() -> void:
+	move = null
+	enter_state(State.IDLE)
+
+
 func queue_move(move_id: StringName) -> void:
 	_queued_move = move_id
 
 
 func _decide() -> void:
 	match mode:
+		Mode.AI:
+			_ai_decide()
 		Mode.TRAINING:
 			if sim.combat_frame >= _next_attack_frame:
 				start_move(VeltharisData.move(phase, training_move))
@@ -135,12 +210,117 @@ func _decide() -> void:
 					start_move(m)
 
 
-## 一個動作（出招、彈開）結束，回到待機
-func _end_action() -> void:
+## 一個動作（出招、彈開、僵直、失衡、起身）結束。AI 模式下 breather 為 true 時先喘息，否則立刻決定下一招。
+func _end_action(breather: bool = true) -> void:
+	if state == State.ATTACK:
+		sim.emit(&"boss_move_end", {"move": move.id})
+		last_action = &"attack_end"
 	move = null
 	enter_state(State.IDLE)
 	if mode == Mode.TRAINING:
 		_next_attack_frame = sim.combat_frame + Frames.of(training_interval)
+	elif mode == Mode.AI and breather:
+		start_breather(ai.breather_frames(self))
+
+
+# --- AI 執行 -----------------------------------------------------------------------
+
+## 玩家倒地時不出招，後退或踱步（§6.2 規則 6）
+func _player_is_down() -> bool:
+	return sim.player.state in [PlayerSim.State.LAUNCHED, PlayerSim.State.DOWN, PlayerSim.State.GETUP] \
+		or sim.player.state == PlayerSim.State.DEAD
+
+
+func _ai_decide() -> void:
+	if _punish_at >= 0:
+		return  # 等懲罰技
+	var dist := pos.distance_to(sim.player.pos)
+	if _player_is_down():
+		if dist < VeltharisData.NEAR_RANGE:
+			_start_walk(&"retreat", VeltharisData.WALK_SPEED, 20, 0.0)
+		else:
+			_start_walk(&"strafe", VeltharisData.WALK_SPEED, 20, 0.0)
+		return
+	var choice := ai.choose(self)
+	match choice:
+		&"approach_slow":
+			_start_walk(&"approach", VeltharisData.WALK_SPEED, Frames.of(VeltharisData.APPROACH_MAX_TIME), VeltharisData.NEAR_RANGE - 10.0)
+		&"approach_fast":
+			_start_walk(&"approach", VeltharisData.FAST_SPEED, Frames.of(VeltharisData.APPROACH_MAX_TIME), VeltharisData.MID_RANGE - 20.0)
+		_:
+			start_move(VeltharisData.move(phase, choice))
+
+
+func _start_walk(mode_name: StringName, speed: float, frames: int, stop_distance: float) -> void:
+	_walk_is_breather = false
+	walk_mode = mode_name
+	walk_speed = speed
+	_walk_until = sim.combat_frame + frames
+	_walk_stop = stop_distance
+	enter_state(State.WALK)
+
+
+## 走路：一律面向玩家。
+## - 逼近（AI 選到的動作）：走到停下距離或時間到就決定下一招。
+## - 喘息：一定走滿時間（§6.2 規則 5）；逼近到停下距離後改成側移。玩家倒地時不靠近：110px 內後退、否則側移（規則 6）。
+func _tick_walk() -> void:
+	_face_player()
+	var to := sim.player.pos - pos
+	var dist := to.length()
+	var step := walk_speed / Frames.FPS
+	if _walk_is_breather and _player_is_down():
+		walk_mode = &"retreat" if dist < VeltharisData.NEAR_RANGE else &"strafe"
+	match walk_mode:
+		&"approach":
+			if dist <= _walk_stop:
+				if _walk_is_breather:
+					walk_mode = &"strafe"
+				else:
+					enter_state(State.IDLE)
+					return
+			else:
+				pos += to / maxf(dist, 0.001) * minf(step, dist - _walk_stop)
+		&"strafe":
+			var side := to.orthogonal().normalized() * _strafe_sign
+			var next := pos + side * step
+			if not ArenaGeometry.is_inside(next, VeltharisData.HURT_RADIUS + 4.0):
+				_strafe_sign = -_strafe_sign
+			else:
+				pos = next
+		&"retreat":
+			var next := pos - to / maxf(dist, 0.001) * step
+			if ArenaGeometry.is_inside(next, VeltharisData.HURT_RADIUS + 4.0):
+				pos = next
+			else:
+				walk_mode = &"strafe"
+	if sim.combat_frame >= _walk_until:
+		enter_state(State.IDLE)
+
+
+## 玩家架勢崩潰（★2、§6.2 規則 1）：立刻中斷目前的動作，0.1 秒反應後出裁決突刺
+func on_player_posture_break() -> void:
+	if mode != Mode.AI or state in [State.BOUNCED, State.STAGGER, State.BROKEN, State.EXECUTED, State.RISING, State.DEAD]:
+		return
+	_schedule_punish(&"judgment_thrust")
+
+
+## 玩家在 260px 內治療（§6.2 規則 2）：70% 機率立刻懲罰（一階段裁決突刺、二階段墜王之躍）。
+## 只在 Boss 空檔（待機、走路、收招）時中斷；正在起手或判定就讓這一招打完。
+func on_player_heal() -> void:
+	if mode != Mode.AI or pos.distance_to(sim.player.pos) > VeltharisData.HEAL_PUNISH_RANGE:
+		return
+	var free := state in [State.IDLE, State.WALK] or (state == State.ATTACK and current_hit_index() < 0)
+	if not free:
+		return
+	if sim.rng.randf() < VeltharisData.HEAL_PUNISH_CHANCE:
+		_schedule_punish(&"judgment_thrust" if phase == 1 else &"kings_leap")
+
+
+func _schedule_punish(move_id: StringName) -> void:
+	move = null
+	enter_state(State.IDLE)
+	_punish_move = move_id
+	_punish_at = sim.combat_frame + Frames.of(VeltharisData.PUNISH_REACTION)
 
 
 # --- 出招引擎 -----------------------------------------------------------------------
@@ -155,6 +335,7 @@ func start_move(m: BossMoveData) -> void:
 		_danger_sent.append(false)
 	_face_player()
 	enter_state(State.ATTACK)
+	ai.record_move(m.id)
 	sim.emit(&"boss_attack", {"move": m.id, "pos": pos})
 
 
@@ -293,10 +474,36 @@ func mark_hit_resolved(i: int) -> void:
 	_hit_resolved[i] = true
 
 
+func is_hit_resolved(i: int) -> bool:
+	return _hit_resolved[i]
+
+
+## 目前狀態還剩幾幀（機器人判斷空檔用）
+func remaining_frames() -> int:
+	var e := state_elapsed()
+	match state:
+		State.ATTACK:
+			return move.total_frames() - e
+		State.WALK:
+			return _walk_until - sim.combat_frame
+		State.BOUNCED:
+			return _bounce_frames - e
+		State.STAGGER:
+			return Frames.of(VeltharisData.SHORT_STAGGER_TIME) - e
+		State.BROKEN:
+			return Frames.of(VeltharisData.BREAK_TIME) - e
+		State.EXECUTED:
+			return Frames.of(PlayerData.EXECUTE_TIME) - e
+		State.RISING:
+			return Frames.of(VeltharisData.RISE_TIME) - e
+	return 0
+
+
 # --- 被彈返、被格擋、命中 --------------------------------------------------------------
 
 ## 完美彈返（combat-design §6）：削韌；單發或最後一擊讓 Boss 彈開
 func on_parried(hit: BossHitData) -> void:
+	ai.block_streak = 0
 	_lose_toughness(hit.toughness_damage)
 	if hit.bounce_time > 0.0 and state == State.ATTACK:
 		_bounce_frames = Frames.of(hit.bounce_time)
@@ -306,11 +513,11 @@ func on_parried(hit: BossHitData) -> void:
 
 
 func on_blocked(_hit: BossHitData) -> void:
-	pass
+	ai.block_streak += 1
 
 
 func on_hit_player(_hit: BossHitData) -> void:
-	pass
+	ai.block_streak = 0
 
 
 func _lose_toughness(amount: float) -> void:
@@ -318,10 +525,66 @@ func _lose_toughness(amount: float) -> void:
 		return
 	toughness = maxf(toughness - amount, 0.0)
 	last_toughness_damage = sim.combat_frame
+	if toughness <= 0.0 and state not in [State.BROKEN, State.EXECUTED, State.RISING, State.TRANSITION, State.DEAD]:
+		_enter_break()
 
 
-## 被玩家的攻擊打中（combat-design §11.3：扣 HP、削韌）。
+## §11.4 失衡：跪地 3 秒，中斷任何動作
+func _enter_break() -> void:
+	move = null
+	_punish_at = -1
+	enter_state(State.BROKEN)
+	sim.feedback(&"boss_break", pos + Vector2(0, -40))
+	sim.emit(&"boss_break", {"pos": pos})
+
+
+## §11.3 韌性回復：2 秒沒被削韌後，每秒回 10 ×（0.3 + 0.7 × 剩餘 HP 比例）
+func _regen_toughness() -> void:
+	if state in [State.BROKEN, State.EXECUTED] or toughness >= VeltharisData.MAX_TOUGHNESS:
+		return
+	if sim.combat_frame - last_toughness_damage < Frames.of(VeltharisData.TOUGHNESS_REGEN_DELAY):
+		return
+	var ratio := float(hp) / VeltharisData.MAX_HP
+	var per_sec := VeltharisData.TOUGHNESS_REGEN_BASE * (VeltharisData.TOUGHNESS_REGEN_FLOOR + (1.0 - VeltharisData.TOUGHNESS_REGEN_FLOOR) * ratio)
+	toughness = minf(toughness + per_sec / Frames.FPS, VeltharisData.MAX_TOUGHNESS)
+
+
+## 被玩家的攻擊打中（combat-design §11.2–11.3）：扣 HP、削韌；
+## 第 4 段或重擊在 Boss 待機、走路、收招時打中，而且距上次短僵直 3 秒以上（★6），才短僵直 0.3 秒。
+## 出招的起手與判定期間一律霸體。
 func receive_player_hit(atk: PlayerAttackData) -> void:
 	hp = maxi(hp - atk.damage, 0)
 	_lose_toughness(atk.toughness)
 	sim.emit(&"boss_hit", {"damage": atk.damage, "attack": atk.id, "pos": pos})
+	if atk.can_short_stagger and _can_short_stagger():
+		move = null
+		last_short_stagger = sim.combat_frame
+		enter_state(State.STAGGER)
+		sim.emit(&"boss_stagger", {"pos": pos})
+
+
+func _can_short_stagger() -> bool:
+	if sim.combat_frame - last_short_stagger < Frames.of(VeltharisData.SHORT_STAGGER_COOLDOWN):
+		return false
+	match state:
+		State.IDLE, State.WALK:
+			return true
+		State.ATTACK:
+			return current_hit_index() < 0  # 收招
+	return false
+
+
+# --- 處決（§11.4） --------------------------------------------------------------------
+
+## 玩家開始處決：Boss 倒地，和玩家的處決動作同步 1 秒
+func begin_execution() -> void:
+	enter_state(State.EXECUTED)
+	sim.emit(&"execution_start", {"pos": pos})
+
+
+## 處決突刺命中：最大 HP 的 15%
+func receive_execution() -> void:
+	var dmg := roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO)
+	hp = maxi(hp - dmg, 0)
+	sim.feedback(&"execution", pos + Vector2(0, -40))
+	sim.emit(&"execution_hit", {"pos": pos, "damage": dmg})

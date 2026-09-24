@@ -8,6 +8,8 @@ var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 ## 最近播放的音效名稱（驗證用）
 var history: Array[StringName] = []
+## 無介面（Dummy 音效驅動）時只記錄、不真的播放：Dummy 驅動不會處理停止請求，結束時會回報串流洩漏
+var _silent := AudioServer.get_driver_name() == "Dummy"
 
 
 func _ready() -> void:
@@ -31,9 +33,19 @@ func play(sfx_name: StringName, volume_db: float = 0.0, pitch: float = 1.0) -> v
 	history.append(sfx_name)
 	if history.size() > 32:
 		history.pop_front()
+	if _silent:
+		return
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
 	p.stream = _streams[sfx_name]
 	p.volume_db = volume_db
 	p.pitch_scale = pitch
 	p.play()
+
+
+## 結束時停掉所有聲音，釋放播放中的串流（否則結束時會回報物件洩漏）
+func _exit_tree() -> void:
+	for p in _players:
+		p.stop()
+		p.stream = null
+	_streams.clear()

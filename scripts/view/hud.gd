@@ -3,6 +3,7 @@ extends Control
 ## 在 _process 更新，不受頓幀影響（頓幀只停戰鬥模擬）。
 
 const BOSS_NAME := "VELTHARIS · 墮誓之王"
+const BossView := preload("res://scripts/view/boss_view.gd")
 
 var arena: CombatArena
 var _player_hp_trail := float(PlayerData.MAX_HP)
@@ -58,6 +59,29 @@ func _draw() -> void:
 	_bar(Rect2(bx, by, w, 6), float(sim.boss.hp) / VeltharisData.MAX_HP, _boss_hp_trail / VeltharisData.MAX_HP, Palette.UI_BOSS_HP)
 	var t := sim.boss.toughness / VeltharisData.MAX_TOUGHNESS
 	_bar(Rect2(bx, by + 9, w, 3), t, t, Palette.UI_TOUGHNESS)
+	_draw_offscreen_danger(sim)
+
+
+## Boss 在畫面外時（場地 400px 高、Boss 120px 高，玩家在最南端時 Boss 可能整個出畫面），
+## 在畫面上緣標出 Boss 的方向；危險預兆的頭頂星形在畫面外時也補畫在上緣（plan §7 預兆可讀）。
+func _draw_offscreen_danger(sim: CombatSim) -> void:
+	var ct := get_viewport().get_canvas_transform()
+	var body_y: float = (BossView.compute_pose(sim.boss)["body"] as Vector2).y  # 蹲下、舉劍時的身體偏移（與 boss_view 畫星形的位置一致）
+	var head := ct * (sim.boss.pos + Vector2(0, -VeltharisData.HEIGHT + body_y))
+	var star := ct * (sim.boss.pos + Vector2(0, -VeltharisData.HEIGHT - 22 + body_y))
+	var danger := sim.boss.telegraph() == CombatTypes.Telegraph.DANGER
+	var feet := ct * sim.boss.pos
+	var boss_offscreen := feet.y < 4.0
+	if not boss_offscreen and not (danger and star.y < 16.0):
+		return
+	var c := Vector2(clampf(head.x, 20.0, size.x - 20.0), 14.0)
+	if boss_offscreen:
+		var col := Palette.TELEGRAPH if sim.boss.telegraph() != CombatTypes.Telegraph.NONE else Palette.BOSS_LIGHT
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-7, -2), c + Vector2(7, -2), c + Vector2(0, -9)]), col)
+	if danger:
+		var pulse := 1.0 + 0.2 * sin(Time.get_ticks_msec() * 0.03)
+		var sc := c + Vector2(0, 8)
+		draw_colored_polygon(DrawUtil.star_points(sc, 9.0 * pulse, 3.8 * pulse), Palette.DANGER)
 
 
 func _bar(r: Rect2, ratio: float, trail: float, color: Color) -> void:

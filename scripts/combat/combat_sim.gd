@@ -58,16 +58,20 @@ func step(input: InputFrame) -> void:
 		_pending = InputFrame.new()
 	combat_frame += 1
 	player.tick(input)
+	for e in events:
+		if e["type"] == &"heal_start":
+			boss.on_player_heal()
 	boss.tick()
 	_resolve_player_hits()
 	_resolve_boss_hits()
 	_resolve_bodies()
 
 
-## 產生事件。data 會被複製，type 放在 "type" 欄位。
+## 產生事件。data 會被複製，type 放在 "type" 欄位，發生的戰鬥幀放在 "frame"。
 func emit(type: StringName, data: Dictionary = {}) -> void:
 	var e := data.duplicate()
 	e["type"] = type
+	e["frame"] = combat_frame
 	events.append(e)
 
 
@@ -138,6 +142,10 @@ static func boss_hitbox_overlaps(hb: Dictionary, c: Vector2, r: float) -> bool:
 ## 結算 Boss 的一擊（範圍已確認重疊；測試也直接呼叫）。from 是攻擊者位置（決定能不能擋、往哪裡退）。
 func apply_boss_hit(hit: BossHitData, from: Vector2) -> int:
 	var result := player.receive_boss_hit(hit, from)
+	if result != BlockResult.MISS:
+		# 統計用：哪一招的哪一擊、結果如何
+		emit(&"boss_hit_result", {"move": boss.move.id if boss.move != null else &"", "result": result,
+			"blockable": hit.is_blockable()})
 	var contact := player.pos + (from - player.pos).limit_length(12.0)
 	match result:
 		BlockResult.PERFECT:
@@ -148,19 +156,30 @@ func apply_boss_hit(hit: BossHitData, from: Vector2) -> int:
 			boss.on_blocked(hit)
 			feedback(&"normal_block", contact)  # §6：普通格擋沒有頓幀、沒有震動（表中為 0）
 			emit(&"block", {"pos": contact, "posture": player.posture})
+			if player.state == PlayerSim.State.POSTURE_BREAK:
+				boss.on_player_posture_break()
 		BlockResult.HIT:
 			boss.on_hit_player(hit)
 	return result
 
 
 ## 身體碰撞：玩家與 Boss 不重疊，兩者都留在場地內。
+## 先把玩家推出 Boss 再夾回場內；如果玩家被夾在 Boss 與牆（或柱子）之間仍然重疊，改把 Boss 往外推。
 func _resolve_bodies() -> void:
+	var min_d := PlayerData.HURT_RADIUS + VeltharisData.HURT_RADIUS
 	if boss.has_body():
-		var min_d := PlayerData.HURT_RADIUS + VeltharisData.HURT_RADIUS
-		var d := player.pos - boss.pos
-		var dist := d.length()
-		if dist < min_d:
-			var n := d / dist if dist > 0.001 else Vector2.DOWN
-			player.pos = boss.pos + n * min_d
+		player.pos = _push_apart(player.pos, boss.pos, min_d)
 	player.pos = ArenaGeometry.resolve(player.pos, PlayerData.HURT_RADIUS)
+	if boss.has_body() and player.pos.distance_to(boss.pos) < min_d - 0.01:
+		boss.pos = _push_apart(boss.pos, player.pos, min_d)
 	boss.pos = ArenaGeometry.resolve(boss.pos, VeltharisData.HURT_RADIUS)
+
+
+## 把 a 推到離 b 至少 min_d 的地方
+static func _push_apart(a: Vector2, b: Vector2, min_d: float) -> Vector2:
+	var d := a - b
+	var dist := d.length()
+	if dist >= min_d:
+		return a
+	var n := d / dist if dist > 0.001 else Vector2.DOWN
+	return b + n * min_d
