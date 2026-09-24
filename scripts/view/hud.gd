@@ -1,0 +1,69 @@
+extends Control
+## 戰鬥 UI（combat-design §13）：左上玩家 HP、架勢、治療次數；下方 Boss 名稱、HP 與韌性。
+## 在 _process 以實際時間更新，不受頓幀影響。
+
+const BOSS_NAME := "VELTHARIS · 墮誓之王"
+
+var arena: CombatArena
+var _player_hp_trail := float(PlayerData.MAX_HP)
+var _boss_hp_trail := float(VeltharisData.MAX_HP)
+
+
+func setup(owner_arena: CombatArena) -> void:
+	arena = owner_arena
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _process(delta: float) -> void:
+	var sim: CombatSim = arena.sim
+	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	_player_hp_trail = _trail(_player_hp_trail, sim.player.hp, PlayerData.MAX_HP, real_dt)
+	_boss_hp_trail = _trail(_boss_hp_trail, sim.boss.hp, VeltharisData.MAX_HP, real_dt)
+	queue_redraw()
+
+
+func reset_trails() -> void:
+	_player_hp_trail = float(PlayerData.MAX_HP)
+	_boss_hp_trail = float(VeltharisData.MAX_HP)
+
+
+## 受傷後殘影條延遲往下追（實際時間）
+func _trail(current: float, target: float, max_value: float, dt: float) -> float:
+	if target >= current:
+		return target
+	return maxf(target, current - max_value * 0.6 * dt)
+
+
+func _draw() -> void:
+	var sim: CombatSim = arena.sim
+	var font := ThemeDB.fallback_font
+	# --- 玩家（左上） ---
+	var x := 10.0
+	var y := 10.0
+	_bar(Rect2(x, y, 120, 6), float(sim.player.hp) / PlayerData.MAX_HP, _player_hp_trail / PlayerData.MAX_HP, Palette.UI_HP)
+	var posture_ratio := sim.player.posture / PlayerData.MAX_POSTURE
+	var posture_color := Palette.UI_POSTURE_LOW if posture_ratio < 0.3 else Palette.UI_POSTURE
+	_bar(Rect2(x, y + 9, 90, 4), posture_ratio, posture_ratio, posture_color)
+	for i in PlayerData.HEAL_CHARGES:
+		var c := Palette.UI_HEAL if i < sim.player.heals else Color(0.25, 0.28, 0.33)
+		var p := Vector2(x + 2 + i * 9, y + 17)
+		draw_rect(Rect2(p + Vector2(1, 0), Vector2(4, 2)), Palette.UI_FRAME)
+		draw_rect(Rect2(p + Vector2(0, 2), Vector2(6, 6)), c)
+	# --- Boss（下方） ---
+	var w := 360.0
+	var bx := (size.x - w) * 0.5
+	var by := size.y - 30.0
+	draw_string(font, Vector2(bx, by - 3), BOSS_NAME, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.UI_TEXT)
+	_bar(Rect2(bx, by, w, 6), float(sim.boss.hp) / VeltharisData.MAX_HP, _boss_hp_trail / VeltharisData.MAX_HP, Palette.UI_BOSS_HP)
+	var t := sim.boss.toughness / VeltharisData.MAX_TOUGHNESS
+	_bar(Rect2(bx, by + 9, w, 3), t, t, Palette.UI_TOUGHNESS)
+
+
+func _bar(r: Rect2, ratio: float, trail: float, color: Color) -> void:
+	draw_rect(r.grow(1), Palette.UI_BG)
+	var tw := roundf(r.size.x * clampf(trail, 0.0, 1.0))
+	if trail > ratio:
+		draw_rect(Rect2(r.position, Vector2(tw, r.size.y)), Palette.UI_HP_TRAIL)
+	draw_rect(Rect2(r.position, Vector2(roundf(r.size.x * clampf(ratio, 0.0, 1.0)), r.size.y)), color)
+	draw_rect(r.grow(1), Palette.UI_FRAME, false, 1.0)
