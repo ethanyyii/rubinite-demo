@@ -6,12 +6,15 @@ var sim: CombatSim
 ## 持續按住的狀態（hold / release 設定）
 var held := {"run": false, "block": false, "heavy": false}
 var move := Vector2.ZERO
+## 所有經過的事件（頓幀期間 sim.events 會被清掉，所以測試要看這份）
+var event_log: Array[Dictionary] = []
 
 
 func before_each() -> void:
 	sim = CombatSim.new(1)
 	held = {"run": false, "block": false, "heavy": false}
 	move = Vector2.ZERO
+	event_log.clear()
 
 
 func make_input(presses: Array = []) -> InputFrame:
@@ -43,6 +46,15 @@ func tick(presses: Array = []) -> void:
 	if &"heavy" in presses:
 		held["heavy"] = true
 	sim.step(make_input(presses))
+	event_log.append_array(sim.events)
+
+
+## event_log 裡有沒有某種事件
+func logged(type: StringName) -> bool:
+	for e in event_log:
+		if e["type"] == type:
+			return true
+	return false
 
 
 ## 推進 n 個戰鬥幀（頓幀不算），第一個戰鬥幀帶 presses

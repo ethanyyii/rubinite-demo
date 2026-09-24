@@ -11,16 +11,17 @@ func before_each() -> void:
 	sim.player.pos = Vector2(0, 60)
 
 
-func _move(dir: Vector2, run := false) -> InputFrame:
+func _move(dir: Vector2, run := false, block := false) -> InputFrame:
 	var f := InputFrame.new()
 	f.move = dir
 	f.run = run
+	f.block = block
 	return f
 
 
-func _steps(n: int, dir: Vector2, run := false) -> void:
+func _steps(n: int, dir: Vector2, run := false, block := false) -> void:
 	for i in n:
-		sim.step(_move(dir, run))
+		sim.step(_move(dir, run, block))
 
 
 func test_walk_reaches_full_speed_in_5_frames() -> void:
@@ -157,10 +158,9 @@ func test_input_delay_is_zero_frames() -> void:
 func test_slowing_to_lower_cap_does_not_slide() -> void:
 	# 從跑進入格擋（上限 50）：4 幀內降到新上限，不能慢慢滑行
 	_steps(10, Vector2.RIGHT, true)
-	sim.player.enter_state(PlayerSim.State.BLOCK)
-	_steps(4, Vector2.RIGHT, true)
+	_steps(4, Vector2.RIGHT, true, true)
+	assert_eq(sim.player.state, PlayerSim.State.BLOCK)
 	assert_near(sim.player.vel.length(), PlayerData.SPEED_BLOCK, 0.001, "跑 → 格擋")
-	sim.player.enter_state(PlayerSim.State.IDLE)
 	_steps(10, Vector2.RIGHT, true)
 	sim.player.enter_state(PlayerSim.State.HEAL)
 	_steps(4, Vector2.RIGHT, true)
@@ -187,6 +187,6 @@ func test_tiny_input_does_not_zero_facing() -> void:
 func test_running_flag_clears_outside_idle() -> void:
 	_steps(5, Vector2.RIGHT, true)
 	assert_true(sim.player.running)
-	sim.player.enter_state(PlayerSim.State.BLOCK)
-	_steps(1, Vector2.RIGHT, true)
+	_steps(1, Vector2.RIGHT, true, true)
+	assert_eq(sim.player.state, PlayerSim.State.BLOCK)
 	assert_false(sim.player.running, "格擋中不是奔跑")

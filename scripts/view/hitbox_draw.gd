@@ -37,3 +37,21 @@ static func _fill_and_stroke(ci: CanvasItem, pts: PackedVector2Array, fill: Colo
 	var closed := pts.duplicate()
 	closed.append(pts[0])
 	ci.draw_polyline(closed, outline, 1.0)
+
+
+## Boss 一擊的判定形狀（衝擊環除外，環由地面特效畫）
+static func draw_boss_hitbox(ci: CanvasItem, hit: BossHitData, origin: Vector2, dir: Vector2, fill: Color, outline: Color) -> void:
+	var pts := PackedVector2Array()
+	match hit.shape:
+		CombatTypes.Shape.SECTOR:
+			pts = DrawUtil.sector_points(origin, dir, hit.radius, hit.angle_deg, 32)
+		CombatTypes.Shape.CIRCLE:
+			pts = DrawUtil.sector_points(origin, dir, hit.radius, 360.0, 40)
+		CombatTypes.Shape.RECT:
+			pts = DrawUtil.rect_points(origin, dir, hit.length, hit.width)
+		CombatTypes.Shape.THRUST:
+			# 預覽整段突進路徑：劍長 + 突進距離
+			pts = _capsule_points(origin, origin + dir * (hit.length + hit.lunge_distance), dir, hit.width * 0.5)
+		CombatTypes.Shape.RING:
+			return
+	_fill_and_stroke(ci, pts, fill, outline)

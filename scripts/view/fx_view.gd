@@ -1,6 +1,6 @@
 extends Node2D
 ## 短暫特效層（畫在角色之上）：刀光、命中火花、鎖定準星等。
-## 特效以實際時間播放（頓幀期間繼續），只讀取 sim 的狀態與事件。
+## 特效以 _process 的 delta 播放：頓幀（只停戰鬥模擬）期間繼續；F2 慢動作時一起變慢。只讀取 sim 的狀態與事件。
 
 var arena: CombatArena
 ## 每個特效：{kind, pos, dir, t, life, ...}
@@ -36,7 +36,7 @@ func sparks(pos: Vector2, color: Color, n: int, speed: float, life: float, dir :
 
 
 func _process(delta: float) -> void:
-	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	for e in _fx:
 		e["t"] += real_dt
 	_fx = _fx.filter(func(e: Dictionary) -> bool: return e["t"] < e["life"])

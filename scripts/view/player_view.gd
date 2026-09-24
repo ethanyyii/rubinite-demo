@@ -11,6 +11,7 @@ const SWORD_LEN := 17.0
 var arena: CombatArena
 var _flash_red := 0.0
 var _flash_white := 0.0
+var _stagger_tint := 0.0
 
 
 func setup(owner_arena: CombatArena) -> void:
@@ -20,7 +21,7 @@ func setup(owner_arena: CombatArena) -> void:
 func _process(delta: float) -> void:
 	var p: PlayerSim = arena.sim.player
 	position = p.pos.round()
-	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	_flash_red = maxf(_flash_red - real_dt, 0.0)
 	_flash_white = maxf(_flash_white - real_dt, 0.0)
 	queue_redraw()
@@ -37,23 +38,48 @@ func flash_charge() -> void:
 func _draw() -> void:
 	var p: PlayerSim = arena.sim.player
 	DrawUtil.fill_ellipse(self, Vector2(0, 1), Vector2(R + 3, 4), Palette.SHADOW, 16)
+	match p.state:
+		S.LAUNCHED, S.DOWN, S.DEAD:
+			_draw_lying(p)
+			return
+		S.GETUP:
+			var k := clampf(float(p.state_elapsed()) / Frames.of(PlayerData.GETUP_TIME), 0.0, 1.0)
+			_draw_body(p, Vector2.ZERO, 1.0, lerpf(18.0, H, k))
+			return
+		S.POSTURE_BREAK:
+			_draw_posture_break(p)
+			return
 	if p.state == S.DODGE and p.state_elapsed() < Frames.of(PlayerData.DODGE_TIME):
 		_draw_afterimages(p)
 	if p.state == S.CHARGE:
 		_draw_charge_glow(p)
-	_draw_body(p)
-	_draw_sword(p)
+	if p.state == S.HEAL:
+		_draw_heal_glow(p)
+	var lean := Vector2.ZERO
+	_stagger_tint = 0.0
+	if p.state == S.STAGGER:
+		# 踉蹌：身體往後仰，整段硬直期間帶紅色（越接近恢復越淡）
+		var k := 1.0 - clampf(float(p.state_elapsed()) / Frames.of(PlayerData.STAGGER_TIME), 0.0, 1.0)
+		lean = (-p.facing * 3.0 * k + Vector2(0, 1)).round()
+		_stagger_tint = 0.55 * k
+	_draw_body(p, lean)
+	if p.state == S.BLOCK:
+		_draw_guard(p)
+	else:
+		_draw_sword(p)
 
 
 func _body_color(base: Color) -> Color:
 	if _flash_red > 0.0:
 		return base.lerp(Color(1, 0.2, 0.2), 0.7)
+	if _stagger_tint > 0.0:
+		return base.lerp(Color(1, 0.25, 0.25), _stagger_tint)
 	if _flash_white > 0.0:
 		return base.lerp(Color.WHITE, 0.8)
 	return base
 
 
-func _draw_body(p: PlayerSim, offset := Vector2.ZERO, alpha := 1.0) -> void:
+func _draw_body(p: PlayerSim, offset := Vector2.ZERO, alpha := 1.0, height := H) -> void:
 	var f := p.facing
 	var dark := Palette.PLAYER_DARK
 	var body := _body_color(Palette.PLAYER)
@@ -61,18 +87,96 @@ func _draw_body(p: PlayerSim, offset := Vector2.ZERO, alpha := 1.0) -> void:
 	dark.a = alpha
 	body.a = alpha
 	light.a = alpha
-	DrawUtil.fill_capsule(self, offset + Vector2(0, 1), R + 1, H + 2, dark)
-	DrawUtil.fill_capsule(self, offset, R, H, body)
+	DrawUtil.fill_capsule(self, offset + Vector2(0, 1), R + 1, height + 2, dark)
+	DrawUtil.fill_capsule(self, offset, R, height, body)
 	if alpha < 1.0:
 		return
+	var top := offset + Vector2(0, H - height)
 	# 胸甲高光
-	draw_rect(Rect2(offset + Vector2(-5 + roundf(f.x * 2), -27), Vector2(3, 12)), light)
+	draw_rect(Rect2(top + Vector2(-5 + roundf(f.x * 2), -27), Vector2(3, minf(12.0, height - 26.0))), light)
 	# 頭盔面甲：朝面向偏移，背對時看不到
 	if f.y > -0.5:
-		draw_rect(Rect2(offset + Vector2(-4 + roundf(f.x * 3), -35), Vector2(8, 3)), Palette.PLAYER_DARK)
+		draw_rect(Rect2(top + Vector2(-4 + roundf(f.x * 3), -35), Vector2(8, 3)), Palette.PLAYER_DARK)
 	# 羽飾
-	draw_colored_polygon(PackedVector2Array([offset + Vector2(-2, -40), offset + Vector2(2, -40),
-		offset + Vector2(-roundf(f.x * 6) + 1, -47)]), Palette.PLAYER_PLUME)
+	draw_colored_polygon(PackedVector2Array([top + Vector2(-2, -40), top + Vector2(2, -40),
+		top + Vector2(-roundf(f.x * 6) + 1, -47)]), Palette.PLAYER_PLUME)
+
+
+## 擊飛（拋物線）、倒地、死亡：身體橫躺
+func _draw_lying(p: PlayerSim) -> void:
+	var lift := 0.0
+	var alpha := 1.0
+	if p.state == S.LAUNCHED:
+		var k := clampf(float(p.state_elapsed()) / Frames.of(PlayerData.LAUNCH_TIME), 0.0, 1.0)
+		lift = -sin(PI * k) * 14.0
+	elif p.state == S.DEAD:
+		alpha = 1.0 - 0.6 * clampf(float(p.state_elapsed()) / Frames.of(PlayerData.DEATH_TIME), 0.0, 1.0)
+	var dark := Palette.PLAYER_DARK
+	var body := _body_color(Palette.PLAYER)
+	dark.a = alpha
+	body.a = alpha
+	var c := Vector2(0, -8 + lift).round()
+	DrawUtil.fill_capsule_h(self, c + Vector2(0, 1), 21, 9, dark)
+	DrawUtil.fill_capsule_h(self, c, 20, 8, body)
+	var head_x := 12.0 if p.facing.x < 0.0 else -12.0
+	draw_colored_polygon(PackedVector2Array([c + Vector2(head_x, -6), c + Vector2(head_x + signf(head_x) * 7, -3),
+		c + Vector2(head_x, 0)]), Palette.PLAYER_PLUME)
+	draw_line(c + Vector2(-head_x, 4), c + Vector2(-head_x * 1.9, 9), Palette.SWORD, 2.0)
+
+
+## 架勢崩潰：單膝跪地、身體搖晃、頭上有暈眩的小點
+func _draw_posture_break(p: PlayerSim) -> void:
+	var t := float(p.state_elapsed()) / Frames.FPS
+	var wobble := Vector2(roundf(sin(t * 14.0) * 1.5), 0)
+	_draw_body(p, wobble, 1.0, 30.0)
+	draw_line(Vector2(9, -12) + wobble, Vector2(16, 0), Palette.SWORD, 2.0)
+	# 頭上繞圈的暈眩星點與驚嘆號（架勢崩潰一眼可辨）
+	var outline := Color(0.1, 0.08, 0.05)
+	for i in 4:
+		var a := t * 6.0 + TAU * i / 4.0
+		var dot := Vector2(cos(a) * 11.0, -40 + sin(a) * 3.5).round() + wobble
+		draw_rect(Rect2(dot - Vector2(2, 2), Vector2(5, 5)), outline)
+		draw_rect(Rect2(dot - Vector2(1, 1), Vector2(3, 3)), Palette.UI_POSTURE)
+	var mark := Vector2(0, -54) + wobble
+	draw_rect(Rect2(mark + Vector2(-2, -1), Vector2(5, 9)), outline)
+	draw_rect(Rect2(mark + Vector2(-2, 9), Vector2(5, 5)), outline)
+	draw_rect(Rect2(mark + Vector2(-1, 0), Vector2(3, 7)), Palette.UI_POSTURE_LOW)
+	draw_rect(Rect2(mark + Vector2(-1, 10), Vector2(3, 3)), Palette.UI_POSTURE_LOW)
+
+
+## 格擋：雙手橫劍擋在身前。完美彈返後幾幀劍被撥開並發亮，普通格擋後劍被壓回
+func _draw_guard(p: PlayerSim) -> void:
+	var f := p.facing
+	var now := arena.sim.combat_frame
+	var since_parry := now - p.last_parry_frame
+	var since_block := now - p.last_block_frame
+	var center := (Vector2(0, -20) + f * 9).round()
+	var across := f.orthogonal()
+	var color := Palette.SWORD
+	if since_parry < 10:
+		across = across.rotated(0.5)
+		center += (f * 3).round()
+		color = Color(1.0, 0.93, 0.6)
+	elif since_block < 6:
+		center -= (f * 3).round()
+	draw_line((center - across * 10).round(), (center + across * 10).round(), color, 2.0)
+	draw_line((center - across * 10).round(), (center - across * 13).round(), Palette.PLAYER_DARK, 3.0)
+	if arena.debug_info and p.is_perfect_window_open():
+		# F1 除錯：完美窗口開著時劍身帶一點亮邊
+		var c := Color(1, 1, 1, 0.35)
+		draw_line((center - across * 10 + f).round(), (center + across * 10 + f).round(), c, 1.0)
+
+
+func _draw_heal_glow(p: PlayerSim) -> void:
+	var t := float(p.state_elapsed()) / Frames.FPS
+	var c := Color(0.55, 1.0, 0.8, 0.5)
+	DrawUtil.stroke_ellipse(self, Vector2(0, -1), Vector2(12, 5) * (1.0 + 0.1 * sin(t * 12.0)), c, 1.0, 24)
+	for i in 5:
+		var k := fmod(t * 1.3 + i * 0.2, 1.0)
+		var px := Vector2(sin(i * 2.1) * 8.0, -4 - k * 40.0).round()
+		var cc := c
+		cc.a = 0.8 * (1.0 - k)
+		draw_rect(Rect2(px, Vector2(2, 2)), cc)
 
 
 ## 閃身的三道殘影（§7：由程式產生）

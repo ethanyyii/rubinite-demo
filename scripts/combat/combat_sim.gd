@@ -9,6 +9,9 @@ extends RefCounted
 ## 頓幀期間戰鬥時間（combat_frame）暫停，但這段時間按下的鍵會累積，頓幀結束後送出，
 ## 所以頓幀不會吃掉輸入緩衝（CLAUDE.md 慣例）。
 
+## Boss 的一擊打到玩家的結果
+enum BlockResult { MISS, HIT, BLOCKED, PERFECT }
+
 ## 物理幀計數（含頓幀）
 var frame := 0
 ## 戰鬥時間（不含頓幀）。所有狀態計時都用這個。
@@ -57,6 +60,7 @@ func step(input: InputFrame) -> void:
 	player.tick(input)
 	boss.tick()
 	_resolve_player_hits()
+	_resolve_boss_hits()
 	_resolve_bodies()
 
 
@@ -97,6 +101,56 @@ func _resolve_player_hits() -> void:
 	boss.receive_player_hit(atk)
 	var contact := boss.pos + (player.pos - boss.pos).limit_length(r)
 	feedback(atk.feedback, contact)
+
+
+## Boss 的攻擊判定打到玩家。玩家無敵時不結算（判定繼續，之後的幀還可能打中）；
+## 命中、格擋、彈返都算結算，同一擊只結算一次。
+func _resolve_boss_hits() -> void:
+	var hb := boss.attack_hitbox()
+	if hb.is_empty():
+		return
+	if not boss_hitbox_overlaps(hb, player.pos, PlayerData.HURT_RADIUS):
+		return
+	var result := apply_boss_hit(hb["hit"], boss.pos)
+	if result != BlockResult.MISS:
+		boss.mark_hit_resolved(hb["index"])
+
+
+## Boss 判定形狀與圓 (c, r) 是否相交
+static func boss_hitbox_overlaps(hb: Dictionary, c: Vector2, r: float) -> bool:
+	var hit: BossHitData = hb["hit"]
+	var o: Vector2 = hb["origin"]
+	var d: Vector2 = hb["dir"]
+	match hit.shape:
+		CombatTypes.Shape.SECTOR:
+			return HitGeometry.circle_hits_sector(c, r, o, d, hit.radius, hit.angle_deg)
+		CombatTypes.Shape.RECT:
+			return HitGeometry.circle_hits_rect(c, r, o, d, hit.length, hit.width)
+		CombatTypes.Shape.CIRCLE:
+			return HitGeometry.circle_hits_circle(c, r, o, hit.radius)
+		CombatTypes.Shape.RING:
+			return HitGeometry.circle_hits_ring(c, r, o, hb["ring_radius"], hit.thickness)
+		CombatTypes.Shape.THRUST:
+			return HitGeometry.circle_hits_capsule(c, r, o, o + d * hit.length, hit.width * 0.5)
+	return false
+
+
+## 結算 Boss 的一擊（範圍已確認重疊；測試也直接呼叫）。from 是攻擊者位置（決定能不能擋、往哪裡退）。
+func apply_boss_hit(hit: BossHitData, from: Vector2) -> int:
+	var result := player.receive_boss_hit(hit, from)
+	var contact := player.pos + (from - player.pos).limit_length(12.0)
+	match result:
+		BlockResult.PERFECT:
+			boss.on_parried(hit)
+			feedback(&"perfect_parry", contact)
+			emit(&"perfect_parry", {"pos": contact, "toughness": hit.toughness_damage})
+		BlockResult.BLOCKED:
+			boss.on_blocked(hit)
+			feedback(&"normal_block", contact)  # §6：普通格擋沒有頓幀、沒有震動（表中為 0）
+			emit(&"block", {"pos": contact, "posture": player.posture})
+		BlockResult.HIT:
+			boss.on_hit_player(hit)
+	return result
 
 
 ## 身體碰撞：玩家與 Boss 不重疊，兩者都留在場地內。

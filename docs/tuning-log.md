@@ -43,4 +43,13 @@
 | 輔助瞄準距離 | 80px 以敵人受擊圓邊緣計算 | `player_sim.gd` `_face_for_attack` |
 | 突刺命中後 | 停在原地，時間軸固定 12 + 30 幀 | `player_sim.gd` |
 | 輕攻擊前進 | 平均分配在判定幀內 | `player_sim.gd` `_run_state_frame` |
+| 格擋不緩衝 | 不能格擋時按下的格擋不開完美窗口；之後按住進入格擋只算普通格擋 | `player_sim.gd` `tick` |
+| 格擋與緩衝動作同時可執行 | 按住的格擋優先，清掉緩衝 | `player_sim.gd` `_try_block` |
+| 格擋中出招 | 格擋中可以直接攻擊、蓄力、閃身 | `player_sim.gd` `can_start` |
+| 未鎖定時格擋的面向 | 固定在舉劍時的方向（按下時有推桿則轉向推桿），移動時側移 | `player_sim.gd` `_try_block`、`_update_facing` |
+| 治療回血時機 | 開始時扣次數，0.9 秒結束時回 35；被打斷不回血 | `player_sim.gd` |
+| 擊退位移 | 命中那一幀立刻開始，分 6 幀（踉蹌、倒地）或 21 幀（擊飛）完成 | `player_sim.gd` `_start_knockback` |
+| 延遲下劈停住期間 | 位置與姿勢靜止，方向照常追蹤到命中前 0.2 秒 | `boss_sim.gd` `_tick_attack` |
+| 衝擊環擴張 | 判定 12 幀內線性擴張，第 f 幀外緣半徑 = 140 × (f+1) / 12 | `boss_sim.gd` `ring_radius` |
+| 訓練木樁間隔 | 每招結束 1.5 秒後再出 | `combat_arena.gd` |
 | 柱子位置 | (±236, 104)、(±262, −96)，碰撞半徑 11 | `arena_geometry.gd` |

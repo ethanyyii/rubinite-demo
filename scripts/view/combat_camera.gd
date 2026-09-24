@@ -1,6 +1,6 @@
 extends Camera2D
 ## 鏡頭跟隨玩家輕微移動（arena.md §2），並略為偏向 Boss，讓兩者都留在畫面內。
-## 震動以實際時間計算，頓幀期間照常震動（combat-design §12）。
+## 震動在 _process 以 delta 計算：頓幀期間照常震動（combat-design §12），F2 慢動作時一起變慢。
 
 ## 鏡頭跟隨玩家的比例：場地只比畫面大一點，所以只做輕微移動
 const FOLLOW := 0.6
@@ -69,14 +69,13 @@ static func clamp_safe(c: Vector2, player_pos: Vector2) -> Vector2:
 ## 鏡頭中心跟模擬同步在物理幀更新（角色也是 60Hz 移動），避免高更新率螢幕上角色相對鏡頭抖動。
 ## 平滑之後再套一次安全區限制：鏡頭追不上時玩家也不會被 Boss 血條蓋住。
 func _physics_process(delta: float) -> void:
-	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	var sim: CombatSim = arena.sim
 	_center = clamp_safe(_center.lerp(_target(), 1.0 - exp(-SMOOTH * real_dt)), sim.player.pos)
 
 
 func _process(delta: float) -> void:
-	# 震動以實際時間計算，慢動作（Engine.time_scale）與頓幀都不影響
-	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	var offset_px := Vector2.ZERO
 	if _shake_left > 0.0:
 		_shake_left = maxf(_shake_left - real_dt, 0.0)

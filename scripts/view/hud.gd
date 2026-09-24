@@ -1,6 +1,6 @@
 extends Control
 ## 戰鬥 UI（combat-design §13）：左上玩家 HP、架勢、治療次數；下方 Boss 名稱、HP 與韌性。
-## 在 _process 以實際時間更新，不受頓幀影響。
+## 在 _process 更新，不受頓幀影響（頓幀只停戰鬥模擬）。
 
 const BOSS_NAME := "VELTHARIS · 墮誓之王"
 
@@ -17,7 +17,7 @@ func setup(owner_arena: CombatArena) -> void:
 
 func _process(delta: float) -> void:
 	var sim: CombatSim = arena.sim
-	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	_player_hp_trail = _trail(_player_hp_trail, sim.player.hp, PlayerData.MAX_HP, real_dt)
 	_boss_hp_trail = _trail(_boss_hp_trail, sim.boss.hp, VeltharisData.MAX_HP, real_dt)
 	queue_redraw()

@@ -48,7 +48,36 @@ var last_dodge_start := -100000
 var buffered_action := &""
 var buffered_at := -100000
 
+# --- 格擋與彈返（§6） ---
+## 最後一次按下格擋的戰鬥幀、這次按下是否開了完美窗口
+var block_press_frame := -100000
+var block_press_perfect := false
+var block_release_frame := -100000
+var _block_prev := false
+## 連續普通格擋次數（AI 規則 3 用；完美彈返或被打中時歸零）
+var normal_block_streak := 0
+## 最後一次完美彈返／普通格擋的戰鬥幀（畫面用：彈返姿勢）
+var last_parry_frame := -100000
+var last_block_frame := -100000
+
+# --- 架勢（§4） ---
+var last_posture_damage := -100000
+
+# --- 受擊（§10） ---
+## 擊退／推後：方向、每幀位移、剩餘幀數
+var _knock_dir := Vector2.ZERO
+var _knock_step := 0.0
+var _knock_left := 0
+## 倒地多久（倒地 48 幀、擊飛後 36 幀）
+var _down_frames := 0
+## 倒地無敵延續到這一幀（不含）：起身後 0.3 秒 ★
+var _invuln_until := -100000
+
 # 幀數（Frames.of 四捨五入）
+var _perfect_window := Frames.of(PlayerData.PERFECT_WINDOW)
+var _rearm := Frames.of(PlayerData.REARM_TIME)
+var _posture_regen_delay := Frames.of(PlayerData.POSTURE_REGEN_DELAY)
+var _heal_frames := Frames.of(PlayerData.HEAL_TIME)
 var _buffer_frames := Frames.of(PlayerData.INPUT_BUFFER)
 var _cancel_delay := Frames.of(PlayerData.CANCEL_DELAY)
 var _dodge_frames := Frames.of(PlayerData.DODGE_TIME)
@@ -71,14 +100,25 @@ func _init(owner_sim: CombatSim) -> void:
 	_sim_ref = weakref(owner_sim)
 
 
-## 每個戰鬥幀：鎖定 → 記錄按鍵 → 依時間結束動作 → 開始新動作（含緩衝）→ 本幀的移動與行為 → 鎖定距離檢查。
+## 每個戰鬥幀：鎖定 → 記錄按鍵 → 依時間結束動作 → 格擋（按住優先）→ 開始新動作（含緩衝）→ 治療
+## → 本幀的移動與行為 → 架勢回復 → 鎖定距離檢查。
 func tick(input: InputFrame) -> void:
+	if state == State.DEAD:
+		return
 	if input.lock_pressed:
 		_toggle_lock()
+	var block_press := _track_block_edges(input)
 	_record_presses(input)
 	_advance_state(input)
+	_try_block(input)
+	if block_press and state != State.BLOCK:
+		# 格擋不緩衝（§3）：不能格擋的時候按下，不會開完美窗口
+		block_press_perfect = false
 	_try_start_actions(input)
+	if input.heal_pressed:
+		_try_heal()
 	_run_state_frame(input)
+	_regen_posture()
 	_check_lock_range()
 
 
@@ -100,14 +140,27 @@ func enter_state(s: State) -> void:
 		attack = null
 
 
-## 是否無敵：閃身第 1–9 幀（§7）；之後的里程碑加入倒地、處決。
+## 是否無敵：閃身第 1–9 幀（§7）；倒地、起身、起身後 0.3 秒（§10 ★）。
 func is_invulnerable() -> bool:
 	if sim.god_mode:
 		return true
-	if state == State.DODGE:
-		var e := state_elapsed()
-		return e >= _dodge_inv_start and e < _dodge_inv_end
-	return false
+	match state:
+		State.DODGE:
+			var e := state_elapsed()
+			return e >= _dodge_inv_start and e < _dodge_inv_end
+		State.LAUNCHED, State.DOWN, State.GETUP:
+			return true
+	return sim.combat_frame < _invuln_until
+
+
+## 能不能行動（受擊反應、崩潰、死亡中不能）
+func is_in_hit_reaction() -> bool:
+	return state in [State.STAGGER, State.LAUNCHED, State.DOWN, State.GETUP, State.POSTURE_BREAK, State.DEAD]
+
+
+## 完美窗口是否開著：格擋中、這次按下有開窗、按下後 9 幀內（第 0–8 幀）
+func is_perfect_window_open() -> bool:
+	return state == State.BLOCK and block_press_perfect and sim.combat_frame - block_press_frame < _perfect_window
 
 
 ## 目前這一幀有效的攻擊判定；沒有時回傳空字典。由 CombatSim 做相交測試。
@@ -162,6 +215,32 @@ func _advance_state(input: InputFrame) -> void:
 		State.DODGE:
 			if e >= _dodge_total:
 				enter_state(State.IDLE)
+		State.BLOCK:
+			if not input.block:
+				enter_state(State.IDLE)
+		State.HEAL:
+			if e >= _heal_frames:
+				hp = mini(hp + PlayerData.HEAL_AMOUNT, PlayerData.MAX_HP)
+				sim.emit(&"heal_done", {"pos": pos, "hp": hp})
+				enter_state(State.IDLE)
+		State.STAGGER:
+			if e >= Frames.of(PlayerData.STAGGER_TIME):
+				enter_state(State.IDLE)
+		State.LAUNCHED:
+			if e >= Frames.of(PlayerData.LAUNCH_TIME):
+				_down_frames = Frames.of(PlayerData.LAUNCH_DOWN)
+				enter_state(State.DOWN)
+		State.DOWN:
+			if e >= _down_frames:
+				enter_state(State.GETUP)
+		State.GETUP:
+			if e >= Frames.of(PlayerData.GETUP_TIME):
+				_invuln_until = sim.combat_frame + Frames.of(PlayerData.DOWN_INVULN_AFTER_GETUP)
+				enter_state(State.IDLE)
+		State.POSTURE_BREAK:
+			if e >= Frames.of(PlayerData.POSTURE_BREAK_TIME):
+				_end_posture_break()
+				enter_state(State.IDLE)
 		State.CHARGE:
 			if e >= _charge_frames and not charge_full:
 				charge_full = true
@@ -200,12 +279,12 @@ func can_start(action: StringName) -> bool:
 	var e := state_elapsed()
 	match action:
 		&"attack":
-			if state == State.IDLE:
+			if state == State.IDLE or state == State.BLOCK:
 				return true
 			# 收招期間按攻擊接下一段（第 4 段之後不能再接）
 			return state == State.ATTACK and attack.cancelable and e >= attack.active_end_frame()
 		&"heavy":
-			return state == State.IDLE
+			return state == State.IDLE or state == State.BLOCK
 		&"dodge":
 			if sim.combat_frame - last_dodge_start < _dodge_interval:
 				return false
@@ -302,6 +381,171 @@ func _run_state_frame(input: InputFrame) -> void:
 		_:
 			if state in LOCOMOTION_STATES:
 				_tick_locomotion(input)
+	_apply_knockback()
+
+
+# --- 格擋（§6） -----------------------------------------------------------------------
+
+## 追蹤格擋鍵的按下與放開。回傳這一幀是否按下。
+## 按下時決定這次有沒有完美窗口：距離上次放開不到 0.3 秒（18 幀）就只算普通格擋（★ 重新開窗）。
+## 頓幀期間的按下／放開會合併到頓幀後的第一幀送來。同一幀同時有放開與按下時，一律當作「先放開、再按下」
+## （兩者相隔 0 幀 → 只算普通格擋），所以頓幀不能用來繞過重新開窗。
+func _track_block_edges(input: InputFrame) -> bool:
+	var now := sim.combat_frame
+	var press := input.block_pressed or (input.block and not _block_prev)
+	var release := input.block_released or (not input.block and _block_prev)
+	if release:
+		block_release_frame = now
+	if press:
+		block_press_frame = now
+		block_press_perfect = now - block_release_frame >= _rearm
+		if not input.block:
+			block_release_frame = now  # 按下後又放開（點按）
+	_block_prev = input.block
+	return press
+
+
+## 按住格擋、而且這一幀可以格擋時進入格擋（按住的格擋優先於緩衝中的動作）。
+func _try_block(input: InputFrame) -> void:
+	if not input.block or state == State.BLOCK or not can_block():
+		return
+	buffered_action = &""
+	combo_index = 0
+	charge_full = false
+	if not locked:
+		var stick := input.move.limit_length(1.0)
+		if stick.length_squared() > INPUT_EPSILON * INPUT_EPSILON:
+			facing = stick.normalized()
+	elif sim.boss.is_targetable():
+		var to := sim.boss.pos - pos
+		if to.length_squared() > 0.01:
+			facing = to.normalized()
+	enter_state(State.BLOCK)
+
+
+## 這一幀能不能進入格擋（§8.3：待機、蓄力中隨時；輕攻擊第 1–3 段判定結束 0.05 秒後）
+func can_block() -> bool:
+	match state:
+		State.IDLE, State.CHARGE, State.BLOCK:
+			return true
+		State.ATTACK:
+			return attack.cancelable and state_elapsed() >= attack.active_end_frame() + _cancel_delay
+	return false
+
+
+# --- 受擊（§6、§10） --------------------------------------------------------------------
+
+## Boss 的一擊打到玩家（範圍已確認重疊）。回傳 CombatSim.BlockResult。
+func receive_boss_hit(hit: BossHitData, from: Vector2) -> int:
+	if state == State.DEAD or is_invulnerable():
+		return CombatSim.BlockResult.MISS
+	var blocking := state == State.BLOCK and hit.is_blockable() \
+		and HitGeometry.is_in_front(pos, facing, from, PlayerData.BLOCK_ARC_DEG)
+	if blocking:
+		if is_perfect_window_open():
+			normal_block_streak = 0
+			last_parry_frame = sim.combat_frame
+			return CombatSim.BlockResult.PERFECT
+		_normal_block(hit, from)
+		return CombatSim.BlockResult.BLOCKED
+	_take_hit(hit, from)
+	return CombatSim.BlockResult.HIT
+
+
+## 普通格擋：不扣 HP；扣架勢；被推後 8px。架勢歸零即崩潰。
+func _normal_block(hit: BossHitData, from: Vector2) -> void:
+	normal_block_streak += 1
+	last_block_frame = sim.combat_frame
+	posture = maxf(posture - hit.posture_damage, 0.0)
+	last_posture_damage = sim.combat_frame
+	_start_knockback(from, PlayerData.BLOCK_PUSHBACK, Frames.of(PlayerData.BLOCK_PUSHBACK_TIME))
+	if posture <= 0.0:
+		_clear_intent()
+		vel = Vector2.ZERO
+		enter_state(State.POSTURE_BREAK)
+		sim.emit(&"posture_break", {"pos": pos})
+
+
+## 被打中：扣 HP，依命中效果踉蹌／倒地／擊飛倒地；架勢崩潰中一律倒地（§10）。
+func _take_hit(hit: BossHitData, from: Vector2) -> void:
+	normal_block_streak = 0
+	hp = maxi(hp - hit.damage, 0)
+	var effect := hit.hit_effect
+	if state == State.POSTURE_BREAK:
+		_end_posture_break()
+		if effect != CombatTypes.HitEffect.LAUNCH:
+			effect = CombatTypes.HitEffect.KNOCKDOWN
+	_clear_intent()
+	vel = Vector2.ZERO
+	if hp <= 0:
+		enter_state(State.DEAD)
+		sim.feedback(&"player_knockdown", pos)
+		sim.emit(&"player_hit", {"pos": pos, "damage": hit.damage, "effect": CombatTypes.HitEffect.KNOCKDOWN})
+		sim.emit(&"player_dead", {"pos": pos})
+		return
+	match effect:
+		CombatTypes.HitEffect.STAGGER:
+			enter_state(State.STAGGER)
+			_start_knockback(from, PlayerData.STAGGER_KNOCKBACK, Frames.of(PlayerData.KNOCKBACK_TIME))
+			sim.feedback(&"player_stagger", pos)
+		CombatTypes.HitEffect.KNOCKDOWN:
+			_down_frames = Frames.of(PlayerData.KNOCKDOWN_DOWN)
+			enter_state(State.DOWN)
+			_start_knockback(from, PlayerData.KNOCKDOWN_KNOCKBACK, Frames.of(PlayerData.KNOCKBACK_TIME))
+			sim.feedback(&"player_knockdown", pos)
+		CombatTypes.HitEffect.LAUNCH:
+			enter_state(State.LAUNCHED)
+			_start_knockback(from, PlayerData.LAUNCH_DISTANCE, Frames.of(PlayerData.LAUNCH_TIME))
+			sim.feedback(&"player_knockdown", pos)
+	sim.emit(&"player_hit", {"pos": pos, "damage": hit.damage, "effect": effect})
+
+
+## 受擊、崩潰時清掉玩家的意圖：緩衝、連段、蓄力、進行中的攻擊
+func _clear_intent() -> void:
+	buffered_action = &""
+	combo_index = 0
+	charge_full = false
+	attack = null
+
+
+func _end_posture_break() -> void:
+	posture = PlayerData.MAX_POSTURE
+
+
+## 從 from 往外推 dist 像素，分 frames 幀；第一幀立刻套用（命中那一幀就開始退）
+func _start_knockback(from: Vector2, dist: float, frames: int) -> void:
+	var away := pos - from
+	_knock_dir = away.normalized() if away.length_squared() > 0.01 else -facing
+	_knock_left = maxi(frames, 1)
+	_knock_step = dist / _knock_left
+	_apply_knockback()
+
+
+func _apply_knockback() -> void:
+	if _knock_left <= 0:
+		return
+	pos += _knock_dir * _knock_step
+	_knock_left -= 1
+
+
+## §4：最後一次受到架勢傷害 1 秒後開始回復，每秒 20
+func _regen_posture() -> void:
+	if state == State.POSTURE_BREAK or posture >= PlayerData.MAX_POSTURE:
+		return
+	if sim.combat_frame - last_posture_damage >= _posture_regen_delay:
+		posture = minf(posture + PlayerData.POSTURE_REGEN_PER_SEC / Frames.FPS, PlayerData.MAX_POSTURE)
+
+
+# --- 治療（§4） -----------------------------------------------------------------------
+
+## 只能在待機（含移動）中使用；開始時就消耗一次，0.9 秒結束時回 35，期間不可取消
+func _try_heal() -> void:
+	if state != State.IDLE or heals <= 0:
+		return
+	heals -= 1
+	buffered_action = &""
+	enter_state(State.HEAL)
+	sim.emit(&"heal_start", {"pos": pos})
 
 
 # --- 鎖定（§9） --------------------------------------------------------------------
@@ -373,6 +617,8 @@ func _tick_locomotion(input: InputFrame) -> void:
 
 ## §9：未鎖定時面向移動方向；鎖定時面向目標（奔跑時暫時面向奔跑方向）。
 func _update_facing(move_dir: Vector2) -> void:
+	if state == State.BLOCK and not locked:
+		return  # 未鎖定時格擋：面向固定在舉劍時的方向（側移）
 	if locked and not running:
 		var to := sim.boss.pos - pos
 		if to.length_squared() > 0.01:

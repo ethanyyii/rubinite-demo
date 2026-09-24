@@ -14,6 +14,7 @@ const DebugOverlay := preload("res://scripts/view/debug_overlay.gd")
 const FxView := preload("res://scripts/view/fx_view.gd")
 const HitboxPreview := preload("res://scripts/view/hitbox_preview_view.gd")
 const DebugDriver := preload("res://scripts/view/debug_driver.gd")
+const SfxPlayer := preload("res://scripts/audio/sfx_player.gd")
 
 const SLOW_MOTION_SCALE := 0.25
 
@@ -30,13 +31,18 @@ var boss_view: Node2D
 var camera: Camera2D
 var hud: Control
 var fx: Node2D
+var sfx: Node
 var pillar_views: Array[Node2D] = []
+## M3：Boss 還沒有 AI，平常是訓練木樁（定時出一招，數字鍵換招）；F3 切成手動出招
+var training_move := &"royal_sweep"
+const TRAINING_INTERVAL := 1.5
 
 
 func _ready() -> void:
 	InputFrame.use_all_joypads()
 	sim = CombatSim.new(randi())
 	_build()
+	_apply_boss_mode()
 
 
 func _build() -> void:
@@ -105,6 +111,10 @@ func _build() -> void:
 	debug_layer.add_child(overlay)
 	overlay.setup(self)
 
+	sfx = SfxPlayer.new()
+	sfx.name = "Sfx"
+	add_child(sfx)
+
 	if OS.is_debug_build():
 		var driver: Node = DebugDriver.new()
 		driver.name = "Debug"
@@ -118,6 +128,7 @@ func _physics_process(_delta: float) -> void:
 		_dispatch(e)
 
 
+## 事件 → 特效、音效、震動（combat-design §6、§12）
 func _dispatch(e: Dictionary) -> void:
 	match e["type"]:
 		&"feedback":
@@ -130,10 +141,43 @@ func _dispatch(e: Dictionary) -> void:
 					fx.sparks(pos, Color(0.8, 0.9, 1.0), 12, 130.0, 0.3)
 		&"boss_hit":
 			boss_view.flash_hit()
+			sfx.play(&"hit")
+		&"player_attack":
+			sfx.play(&"swing_heavy" if e["stage"] == 3 else &"swing_light", 0.0, 1.0 + 0.04 * e["stage"])
+		&"player_thrust":
+			sfx.play(&"swing_heavy", 0.0, 0.85)
 		&"charge_full":
 			player_view.flash_charge()
+			sfx.play(&"charge_ready")
 			fx.add(&"flash_ring", {"pos": e["pos"] + Vector2(0, -20), "r0": 8.0, "r1": 26.0,
 				"color": Color(0.85, 0.93, 1.0)}, 0.25)
+		&"dodge":
+			sfx.play(&"dodge")
+		&"perfect_parry":
+			# 劍與劍碰撞，接觸點爆出大量白金色火花（§6）
+			var p: Vector2 = e["pos"] + Vector2(0, -22)
+			fx.sparks(p, Color(1.0, 0.95, 0.7), 26, 170.0, 0.35)
+			fx.sparks(p, Color(1, 1, 1), 10, 110.0, 0.2)
+			fx.add(&"flash_ring", {"pos": p, "r0": 4.0, "r1": 22.0, "color": Color(1.0, 0.95, 0.75)}, 0.16)
+			sfx.play(&"parry")
+		&"block":
+			# 幾點暗色火星（§6），加一小團被推後揚起的灰塵
+			fx.sparks(e["pos"] + Vector2(0, -22), Color(0.8, 0.45, 0.2), 6, 55.0, 0.3)
+			fx.sparks(sim.player.pos + Vector2(0, -2), Color(0.55, 0.5, 0.42, 0.8), 5, 25.0, 0.3)
+			sfx.play(&"block")
+		&"player_hit":
+			player_view.flash_hurt()
+			sfx.play(&"player_hurt")
+			if e["effect"] != CombatTypes.HitEffect.STAGGER:
+				sfx.play(&"knockdown")
+		&"posture_break":
+			sfx.play(&"posture_break")
+		&"heal_start":
+			sfx.play(&"heal")
+		&"boss_swing":
+			sfx.play(&"boss_swing")
+		&"danger":
+			sfx.play(&"danger")
 
 
 ## 重置戰鬥（F5；死亡後重試也走這裡）
@@ -141,6 +185,15 @@ func reset_battle() -> void:
 	sim.reset(randi())
 	hud.reset_trails()
 	fx.clear()
+	_apply_boss_mode()
+
+
+## M3：訓練木樁；F3 手動出招
+func _apply_boss_mode() -> void:
+	if boss_manual:
+		sim.boss.set_manual()
+	else:
+		sim.boss.set_training(training_move, TRAINING_INTERVAL)
 	camera.snap()
 
 
@@ -165,6 +218,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		Engine.time_scale = SLOW_MOTION_SCALE if slow_motion else 1.0
 	elif event.is_action_pressed(&"debug_boss_manual"):
 		boss_manual = not boss_manual
+		_apply_boss_mode()
 	elif event.is_action_pressed(&"debug_god_mode"):
 		sim.god_mode = not sim.god_mode
 	elif event.is_action_pressed(&"debug_reset"):
@@ -173,9 +227,33 @@ func _unhandled_input(event: InputEvent) -> void:
 		sim.god_mode = god
 	elif event.is_action_pressed(&"debug_attack_preview"):
 		attack_preview = not attack_preview
+	elif event is InputEventKey and event.pressed and not event.echo and _number_key(event) >= 0:
+		_on_number_key(_number_key(event))
 	else:
 		return
 	get_viewport().set_input_as_handled()
+
+
+## 數字鍵 1–9、0（= 10）；不是數字鍵回傳 -1
+func _number_key(event: InputEventKey) -> int:
+	var k := event.keycode
+	if k >= KEY_1 and k <= KEY_9:
+		return k - KEY_0
+	if k == KEY_0:
+		return 10
+	return -1
+
+
+## F3 手動模式：數字鍵指定下一招；訓練模式：數字鍵換成訓練的招式
+func _on_number_key(n: int) -> void:
+	var id := VeltharisData.move_for_key(sim.boss.phase, n)
+	if id == &"":
+		return
+	if boss_manual:
+		sim.boss.queue_move(id)
+	else:
+		training_move = id
+		sim.boss.training_move = id
 
 
 ## 存下目前畫面（驗證證據用，plan §6）。factor 為整數倍放大，nearest 取樣。

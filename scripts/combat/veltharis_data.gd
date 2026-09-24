@@ -89,6 +89,15 @@ static func resolve_choice(choice: StringName, phase: int, roll: float) -> Strin
 	return choice
 
 
+## 除錯 F3：數字鍵（1–9，0 = 10）對應的招式；該階段沒有這一招時回傳空字串
+static func move_for_key(phase: int, key: int) -> StringName:
+	for id: StringName in moves(phase):
+		var m: BossMoveData = moves(phase)[id]
+		if m.debug_key == key:
+			return id
+	return &""
+
+
 static func group_of(move_id: StringName) -> StringName:
 	match move_id:
 		&"oath_cleave", &"oath_cleave_delayed":

@@ -9,6 +9,9 @@ var run := false
 var block := false
 var heavy := false
 ## 這一幀剛按下
+## 格擋鍵剛按下／剛放開（頓幀中的點按與「放開再按」都不會遺失，★ 重新開窗要靠放開的時間）
+var block_pressed := false
+var block_released := false
 var attack_pressed := false
 var heavy_pressed := false
 var dodge_pressed := false
@@ -25,6 +28,8 @@ static func from_devices() -> InputFrame:
 	f.run = Input.is_action_pressed(&"run")
 	f.block = Input.is_action_pressed(&"block")
 	f.heavy = Input.is_action_pressed(&"heavy")
+	f.block_pressed = Input.is_action_just_pressed(&"block")
+	f.block_released = Input.is_action_just_released(&"block")
 	f.attack_pressed = Input.is_action_just_pressed(&"attack")
 	f.heavy_pressed = Input.is_action_just_pressed(&"heavy")
 	f.dodge_pressed = Input.is_action_just_pressed(&"dodge")
@@ -54,6 +59,8 @@ func merge_presses(other: InputFrame) -> void:
 		dodge_pressed = other.dodge_pressed
 	lock_pressed = lock_pressed != other.lock_pressed
 	heal_pressed = heal_pressed or other.heal_pressed
+	block_pressed = block_pressed or other.block_pressed
+	block_released = block_released or other.block_released
 	target_left_pressed = target_left_pressed or other.target_left_pressed
 	target_right_pressed = target_right_pressed or other.target_right_pressed
 
@@ -64,10 +71,13 @@ func copy_presses_to(other: InputFrame) -> void:
 	other.dodge_pressed = dodge_pressed
 	other.lock_pressed = lock_pressed
 	other.heal_pressed = heal_pressed
+	other.block_pressed = block_pressed
+	other.block_released = block_released
 	other.target_left_pressed = target_left_pressed
 	other.target_right_pressed = target_right_pressed
 
 
 func has_presses() -> bool:
-	return attack_pressed or heavy_pressed or dodge_pressed or lock_pressed or heal_pressed \
+	return attack_pressed or heavy_pressed or dodge_pressed or lock_pressed or heal_pressed or block_pressed \
+		or block_released \
 		or target_left_pressed or target_right_pressed
