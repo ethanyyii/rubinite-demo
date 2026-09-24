@@ -13,6 +13,11 @@ const HEIGHT_OFFSET := -28.0
 const LIMIT_MIN := Vector2(-80.0, -120.0)
 const LIMIT_MAX := Vector2(80.0, 70.0)
 const SMOOTH := 8.0
+## 玩家一定要完整留在畫面安全區內：腳底在 Boss 名稱與血條（畫面下緣約 45px）之上，頭頂不出畫面
+const HALF_VIEW := Vector2(320.0, 180.0)
+const SAFE_BOTTOM := 50.0
+const SAFE_TOP := 56.0
+const SAFE_SIDE := 24.0
 
 var arena: CombatArena
 var _shake := 0.0
@@ -44,15 +49,34 @@ func snap() -> void:
 
 func _target() -> Vector2:
 	var sim: CombatSim = arena.sim
-	var focus := sim.player.pos.lerp(sim.boss.pos, LEAN_TO_BOSS)
-	var t := focus * FOLLOW + Vector2(0, HEIGHT_OFFSET)
-	return t.clamp(LIMIT_MIN, LIMIT_MAX)
+	return target_for(sim.player.pos, sim.boss.pos)
+
+
+## 鏡頭中心：先依玩家與 Boss 取焦點並限制在場地範圍內，最後保證玩家在安全區內（玩家優先）。
+static func target_for(player_pos: Vector2, boss_pos: Vector2) -> Vector2:
+	var focus := player_pos.lerp(boss_pos, LEAN_TO_BOSS)
+	var t := (focus * FOLLOW + Vector2(0, HEIGHT_OFFSET)).clamp(LIMIT_MIN, LIMIT_MAX)
+	return clamp_safe(t, player_pos)
+
+
+## 讓鏡頭中心 c 保證玩家完整在安全區內
+static func clamp_safe(c: Vector2, player_pos: Vector2) -> Vector2:
+	return Vector2(
+		clampf(c.x, player_pos.x + SAFE_SIDE - HALF_VIEW.x, player_pos.x - SAFE_SIDE + HALF_VIEW.x),
+		clampf(c.y, player_pos.y + SAFE_BOTTOM - HALF_VIEW.y, player_pos.y - SAFE_TOP + HALF_VIEW.y))
+
+
+## 鏡頭中心跟模擬同步在物理幀更新（角色也是 60Hz 移動），避免高更新率螢幕上角色相對鏡頭抖動。
+## 平滑之後再套一次安全區限制：鏡頭追不上時玩家也不會被 Boss 血條蓋住。
+func _physics_process(delta: float) -> void:
+	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	var sim: CombatSim = arena.sim
+	_center = clamp_safe(_center.lerp(_target(), 1.0 - exp(-SMOOTH * real_dt)), sim.player.pos)
 
 
 func _process(delta: float) -> void:
-	# 以實際時間計算，慢動作（Engine.time_scale）與頓幀都不影響鏡頭
+	# 震動以實際時間計算，慢動作（Engine.time_scale）與頓幀都不影響
 	var real_dt := delta / maxf(Engine.time_scale, 0.001)
-	_center = _center.lerp(_target(), 1.0 - exp(-SMOOTH * real_dt))
 	var offset_px := Vector2.ZERO
 	if _shake_left > 0.0:
 		_shake_left = maxf(_shake_left - real_dt, 0.0)

@@ -21,13 +21,13 @@ func _process(delta: float) -> void:
 func _occludes_someone() -> bool:
 	var rect := ArenaGeometry.pillar_rect(pillar)
 	var sim: CombatSim = arena.sim
-	var bodies := [[sim.player.pos, Rect2(sim.player.pos + Vector2(-8, -PlayerData.HEIGHT), Vector2(16, PlayerData.HEIGHT))],
-		[sim.boss.pos, Rect2(sim.boss.pos + Vector2(-26, -VeltharisData.HEIGHT), Vector2(52, VeltharisData.HEIGHT))]]
-	for b: Array in bodies:
-		var feet: Vector2 = b[0]
-		if feet.y < position.y and rect.intersects(b[1]):
-			return true
-	return false
+	return _behind(sim.player.pos, PlayerData.HURT_RADIUS, PlayerData.HEIGHT, rect) \
+		or _behind(sim.boss.pos, VeltharisData.HURT_RADIUS, VeltharisData.HEIGHT, rect)
+
+
+## 角色（腳底 feet、半寬 r、高 h）在柱子後方且畫面上重疊
+func _behind(feet: Vector2, r: float, h: float, rect: Rect2) -> bool:
+	return feet.y < position.y and rect.intersects(Rect2(feet + Vector2(-r, -h), Vector2(2 * r, h)))
 
 
 func is_translucent() -> bool:

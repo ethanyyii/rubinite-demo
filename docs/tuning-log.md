@@ -31,4 +31,10 @@
 | 灰燼迴旋、墜王之躍的收招 | 不再乘 0.75（詮釋：boss §5.1、§5.2 列出的就是二階段新招的數值；「所有招式縮短 25%」指一階段就有的招式） | `veltharis_data.gd` |
 | 三斬第二擊 | 沿用雙斬第二擊的數值，但作為連段中間：不彈開（combat-design §6） | `veltharis_data.gd` |
 | 「再戰」顯示時間 | 死亡動畫 1.5 秒後顯示 0.5 秒再重置 | `player_data.gd` `RETRY_PROMPT_TIME` |
+| 移動的轉向 | 方向立即跟隨輸入（不滑行）；速率線性加速 | `player_sim.gd` `_tick_locomotion` |
+| 從高速進入低上限狀態（跑 → 格擋等） | 每幀減 160 ÷ 4 = 40，4 幀內降到新上限 | `player_sim.gd` |
+| 類比搖桿 | 速度與推桿幅度成正比 | `player_sim.gd` |
+| 鎖定中奔跑 | 160（§5 只列「跑 160」，鎖定中跑沿用） | `player_sim.gd` `max_speed_for` |
+| 鏡頭 | 焦點 = 玩家往 Boss 偏 35%，乘 0.6 後上提 28px；中心範圍 x ±80、y −120～70；平滑係數 8 | `combat_camera.gd` |
+| 鏡頭安全區 | 玩家腳底距畫面下緣 ≥ 50px（Boss 名稱與血條）、頭頂距上緣 ≥ 16px、左右 ≥ 24px；玩家優先於 Boss | `combat_camera.gd` |
 | 柱子位置 | (±236, 104)、(±262, −96)，碰撞半徑 11 | `arena_geometry.gd` |

@@ -22,7 +22,7 @@ const BOSS_SPAWN := Vector2(0.0, -40.0)
 ## 把半徑 r 的圓推回場地內、推出柱子之外。
 static func resolve(p: Vector2, r: float) -> Vector2:
 	var out := p
-	for i in 2:
+	for i in 4:
 		out = _push_out_of_pillars(out, r)
 		out = clamp_inside(out, r)
 	return out
@@ -61,4 +61,5 @@ static func _push_out_of_pillars(p: Vector2, r: float) -> Vector2:
 static func pillar_rect(pillar: Dictionary) -> Rect2:
 	var base: Vector2 = pillar["pos"]
 	var h: float = pillar["height"]
-	return Rect2(base.x - PILLAR_WIDTH * 0.5, base.y - h, PILLAR_WIDTH, h + 6.0)
+	# 含柱基（左右各寬 3px）與上方斷口（8px）
+	return Rect2(base.x - PILLAR_WIDTH * 0.5 - 3.0, base.y - h - 8.0, PILLAR_WIDTH + 6.0, h + 14.0)
