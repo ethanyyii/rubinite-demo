@@ -1,0 +1,17 @@
+# Godot
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Secrets - never commit
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# MCP config holds the PixelLab token - never commit
+.mcp.json

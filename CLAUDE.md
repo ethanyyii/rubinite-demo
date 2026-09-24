@@ -1,0 +1,70 @@
+# Rubinite Demo：戰鬥 Demo
+
+俯視角 2D 像素動作遊戲的單一 Boss 戰鬥 demo。核心循環：讀招 → 劍彈返 → 削韌 → 處決。
+
+## 開工前先讀
+
+1. `docs/plan.md`：里程碑、驗收標準、工作流程（**依這份的順序做**）
+2. `docs/combat-design.md`：所有戰鬥規則與數值（標 ★ 的規則不可違反）
+3. `docs/boss-veltharis.md`：Boss 招式、AI、動畫需求
+4. `docs/player-knight.md`、`docs/arena.md`：主角與場地
+5. `docs/art-reference/`：設計圖（Godot 已用 `.gdignore` 排除，不會被匯入）
+
+`docs/world-lore-draft.md` 是完整遊戲用的設定，demo 不需要讀。
+
+## 環境
+
+- Godot 4.7：`/Applications/Godot.app/Contents/MacOS/Godot`（以下簡寫 `godot`）
+- 內部解析度 640×360，整數倍放大到 1920×1080，材質取樣為 nearest。
+- 無介面測試：`godot --headless --path . -s res://tests/unit/run_tests.gd`（全部通過時結束碼為 0）
+- 新增 `class_name` 之後要先跑 `godot --headless --path . --import`，否則無介面模式找不到類別。
+- MCP（設定在 `.mcp.json`，含 token，**不可 commit**）：
+  - `godot-ai`：**Godot 編輯器視窗必須開著**才能連線（無介面模式下外掛會停用）。用來執行遊戲、截圖、注入輸入、查詢即時節點狀態。
+  - `pixellab`：像素美術生成。**第一階段禁止使用**，每次生成都會扣額度。
+- 外掛會自動維護 autoload `_mcp_game_helper`，不要刪。
+
+## 工作流程（無人值守模式）
+
+使用者不在場，整個流程由你自己推進。細節見 `docs/plan.md` §3、§6、§7。
+
+- **每次開始或被喚醒時，先讀 `docs/progress.md`**，從上次停下的地方繼續。
+- 依序完成 M0 → M6。每個里程碑都要跑完 `plan.md` §6 的自審流程（自動測試、畫面驗證、模擬玩家、獨立審查、紀錄與 commit），通過才進下一個。
+- **不要停下來等使用者，也不要為了回報進度而結束工作。** 只有在 M6 完成、`docs/final-report.md` 寫好之後才結束。
+- 遇到需要使用者的事：記在 `progress.md` 的「需要使用者」，採取最保守的替代做法，繼續往下做。
+- 決定性的邏輯（數值、狀態機、判定窗口）先寫測試再實作。測試放在 `tests/unit/test_*.gd`，繼承 `TestCase`。
+- 手感以 `plan.md` §7 的客觀指標判斷。不要只憑感覺宣稱「手感很好」；指標沒達標就是沒達標。
+- 調整任何數值都要記錄在 `docs/tuning-log.md`：改了什麼、為什麼、依據哪個指標。
+- 開工時在背景執行 `caffeinate -dims`，防止電腦睡眠；結束時停掉它。
+- 通過自審的里程碑在本機 commit，訊息以 `M0:`、`M1:`… 開頭。只 commit，不 push。
+
+## 慣例
+
+- 所有戰鬥數值放在資料裡（`Resource` 或常數表），不寫死在邏輯中；註明對應的文件章節，例如 `# combat-design §6`。
+- Boss 每一擊都是一筆資料（類型、起手、間隔、傷害、架勢傷害、削韌、彈開時間、命中效果），★ 規則的測試直接掃描這些資料。
+- 時間判定以物理幀（60Hz）為準；文件中的秒數換算成幀數時，取整方式要一致並寫在測試裡。
+- 頓幀不可影響 UI 與輸入緩衝。
+- 資料夾：`scenes/`、`scripts/combat/`、`scripts/state_machines/`、`scripts/autoload/`、`assets/`、`tests/unit/`。
+
+## Godot 4 常見錯誤（AI 常寫成 Godot 3 語法）
+
+| 錯誤 | 正確 |
+|---|---|
+| `deg2rad()` / `rad2deg()` | `deg_to_rad()` / `rad_to_deg()` |
+| `KinematicBody2D` | `CharacterBody2D` |
+| `move_and_slide(velocity, Vector2.UP)` | 設定 `velocity` 後呼叫 `move_and_slide()` |
+| `yield(...)` | `await ...` |
+| `rand_range()` | `randf_range()` / `randi_range()` |
+| `set_shader_param()` | `set_shader_parameter()` |
+| `BUTTON_LEFT` | `MOUSE_BUTTON_LEFT` |
+| `File` / `Directory` | `FileAccess` / `DirAccess` |
+| `export var` / `onready var` | `@export var` / `@onready var` |
+
+不確定某個 API 是否存在時，先查 Godot 4.7 文件，或用 godot-ai 在編輯器裡驗證，不要憑記憶。
+
+## 不要做的事
+
+- 不要在第一階段使用 PixelLab 或任何付費生成。
+- 不要 commit `.mcp.json`（內含 PixelLab token），也不要 push。
+- 不要跳過任何里程碑的自審流程。
+- 不要違反文件中的 ★ 規則；實作上真的做不到時，記在 `progress.md` 並在最終報告說明。
+- 不要下載任何素材或套件；佔位音效用程式合成。
