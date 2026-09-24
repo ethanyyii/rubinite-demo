@@ -25,6 +25,10 @@ func _draw() -> void:
 	draw_arc(b.pos, VeltharisData.HURT_RADIUS, 0, TAU, 32, Color(0.3, 1, 0.4, 0.9), 1.0)
 	draw_line(p.pos, p.pos + p.facing * 14, Color(0.3, 1, 0.4), 1.0)
 	draw_line(b.pos, b.pos + b.facing * 34, Color(0.3, 1, 0.4), 1.0)
+	# 主角正在生效的攻擊判定（外框）
+	var hb := p.attack_hitbox()
+	if not hb.is_empty():
+		HitboxDraw.draw_player_hitbox(self, hb, Color(0, 0, 0, 0), Color(0.4, 0.8, 1.0, 1.0))
 	# 柱子碰撞
 	for pillar: Dictionary in ArenaGeometry.PILLARS:
 		draw_arc(pillar["pos"], pillar["radius"], 0, TAU, 16, Color(0.9, 0.9, 0.3, 0.8), 1.0)

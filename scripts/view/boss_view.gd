@@ -16,7 +16,8 @@ func setup(owner_arena: CombatArena) -> void:
 func _process(delta: float) -> void:
 	var b: BossSim = arena.sim.boss
 	position = b.pos.round()
-	_flash_white = maxf(_flash_white - delta, 0.0)
+	var real_dt := delta / maxf(Engine.time_scale, 0.001)
+	_flash_white = maxf(_flash_white - real_dt, 0.0)
 	queue_redraw()
 
 

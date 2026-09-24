@@ -45,14 +45,27 @@ static func use_all_joypads() -> void:
 
 
 ## 頓幀期間累積的按鍵，頓幀結束後一次送出（頓幀不影響輸入，CLAUDE.md 慣例）。
+## other 是較晚的一幀：攻擊／重擊／閃身只保留較晚那一幀的按鍵（緩衝只記最新一次）；
+## 鎖定鍵按兩次等於沒按（開關）。
 func merge_presses(other: InputFrame) -> void:
-	attack_pressed = attack_pressed or other.attack_pressed
-	heavy_pressed = heavy_pressed or other.heavy_pressed
-	dodge_pressed = dodge_pressed or other.dodge_pressed
-	lock_pressed = lock_pressed or other.lock_pressed
+	if other.attack_pressed or other.heavy_pressed or other.dodge_pressed:
+		attack_pressed = other.attack_pressed
+		heavy_pressed = other.heavy_pressed
+		dodge_pressed = other.dodge_pressed
+	lock_pressed = lock_pressed != other.lock_pressed
 	heal_pressed = heal_pressed or other.heal_pressed
 	target_left_pressed = target_left_pressed or other.target_left_pressed
 	target_right_pressed = target_right_pressed or other.target_right_pressed
+
+
+func copy_presses_to(other: InputFrame) -> void:
+	other.attack_pressed = attack_pressed
+	other.heavy_pressed = heavy_pressed
+	other.dodge_pressed = dodge_pressed
+	other.lock_pressed = lock_pressed
+	other.heal_pressed = heal_pressed
+	other.target_left_pressed = target_left_pressed
+	other.target_right_pressed = target_right_pressed
 
 
 func has_presses() -> bool:

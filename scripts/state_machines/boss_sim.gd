@@ -19,6 +19,8 @@ var toughness := VeltharisData.MAX_TOUGHNESS
 var phase := 1
 var state := State.IDLE
 var state_start := 0
+## 最後一次被削韌的戰鬥幀（§11.3 韌性回復計時）
+var last_toughness_damage := -100000
 
 
 func _init(owner_sim: CombatSim) -> void:
@@ -32,6 +34,25 @@ func tick() -> void:
 ## 是否有實體碰撞（騰空時沒有）
 func has_body() -> bool:
 	return state != State.DEAD
+
+
+## 能否被鎖定／輔助瞄準
+func is_targetable() -> bool:
+	return state != State.DEAD
+
+
+## 能否被玩家的攻擊打中
+func can_be_hit() -> bool:
+	return state != State.DEAD
+
+
+## 被玩家的攻擊打中（combat-design §11.3：扣 HP、削韌）。
+func receive_player_hit(atk: PlayerAttackData) -> void:
+	hp = maxi(hp - atk.damage, 0)
+	if atk.toughness > 0:
+		toughness = maxf(toughness - atk.toughness, 0.0)
+		last_toughness_damage = sim.combat_frame
+	sim.emit(&"boss_hit", {"damage": atk.damage, "attack": atk.id, "pos": pos})
 
 
 func state_name() -> String:

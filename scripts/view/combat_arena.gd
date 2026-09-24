@@ -11,6 +11,9 @@ const CameraView := preload("res://scripts/view/combat_camera.gd")
 const HudView := preload("res://scripts/view/hud.gd")
 const DebugWorldView := preload("res://scripts/view/debug_world_view.gd")
 const DebugOverlay := preload("res://scripts/view/debug_overlay.gd")
+const FxView := preload("res://scripts/view/fx_view.gd")
+const HitboxPreview := preload("res://scripts/view/hitbox_preview_view.gd")
+const DebugDriver := preload("res://scripts/view/debug_driver.gd")
 
 const SLOW_MOTION_SCALE := 0.25
 
@@ -26,6 +29,7 @@ var player_view: Node2D
 var boss_view: Node2D
 var camera: Camera2D
 var hud: Control
+var fx: Node2D
 var pillar_views: Array[Node2D] = []
 
 
@@ -39,6 +43,11 @@ func _build() -> void:
 	var floor_view := FloorView.new()
 	floor_view.name = "ArenaFloor"
 	add_child(floor_view)
+
+	var preview: Node2D = HitboxPreview.new()
+	preview.name = "HitboxPreview"
+	preview.setup(self)
+	add_child(preview)
 
 	world = Node2D.new()
 	world.name = "World"
@@ -61,6 +70,11 @@ func _build() -> void:
 	player_view.name = "Player"
 	player_view.setup(self)
 	world.add_child(player_view)
+
+	fx = FxView.new()
+	fx.name = "Fx"
+	fx.setup(self)
+	add_child(fx)
 
 	var debug_world: Node2D = DebugWorldView.new()
 	debug_world.name = "DebugWorld"
@@ -91,6 +105,12 @@ func _build() -> void:
 	debug_layer.add_child(overlay)
 	overlay.setup(self)
 
+	if OS.is_debug_build():
+		var driver: Node = DebugDriver.new()
+		driver.name = "Debug"
+		driver.setup(self)
+		add_child(driver)
+
 
 func _physics_process(_delta: float) -> void:
 	sim.step(InputFrame.from_devices())
@@ -102,18 +122,37 @@ func _dispatch(e: Dictionary) -> void:
 	match e["type"]:
 		&"feedback":
 			camera.add_shake(e["shake"], e["shake_time"])
+			var pos: Vector2 = e["pos"] + Vector2(0, -24)
+			match e["event"]:
+				&"light_hit":
+					fx.sparks(pos, Palette.PLAYER_LIGHT, 6, 90.0, 0.2)
+				&"finisher_hit", &"heavy_hit":
+					fx.sparks(pos, Color(0.8, 0.9, 1.0), 12, 130.0, 0.3)
+		&"boss_hit":
+			boss_view.flash_hit()
+		&"charge_full":
+			player_view.flash_charge()
+			fx.add(&"flash_ring", {"pos": e["pos"] + Vector2(0, -20), "r0": 8.0, "r1": 26.0,
+				"color": Color(0.85, 0.93, 1.0)}, 0.25)
 
 
 ## 重置戰鬥（F5；死亡後重試也走這裡）
 func reset_battle() -> void:
 	sim.reset(randi())
 	hud.reset_trails()
+	fx.clear()
 	camera.snap()
 
 
-## 除錯面板的額外行（之後的里程碑擴充）
+## 除錯面板的額外行
 func extra_debug_lines() -> Array[String]:
-	return []
+	var p := sim.player
+	var lines: Array[String] = []
+	lines.append("  段數 %d  緩衝 %s  閃身冷卻 %d  無敵 %s  蓄滿 %s" % [p.combo_index + 1,
+		String(p.buffered_action) if p.buffered_action != &"" else "-",
+		maxi(Frames.of(PlayerData.DODGE_INTERVAL) - (sim.combat_frame - p.last_dodge_start), 0),
+		"是" if p.is_invulnerable() else "否", "是" if p.charge_full else "否"])
+	return lines
 
 
 func _unhandled_input(event: InputEvent) -> void:

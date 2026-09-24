@@ -49,11 +49,14 @@ func step(input: InputFrame) -> void:
 		_pending.merge_presses(input)
 		return
 	if _pending.has_presses():
-		input.merge_presses(_pending)
+		# 頓幀中累積的按鍵較早，這一幀的按鍵較晚
+		_pending.merge_presses(input)
+		_pending.copy_presses_to(input)
 		_pending = InputFrame.new()
 	combat_frame += 1
 	player.tick(input)
 	boss.tick()
+	_resolve_player_hits()
 	_resolve_bodies()
 
 
@@ -73,6 +76,27 @@ func feedback(event: StringName, at: Vector2) -> void:
 
 func elapsed_since(start_frame: int) -> int:
 	return combat_frame - start_frame
+
+
+## 玩家的攻擊判定打到 Boss（每段只打中一次）。
+func _resolve_player_hits() -> void:
+	var hb := player.attack_hitbox()
+	if hb.is_empty() or not boss.can_be_hit():
+		return
+	var r := VeltharisData.HURT_RADIUS
+	var hit := false
+	match hb["shape"]:
+		&"sector":
+			hit = HitGeometry.circle_hits_sector(boss.pos, r, hb["origin"], hb["dir"], hb["radius"], hb["arc"])
+		&"capsule":
+			hit = HitGeometry.circle_hits_capsule(boss.pos, r, hb["a"], hb["b"], hb["width"] * 0.5)
+	if not hit:
+		return
+	var atk: PlayerAttackData = hb["attack"]
+	player.on_attack_connected()
+	boss.receive_player_hit(atk)
+	var contact := boss.pos + (player.pos - boss.pos).limit_length(r)
+	feedback(atk.feedback, contact)
 
 
 ## 身體碰撞：玩家與 Boss 不重疊，兩者都留在場地內。
