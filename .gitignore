@@ -15,3 +15,6 @@ export_presets.cfg
 
 # MCP config holds the PixelLab token - never commit
 .mcp.json
+
+# Python bytecode from the sprite tools
+tools/sprite_rig/__pycache__/
