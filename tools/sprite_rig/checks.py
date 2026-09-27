@@ -348,11 +348,11 @@ OUTLINE_SHIFT = px(0.075)   # 3 px
 OUTLINE_DIFF_MIN = 0.12
 # the pair the user named (review 1): perfect deflect vs plain block must differ without
 # the spark. Other pairs that mean different things are measured and reported
-DISTINCT = [('guard', 'parry')]
+DISTINCT = [('guard', 'parry'), ('guard', 'heal')]   # guard vs heal: batch 1 decision 1
 # reported: idle vs guard / charge stay 8-12 % / 6-26 % (3-4x the alike level) with the
 # guard's pelvis at the approved 1 px; pushing them past 12 % would need a deeper crouch
 # than the brief's guard target, so that is the user's call
-DISTINCT_INFO = [('idle', 'guard'), ('idle', 'charge'), ('guard', 'l1_top'), ('guard', 'heal'),
+DISTINCT_INFO = [('idle', 'guard'), ('idle', 'charge'), ('guard', 'l1_top'), ('charge', 'heal'),
                  ('l1_top', 'l4_top'), ('idle', 'heal')]
 CLOTH = ('plume', 'cape', 'scarf')
 
@@ -578,8 +578,385 @@ def pose_checks():
     return failed
 
 
+# ------------------------------------------------------------------ batch 1
+# docs/art-progress.md appendix C (batch 1), with the batch 1 decisions (2026-09-27).
+B1_JUMP = px(0.10)            # head, torso, feet between consecutive frames: 4 px
+B1_HAND_JUMP = px(0.5)        # hands and sword between consecutive frames: 20 px
+GUARD_DROP = px(0.025)        # guard pelvis 1 px below idle
+GUARD_FEET = {'south': (16, 1), 'north': (13, 1)}   # boot centres apart +- 1 (idle widths)
+BLADE_ABOVE = (px(0.55), px(0.7))                   # side views: 22-28 px above the soles (blade middle)
+BLADE_SHOULDER = px(0.1)      # front view: blade middle within 4 px of the shoulder row (user,
+                              # 2026-09-27: the front view's shoulders are only ~19 px up); the
+                              # back view is not measured (the blade ahead of the body projects
+                              # higher up the picture), as decision 3
+BLADE_LEVEL = px(0.05)        # front view: the blade's two ends at most 2 px apart in height
+BLADE_LEN = px(0.35)          # front view: at least 14 px of blade seen (decision 3: not behind)
+FISTS_APART = px(0.1)         # the two gauntlets on the grip at most 4 px apart
+HIT_PULL = px(0.05)           # block hit: hands 2 px toward the chest
+HIT_SLIDE = (1, px(0.05))     # block hit: back foot slides 1-2 px
+PLUME_SWAY = (1, px(0.05))    # idle: plume end sways 1-2 px
+RETURN_MAX = px(0.10)         # an action's last frame vs idle frame 1: head / torso / feet
+HALF_STRIDE = 0.5             # decision 5: the slow legs step half the walk's stride
+# decision 1: guard vs heal is a hard check in every view, held and walking (same step)
+B1_DISTINCT = [('guard', 'hold 1', 'heal', 'hold 1')]
+B1_DISTINCT_WALK = [('guard_walk', 'heal_walk')]
+B1_INFO_PAIRS = [('idle', 'idle 1', 'heal', 'hold 1')]
+RIGID = ('torso', 'upper_R', 'upper_L', 'fore_R', 'fore_L', 'fist_R', 'fist_L', 'paul_R', 'paul_L', 'sword')
+
+
+class _Shim:
+    """What blade_contrast() and hole_kinds() read from a rig, taken from a batch1.Frame."""
+
+    def __init__(self, f):
+        self.trace, self.debug = f.trace, f.debug
+
+
+def _cen(f, names):
+    """Centre of the named parts as drawn, before anything was laid over them (a helmet
+    lowered over the torso must not move the torso's centre)."""
+    pts = [q for n in names for q in f.pieces_raw.get(n, {})]
+    if not pts:
+        return None
+    return (sum(x for x, _ in pts) / len(pts), sum(y for _, y in pts) / len(pts))
+
+
+def _dist(a, b):
+    import math as _m
+    return None if a is None or b is None else _m.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def _tip(f):
+    blade = f.debug.get('blade') or set()
+    fist = _cen(f, ('fist_R',))
+    if blade and fist:
+        return max(blade, key=lambda q: (q[0] - fist[0]) ** 2 + (q[1] - fist[1]) ** 2)
+    sw = [q for q, n in f.trace.items() if n == 'sword']
+    if sw:
+        # library sword: its lowest pixel (the point)
+        return max(sw, key=lambda q: q[1])
+    return None
+
+
+FEET_NAMES = ('leg_R', 'leg_L', 'legs')
+
+
+def moves(a, b):
+    """How far each part moves from frame a to frame b (px): head, torso, feet (the lowest
+    three rows of the legs), hands, sword point."""
+    la, lb = a.debug.get('legs') or {}, b.debug.get('legs') or {}
+    if la and set(la) == set(lb):
+        # each ankle, where the rig put it (a boot pitched onto its toe turns its pixels: the
+        # pixel jump would count the turn as a move)
+        feet_move = max(_dist(la[k][2], lb[k][2]) for k in la)
+    else:
+        feet = lambda f: [q for q, n in f.trace.items() if n in FEET_NAMES and q[1] >= A.GROUND - 2 and q in f.px]
+        fa, fb = feet(a), feet(b)
+        feet_move = jump(set(fa), set(fb)) if fa and fb else None
+    out = {'head': _dist(_cen(a, ('helmet',)), _cen(b, ('helmet',))),
+           'torso': _dist(_cen(a, ('torso',)), _cen(b, ('torso',))),
+           'feet': feet_move}
+    hands = [_dist(_cen(a, (n,)), _cen(b, (n,))) for n in ('fist_R', 'fist_L')]
+    hands = [h for h in hands if h is not None]
+    out['hands'] = max(hands) if hands else None
+    out['sword'] = _dist(_tip(a), _tip(b))
+    return out
+
+
+def _fmt_moves(m):
+    return ', '.join(f'{k} {v:.1f}' for k, v in m.items() if v is not None)
+
+
+def _limits_ok(m):
+    body = all(m[k] is None or m[k] <= B1_JUMP + 1e-6 for k in ('head', 'torso', 'feet'))
+    hand = all(m[k] is None or m[k] <= B1_HAND_JUMP + 1e-6 for k in ('hands', 'sword'))
+    return body and hand
+
+
+def _named(action, view, name):
+    import batch1 as B
+    return next(f for f in B.frames(action, view) if f.name == name)
+
+
+def _end_centroid(f, piece, root):
+    """Centroid of the quarter of a cloth piece farthest from its root part's centre."""
+    pts = list(f.pieces_raw.get(piece, {}))
+    c = _cen(f, (root,))
+    if not pts or c is None:
+        return None
+    pts.sort(key=lambda q: (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2)
+    far = pts[-max(1, len(pts) // 4):]
+    return (sum(x for x, _ in far) / len(far), sum(y for _, y in far) / len(far))
+
+
+def idle_frame_rows(f, view):
+    """Technical checks of a library-built idle frame (the pose frames use pose_rows)."""
+    p = f.px
+    idle, neck0 = pose_idle(view)
+    rows = [('colours inside the reference palette', not ({c[:3] for c in p.values()} - PALETTE), '')]
+    outside = sum(1 for (x, y) in p if not (0 <= x < A.FW and 0 <= y < A.FH))
+    rows.append(('inside the canvas', outside == 0, f'{outside} px outside'))
+    legs = {q for q, n in f.trace.items() if n in FEET_NAMES}
+    low_leg = max((y for (x, y) in p if (x, y) in legs), default=-1)
+    low_other = max((y for (x, y) in p if (x, y) not in legs), default=-1)
+    lib_low = max(y for (x, y) in idle)
+    rows.append((f'feet at most {BELOW_GROUND_MAX} px below ground, nothing else lower than in the library',
+                 low_leg <= A.GROUND + BELOW_GROUND_MAX and low_other <= max(A.GROUND, lib_low),
+                 f'feet row {low_leg}, others {low_other}, ground {A.GROUND}'))
+    h, h0 = enclosed(p, neck0), enclosed(idle, neck0)
+    rows.append((f'see-through holes below the neck (row > {neck0})', h <= h0, f'{h} (idle {h0})'))
+    ph, ph0 = pinholes(p), pinholes(idle)
+    rows.append(('1px pinholes', ph <= ph0, f'{ph} (idle {ph0})'))
+    sp, sp0 = specks(p), specks(idle)
+    rows.append(('floating specks', sp <= sp0, f'{sp} (idle {sp0})'))
+    (b, hi), (b0, hi0) = counts(p), counts(idle)
+    rows.append((f'blue / highlights vs idle (±10 % or ±{TOLERANCE_PX} px, floor 85 %)',
+                 within(b, b0) and within(hi, hi0), f'blue {b}/{b0}, highlights {hi}/{hi0}'))
+    return rows
+
+
+def batch1_checks():
+    import batch1 as B
+    import poses as PQ
+    import pose_rig as PR
+    failed = False
+
+    def out(ok, name, info=''):
+        nonlocal failed
+        if ok is None:
+            print(f'  INFO  {name}  {info}')
+            return
+        failed |= not ok
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    print(f'== batch 1 (batch1.py): part moves <= {B1_JUMP} px (head, torso, feet), <= {B1_HAND_JUMP} px '
+          f'(hands, sword); outlines >= {round(OUTLINE_DIFF_MIN * 100)} %')
+    # ---- every frame: the technical checks
+    for action in B.ACTIONS:
+        for view in B.VIEWS:
+            for f in B.frames(action, view):
+                label = f'{action} / {f.name} / {view}'
+                rows = idle_frame_rows(f, view) if f.pose is None else pose_rows(label, f.pose, 'small', view)
+                bad = [(n, ok, i) for n, ok, i in rows if ok is False]
+                info = [(n, i) for n, ok, i in rows if ok is None and n.startswith('INFO composited')]
+                if bad:
+                    for n, ok, i in bad:
+                        out(False, f'{label}: {n}', i)
+                else:
+                    out(True, f'{label}: {len([r for r in rows if r[1] is not None])} technical checks',
+                        info[0][1] if info else '')
+    # ---- idle
+    print('-- idle')
+    for view in B.VIEWS:
+        fr = B.frames('idle', view)
+        idle, _ = pose_idle(view)
+        out(fr[0].px == idle, f'idle 1 == library sprite {view}')
+        body = [round(_cen(f, ('torso',))[1] - _cen(fr[0], ('torso',))[1]) for f in fr]
+        head = [round(_cen(f, ('helmet',))[1] - _cen(fr[0], ('helmet',))[1]) for f in fr]
+        out(body[0] == 0 and max(body) - min(body) == 1, f'breath: body exactly 1 px {view}', f'{body}')
+        out(head == [body[(i - 1) % 4] for i in range(4)], f'breath: head one phase late {view}', f'head {head} vs body {body}')
+        boots = [{q: c for q, c in f.px.items() if q[1] >= A.GROUND - 3 and f.trace.get(q) == 'legs'} for f in fr]
+        out(all(b_ == boots[0] for b_ in boots), f'feet still {view} (boots, bottom 4 rows)')
+        pl = [set(f.pieces_raw['plume']) for f in fr]
+        sway = max(jump(pl[0], s) for s in pl[1:])
+        out(PLUME_SWAY[0] <= sway <= PLUME_SWAY[1], f'plume end sways {PLUME_SWAY[0]}-{PLUME_SWAY[1]} px {view}', f'{sway} px')
+    # ---- the breath of the guard and the heal: head and cloth ends after their roots
+    print('-- the breath (guard hold, heal hold; decision 4)')
+    for action in ('guard', 'heal', 'idle'):
+        for view in B.VIEWS:
+            fr = [f for f in B.frames(action, view) if f.name.startswith(('hold', 'idle'))]
+            tor = [_cen(f, ('torso',)) for f in fr]
+            hel = [_cen(f, ('helmet',)) for f in fr]
+            dy_t = [round(t[1] - tor[0][1]) for t in tor]
+            dy_h = [round(h[1] - hel[0][1]) for h in hel]
+            # judged against the body's own sequence, not against batch1's tables (a check that
+            # read its expectation from the code under test would pass whatever the code did)
+            out(max(dy_t) - min(dy_t) == 1 and dy_h == [dy_t[(i - 1) % 4] for i in range(4)],
+                f'{action} {view}: pelvis 1 px, head a phase late', f'torso {dy_t}, head {dy_h}')
+            for piece, root in (('plume', 'helmet'), ('cape', 'torso')):
+                ends = [_end_centroid(f, piece, root) for f in fr]
+                roots = [_cen(f, (root,)) for f in fr]
+                follow = []
+                for i in range(4):
+                    j = (i + 1) % 4
+                    dr, de = _dist(roots[i], roots[j]), _dist(ends[i], ends[j])
+                    follow.append((round(dr, 1), round(de, 1)))
+                ok = any(dr < 0.25 and de >= 0.5 for dr, de in follow)
+                out(ok, f'{action} {view}: {piece} end still moving after its root stopped',
+                    ' '.join(f'{i + 1}->{(i + 1) % 4 + 1} root {dr} end {de}' for i, (dr, de) in enumerate(follow)))
+    # ---- guard
+    print('-- guard (appendix C)')
+    for view in B.VIEWS:
+        g = _named('guard', view, 'hold 1')
+        rest = PR.rig(view)
+        rest.frame({}, 'small')
+        drop = g.debug['pelvis'][1] - rest.debug['pelvis'][1] - PR.proj(view, (g.pose['root'][0], g.pose['root'][1], 0))[1]
+        out(abs(drop - GUARD_DROP) < 0.5, f'guard {view}: pelvis {GUARD_DROP} px below idle', f'{drop:.1f} px')
+        bc = {}
+        for s_ in ('R', 'L'):
+            xs = [x for (x, y), n in g.trace.items() if n == 'leg_' + s_ and y >= A.GROUND - 2]
+            bc[s_] = (min(xs) + max(xs)) / 2
+        apart = abs(bc['R'] - bc['L'])
+        if view in GUARD_FEET:
+            t, tol = GUARD_FEET[view]
+            out(abs(apart - t) <= tol, f'guard {view}: boot centres {t}±{tol} px apart', f'{apart:.1f} px')
+        else:
+            out(None, f'guard {view}: boot centres apart (side; batch 0 approved)', f'{apart:.1f} px')
+        core = [q for q in g.debug['blade'] if g.trace.get(q) == 'sword']
+        mid = sum(A.GROUND - y for _, y in core) / len(core)
+        lo, hi = BLADE_ABOVE
+        sh = PR.VIEWS[view]['sh']['R'][1] + g.debug['pelvis'][1] - PR.VIEWS[view].get('hip', PR.VIEWS[view].get('pelvis'))[1]
+        info = (f'{mid:.1f} px (rows {A.GROUND - max(y for _, y in core)}-{A.GROUND - min(y for _, y in core)}); '
+                f'shoulder {A.GROUND - sh:.1f} px above the soles')
+        if view in ('east', 'west'):
+            # the side guard raises the blade forward and up: its middle sits ~8 px over the
+            # shoulder, so the side views keep the brief's height above the soles
+            out(lo <= round(mid) <= hi, f'guard {view}: blade {lo}-{hi} px above the soles (middle, whole px)', info)
+        elif view == 'south':
+            d = mid - (A.GROUND - sh)
+            out(abs(d) <= BLADE_SHOULDER, f'guard {view}: blade middle within {BLADE_SHOULDER} px of the shoulder', f'{d:+.1f} px; {info}')
+        else:
+            out(None, f'guard {view}: blade height (not measured from behind)', info)
+        fists = _dist(_cen(g, ('fist_R',)), _cen(g, ('fist_L',)))
+        if fists is None:
+            out(None, f'guard {view}: gauntlets apart', 'one fist hidden (under the cape)')
+        else:
+            out(fists <= FISTS_APART, f'guard {view}: gauntlets at most {FISTS_APART} px apart', f'{fists:.1f} px')
+        if view == 'south':
+            xs = sorted(core)
+            ends = [q for q in core if q[0] in (xs[0][0], xs[-1][0])]
+            rise = max(y for _, y in ends) - min(y for _, y in ends)
+            span = xs[-1][0] - xs[0][0] + 1
+            out(rise <= BLADE_LEVEL, f'guard {view}: blade ends at most {BLADE_LEVEL} px apart in height', f'{rise} px')
+            out(span >= BLADE_LEN, f'guard {view}: at least {BLADE_LEN} px of blade seen', f'{span} px')
+        if view == 'north':
+            out(None, f'guard {view}: blade seen (decision 3: not measured from behind)', f'{len(core)} of {len(g.debug["blade"])} px')
+    # ---- block hit
+    print('-- plain block hit')
+    for view in B.VIEWS:
+        g, h = _named('guard', view, 'hold 1'), _named('guard', view, 'hit')
+        side = view in ('east', 'west')
+        fdir = {'east': 1, 'west': -1}.get(view, 0)
+        pull = [((_cen(g, (n,))[0] - _cen(h, (n,))[0]) * fdir) if side else _dist(_cen(g, (n,)), _cen(h, (n,)))
+                for n in ('fist_R', 'fist_L')]
+        back = 'R'
+        ga, ha = g.debug['legs'], h.debug['legs']
+        if side:
+            which = 'near' if PR.VIEWS[view]['near'] == back else 'far'
+            slide = (ga[which][2][0] - ha[which][2][0]) * fdir
+        else:
+            slide = _dist(ga[back][2], ha[back][2])
+        if side:
+            out(all(p >= HIT_PULL - 0.5 for p in pull), f'hit {view}: hands {HIT_PULL} px toward the chest', f'{pull[0]:.1f} / {pull[1]:.1f} px')
+            out(HIT_SLIDE[0] - 0.5 <= slide <= HIT_SLIDE[1] + 0.5, f'hit {view}: back foot slides {HIT_SLIDE[0]}-{HIT_SLIDE[1]} px', f'{slide:.1f} px')
+        else:
+            out(None, f'hit {view}: hands toward the chest / back foot (depth, foreshortened on screen)',
+                f'hands {pull[0]:.1f} / {pull[1]:.1f} px, foot {slide:.1f} px (2 / 1.5 px in depth)')
+    # ---- outlines
+    print(f'-- outlines (share of outline moved >= {OUTLINE_SHIFT} px)')
+    for a1, n1, a2, n2 in [('guard', 'hold 1', 'guard', 'deflect')] + B1_DISTINCT:
+        for view in B.VIEWS:
+            s = outline_shift_share(_sil(_named(a1, view, n1)), _sil(_named(a2, view, n2)))
+            out(s >= OUTLINE_DIFF_MIN, f'{a1} {n1} vs {a2} {n2} {view}', f'{round(100 * s)} %')
+    for a1, a2 in B1_DISTINCT_WALK:
+        for view in B.VIEWS:
+            vals = [outline_shift_share(_sil(f1), _sil(f2)) for f1, f2 in zip(B.frames(a1, view), B.frames(a2, view))]
+            out(min(vals) >= OUTLINE_DIFF_MIN, f'{a1} vs {a2} {view}, every frame (same step)',
+                f'{round(100 * min(vals))}-{round(100 * max(vals))} %')
+    for a1, n1, a2, n2 in B1_INFO_PAIRS:
+        for view in B.VIEWS:
+            s = outline_shift_share(_sil(_named(a1, view, n1)), _sil(_named(a2, view, n2)))
+            out(None, f'{a1} {n1} vs {a2} {n2} {view}', f'{round(100 * s)} %')
+    for other in ('charge', 'kneel'):
+        pose = dict((n, p_) for n, p_, _, _, _ in PQ.KEY_POSES)[other]
+        for view in B.VIEWS:
+            s = outline_shift_share(silhouette(view, pose), silhouette(view, PQ.HEAL))
+            out(None, f'{other} (batch 0 key pose) vs heal {view}', f'{round(100 * s)} %')
+    # ---- frame to frame
+    print('-- part moves between consecutive frames')
+    plays = {
+        'idle': [('idle', f'idle {i}', 'idle', f'idle {i % 4 + 1}') for i in range(1, 5)],
+        'guard': [('guard', f'hold {i}', 'guard', f'hold {i % 4 + 1}') for i in range(1, 5)] +
+                 [('guard', f'hold {i}', 'guard', 'hit') for i in range(1, 5)] +
+                 [('guard', 'hit', 'guard', 'hold 1'), ('guard', 'deflect', 'guard', 'back 1'),
+                  ('guard', 'back 1', 'guard', 'back 2'), ('guard', 'back 2', 'guard', 'hold 1')],
+        'heal': [('idle', 'idle 1', 'heal', 'in 1'), ('heal', 'in 1', 'heal', 'in 2'), ('heal', 'in 2', 'heal', 'hold 1')] +
+                [('heal', f'hold {i}', 'heal', f'hold {i + 1}') for i in range(1, 4)] +
+                [('heal', 'hold 4', 'heal', 'out 1'), ('heal', 'out 1', 'heal', 'out 2'), ('heal', 'out 2', 'idle', 'idle 1')],
+        'guard_walk': [('guard_walk', f'fwd {i}', 'guard_walk', f'fwd {i % 8 + 1}') for i in range(1, 9)] +
+                      [('guard_walk', f'side {i}', 'guard_walk', f'side {i % 4 + 1}') for i in range(1, 5)] +
+[],
+        'heal_walk': [('heal_walk', f'fwd {i}', 'heal_walk', f'fwd {i % 8 + 1}') for i in range(1, 9)] +
+                     [('heal_walk', f'side {i}', 'heal_walk', f'side {i % 4 + 1}') for i in range(1, 5)] +
+[],
+    }
+    for action, pairs in plays.items():
+        for view in B.VIEWS:
+            worst = []
+            for a1, n1, a2, n2 in pairs:
+                m = moves(_named(a1, view, n1), _named(a2, view, n2))
+                if not _limits_ok(m):
+                    out(False, f'{action} {view}: {n1} -> {n2}', _fmt_moves(m))
+                worst.append(m)
+            agg = {k: max((m[k] for m in worst if m[k] is not None), default=None) for k in worst[0]}
+            out(all(_limits_ok(m) for m in worst), f'{action} {view}: {len(pairs)} frame pairs within the limits',
+                'largest ' + _fmt_moves(agg))
+    # starting to walk from the held pose: the braced guard stance is wider than the walking
+    # legs, so the walk has to start at a frame whose feet are near it (the game picks it)
+    for action, base in (('guard_walk', 'guard'), ('heal_walk', 'heal')):
+        for view in B.VIEWS:
+            h = _named(base, view, 'hold 1')
+            for kind in ('fwd', 'side'):
+                fr = [f for f in B.frames(action, view) if f.name.startswith(kind)]
+                ok_in = [f.name for f in fr if _limits_ok(moves(h, f))]
+                ok_out = [f.name for f in fr if _limits_ok(moves(f, h))]
+                out(bool(ok_in) and bool(ok_out), f'{action} {view}: start / stop the {kind} cycle from / to {base} hold 1',
+                    f'start at {", ".join(ok_in) or "none"}; stop from {", ".join(ok_out) or "none"}')
+    for view in B.VIEWS:
+        m = moves(_named('guard', view, 'hold 1'), _named('guard', view, 'deflect'))
+        out(None, f'guard -> deflect {view} (decision 2: exempt)', _fmt_moves(m))
+        m = moves(_named('guard', view, 'hold 1'), _named('idle', view, 'idle 1'))
+        out(None, f'guard <-> idle {view} (decision 14: no in-between; the guard is up the frame it is pressed)', _fmt_moves(m))
+        m = moves(_named('heal', view, 'out 2'), _named('idle', view, 'idle 1'))
+        ok = all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet'))
+        out(ok, f'heal out 2 vs idle 1 {view}: head, torso, feet within {RETURN_MAX} px', _fmt_moves(m))
+    # ---- the slow legs
+    print('-- slow legs (decision 5): upper body rigid, half stride')
+    import walk_side as W_
+    for action, base in (('guard_walk', ('guard', 'hold 1')), ('heal_walk', ('heal', 'hold 1'))):
+        for view in B.VIEWS:
+            b = _named(base[0], view, base[1])
+            bad = []
+            for f in B.frames(action, view):
+                bob = round(_cen(f, ('torso',))[1] - _cen(b, ('torso',))[1])
+                for n in RIGID:
+                    if n not in b.pieces_raw:
+                        continue
+                    # the heal's sword is planted in the floor: it stays put while the body bobs
+                    sh = 0 if (n == 'sword' and action == 'heal_walk') else bob
+                    want = {(x, y + sh): c for (x, y), c in b.pieces_raw[n].items()}
+                    got = f.pieces_raw.get(n, {})
+                    if want != got:
+                        bad.append(f'{f.name}:{n}')
+                if bob not in (0, 1):
+                    bad.append(f'{f.name}: bob {bob}')
+            out(not bad, f'{action} {view}: torso, arms, sword identical to {base[1]} (bob 0-1 px)', ', '.join(bad[:6]))
+            if view in ('east', 'west'):
+                near = [f.debug['legs']['near'][2][0] for f in B.frames(action, view) if f.name.startswith('fwd')]
+                walk = [W_.NEAR_FOOT[i][0] for i in range(8)]
+                rng, wrng = max(near) - min(near), max(walk) - min(walk)
+                out(abs(rng - HALF_STRIDE * wrng) <= 1.0, f'{action} {view}: stride half the walk', f'{rng:.1f} px vs walk {wrng:.1f}')
+    print('BATCH 1: ALL PASSED' if not failed else 'BATCH 1: SOME CHECKS FAILED')
+    return failed
+
+
+def _sil(f):
+    return {q for q in f.px if f.trace.get(q, '') not in CLOTH}
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     if '--poses' in args:
         sys.exit(1 if pose_checks() else 0)
+    if '--batch1' in args:
+        sys.exit(1 if batch1_checks() else 0)
     sys.exit(main())

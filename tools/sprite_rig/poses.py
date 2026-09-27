@@ -44,6 +44,14 @@ GUARD = dict(root=(0, 0, -1), lean=4,
                         depth={'north': -31, 'east': 55, 'west': 55, 'south': 55}),
              cape=(-1, 0, 0), plume=(-1, 0, 0))
 
+# plain block taking a hit (batch 1, 6 frames): the blow pushes the guard in, the hands come
+# 2 px toward the chest, the pelvis gives 1 px, the back foot slides 1.5 px back; the head
+# and the cloth are left a little forward (they follow a frame later)
+_hr, _hl = two_hand_grip(4, -4, 3, GUARD_BLADE, elbow_up=0.2)
+GUARD_HIT = dict(GUARD, root=(-1, 0, -1), lean=2, head=(1, 0, 0),
+                 feet={'R': (-2.5, -4.25, 0, 'flat'), 'L': (2, 4.25, 0, 'flat')},
+                 arms={'R': _hr, 'L': _hl}, cape=(1, 0, 0), plume=(1, 0, 0))
+
 # the deflect: the blade is flung out and up to the sword side (from pointing across the
 # chest to pointing over the right shoulder), the left hand lets go and swings out to the
 # other side, the chest opens and the weight settles on the front foot. A different outline
@@ -134,13 +142,34 @@ RUN = dict(root=(1, 0, -1), lean=12,
            cape=(-5, 0, 2), plume=(-4, 0, 1))
 
 # ------------------------------------------------------------------ heal (batch 1, standing)
-HEAL = dict(root=(0, 0, 0), lean=6, head_tilt=12, head=(0, 0, -1),
-            feet={'R': (1, 0, 0, 'flat'), 'L': (-1, 0, 0, 'flat')},
-            # the sword stands point-down out at the right side (a different outline from the
-            # guard's bar across the chest), the left hand presses the chest
-            arms={'R': hand('R', 2, -15, -5, elbow=(0, -1, 0)), 'L': hand('L', 5, 1, -2, elbow=(0, 1, -1), depth_fore=18, depth_fist=19)},
-            sword=dict(hand='R', dir=(0.1, -0.2, -1.0)),
-            cape=(0, 0, 0))
+# Batch 1 decision 1 (user, 2026-09-27): leaning on the sword. The guard reads "high, wide,
+# level" (blade across the chest, elbows out, braced feet, head up); the heal reads "low,
+# narrow, slanted": the sword planted point-down at a slant on the sword side, the right hand
+# on the pommel, the body leaning onto it and hunched, the head bowed, the left hand pressed
+# to the chest with the elbow tucked, the feet under the hips. Both are long states the player
+# can walk in (and cannot block while healing), so the two outlines must differ >= 12 % in
+# every view (checks.py DISTINCT). Decision 7 (point down, left hand on the chest, head bowed)
+# is kept.
+# Per view: in front / back a bow is a sinking head (head_tilt there would turn the helmet in
+# the picture plane); the hand sits higher in front (a blade long enough to read: the tip on
+# the floor cuts it short) and lower from behind (the tip reaching the floor past the cape);
+# side views slant the blade forward to the floor at 45-52 degrees.
+_HEAL_L = hand('L', 5, 2, -1, elbow=(0, 1, -1), depth_fore=18, depth_fist=19)
+# The lean toward the sword is 10 deg (the brief said 7): with the walking legs shared by both
+# actions the front view's outlines only differed 9-11 % at 6 deg (checks.py --batch1).
+HEAL = dict(root=(0, 0, -1), lean=14, lean_view={'south': 11, 'north': 11},
+            roll=-10,                                 # toward the sword (the character's right)
+            head_tilt=6, head_tilt_view={'south': 0, 'north': 0},
+            head=(1, 0, -1), head_view={'south': (0, 0, -1), 'north': (0, 0, -1)},
+            feet={'R': (0, 0, 0, 'flat'), 'L': (0, 0, 0, 'flat')},
+            arms={'R': hand('R', 11, -16, -7, elbow=(0, -1, -1)), 'L': _HEAL_L},
+            arms_view={'south': {'R': hand('R', 8, -16, -3, elbow=(0, -1, -1)), 'L': _HEAL_L},
+                       'north': {'R': hand('R', 8, -16, -9, elbow=(0, -1, -1)), 'L': _HEAL_L}},
+            sword=dict(hand='R', dir=(0.65, -0.3, -0.707),
+                       dir_view={'south': (0.0, -0.5, -0.87), 'north': (0.0, -0.55, -0.83),
+                                 'west': (0.566, -0.3, -0.788)}),
+            cape=(0, 0, 0),
+            plume=(-3, 0, 1))                         # the bowed head would curl the plume forward
 
 # ------------------------------------------------------------------ hit reactions (batch 4)
 STAGGER = dict(root=(0, 0, 0), lean=-12, head=(-1, 0, 0), head_tilt=-8,

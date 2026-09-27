@@ -436,6 +436,13 @@ class PoseRig:
         view, v, L = self.view, self.v, self.base.L
         side = v['kind'] == 'side'
         fdir = v.get('facing', 1)
+        # a pose may give lean / roll / head / head_tilt / arms per view ('<key>_view':
+        # {view: value}), as the sword has dir_view. In the front / back views head_tilt turns
+        # the head in the picture plane, so a bow there is a sinking head, not a turned one;
+        # and a sword planted beside the feet needs the hand lower in the side views (to reach
+        # the floor at a slant) than in front (for a blade long enough to read) (batch 1 heal)
+        pose = dict(pose, **{k: pose[k + '_view'][view] for k in ('lean', 'roll', 'head', 'head_tilt', 'arms')
+                             if view in pose.get(k + '_view', {})})
         items = []   # (depth, order, fn(px))
         seq = [0]
 
@@ -488,6 +495,9 @@ class PoseRig:
         ax0, ay0 = cfg['cape_anchor']
         clen = cfg['cape_len']
         lowered = max(0.0, -pose.get('root', (0, 0, 0))[2]) + max(0.0, getattr(self, '_upper_drop', 0.0))
+        # front / back: the hem's flare follows the body; a breath or a step can make it follow
+        # a frame late (animation-review §4.2: cloth ends lag their roots) by adding here
+        lowered = max(0.0, lowered + pose.get('cape_lowered_add', 0.0))
         if side:
             cape_disp = bend((ax0, ay0), self.tips['cape'], (cdx, cdy), clen)
         else:
@@ -658,6 +668,10 @@ class PoseRig:
                 add((d_up if not side else 30) + 1, lambda px, pn=pn, pm=pm: L[pn].render(pm, out=px), 'paul_' + s_)
         if sw:
             hand = hands_w.get(sw.get('hand', 'R'))
+            if hand is not None and 'planted' in sw:
+                # a sword planted in the floor stays where it is while the body bobs over it
+                # (the fist slides on the grip): drawn from the hand of the unbobbed pose
+                hand = (hand[0] + sw['planted'][0], hand[1] + sw['planted'][1])
             if hand is not None:
                 d3 = blade3
                 d2 = proj(view, d3)
