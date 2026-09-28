@@ -43,7 +43,7 @@ VIEWS = ['south', 'east', 'north', 'west']
 VIEW_ZH = {'south': '朝下', 'east': '朝右', 'north': '朝上', 'west': '朝左'}
 # concept thumbnail named in poses.py -> its box in concept_pose.BOX; overlays only where the
 # thumbnail draws the same pose (E, the jump, is only a weight reference for the charge)
-REF_KEY = {'C2': 'C2', 'C3': 'C3', 'D1': 'D1', 'D2': 'D2', 'D3': 'D3', 'B1': 'B1', 'B': 'B2', 'F': 'F',
+REF_KEY = {'C1': 'C1', 'C4': 'C4', 'C2': 'C2', 'C3': 'C3', 'D1': 'D1', 'D2': 'D2', 'D3': 'D3', 'B1': 'B1', 'B': 'B2', 'F': 'F',
            'G(部分)': 'G', '設計圖沒畫(E)': 'E', 'H': 'H'}
 OVERLAY = {'C2', 'C3', 'D1', 'D2', 'D3', 'B1', 'B', 'F', 'G(部分)', 'H'}
 MAGENTA = (255, 0, 200, 255)

@@ -953,10 +953,218 @@ def _sil(f):
     return {q for q in f.px if f.trace.get(q, '') not in CLOTH}
 
 
+# ------------------------------------------------------------------ batch 2
+# docs/art-progress.md appendix C (batch 2) with the batch 2 decisions (2026-09-27). Moves are
+# measured where they are seen on screen: the frame plus where the picture sits (decision 2:
+# the picture follows the program's advance when the frame changes).
+SWING_JUMP = px(0.2)          # decision 5: head / torso in the swing steps, on screen: 8 px
+DRIFT_MAX = 1                 # a foot bearing the weight stays within 1 px on screen
+PREP_BACK = px(0.05)          # f1: pelvis at least 2 px back
+END_FWD = px(0.1)             # follow-through: pelvis at least 4 px ahead of the top
+END_LEAN = (8, 15)            # follow-through lean, degrees
+BLADE_ANGLE_MAX = 22.5        # stage 2's end vs stage 1's top (stage 3 starts from that top)
+APEX_HOLD = 7                 # stage 4 apex held at least 7 sim frames
+# the swing steps of decision 5 (stage, from frame index, to frame index); stage 4's apex ->
+# D2 is decision 1 (not limited at all)
+SWING_STEPS = {(1, 1, 2), (1, 2, 3), (2, 1, 2), (2, 2, 3), (3, 0, 1), (3, 1, 2), (4, 3, 4), (4, 4, 5)}
+EXEMPT_STEPS = {(4, 2, 3)}
+ATTACK_KEY = {(1, 1): 'l1_top', (1, 3): 'l1_end', (2, 3): 'l2_end', (3, 0): 'l1_top', (3, 2): 'l1_end',
+              (4, 2): 'l4_top', (4, 3): 'l4_mid', (4, 4): 'l4_end'}
+SMALL_TO_LARGE = (16, 8)      # 56 x 56 (28, 53) -> 88 x 72 (44, 61)
+
+
+class _Pt:
+    """Where the parts of one frame are on screen: head, torso, fists, sword point, ankles and
+    boots, all moved by the picture's place on screen (sx, sy)."""
+
+    def __init__(self, f, sx=0.0, sy=0.0, small=False):
+        ox, oy = (SMALL_TO_LARGE if small else (0, 0))
+        sx, sy = sx + ox, sy + oy
+        mv = lambda p: None if p is None else (p[0] + sx, p[1] + sy)
+        self.head, self.torso = mv(_cen(f, ('helmet',))), mv(_cen(f, ('torso',)))
+        self.fists = {n: mv(_cen(f, (n,))) for n in ('fist_R', 'fist_L')}
+        self.tip = mv(_tip(f))
+        legs = (f.debug or {}).get('legs') or {}
+        self.ankles = {k: mv(v[2]) for k, v in legs.items()} if legs else {}
+        gy = max(y for (_, y) in f.px) if f.px else 0
+        self.boots = {(round(x + sx), round(y + sy)) for (x, y), n in f.trace.items()
+                      if n in FEET_NAMES and y >= gy - 2 and (x, y) in f.px}
+
+
+def screen_moves(a, b):
+    out = {'head': _dist(a.head, b.head), 'torso': _dist(a.torso, b.torso)}
+    if a.ankles and set(a.ankles) == set(b.ankles):
+        out['feet'] = max(_dist(a.ankles[k], b.ankles[k]) for k in a.ankles)
+    else:
+        out['feet'] = jump(a.boots, b.boots) if a.boots and b.boots else None
+    h = [_dist(a.fists[n], b.fists[n]) for n in a.fists]
+    h = [x for x in h if x is not None]
+    out['hands'] = max(h) if h else None
+    out['sword'] = _dist(a.tip, b.tip)
+    return out
+
+
+def _ok(m, body=B1_JUMP, hand=B1_HAND_JUMP, sword=True):
+    return (all(m[k] is None or m[k] <= body + 1e-6 for k in ('head', 'torso')) and
+            (m['feet'] is None or m['feet'] <= B1_JUMP + 1e-6) and
+            (m['hands'] is None or m['hands'] <= hand + 1e-6) and
+            (not sword or m['sword'] is None or m['sword'] <= hand + 1e-6))
+
+
+def batch2_checks():
+    import batch1 as B1
+    import batch2 as B2
+    import poses as PQ
+    import pose_rig as PR
+    import math as _m
+    import walk_side as W_
+    failed = False
+
+    def out(ok, name, info=''):
+        nonlocal failed
+        if ok is None:
+            print(f'  INFO  {name}  {info}')
+            return
+        failed |= not ok
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    def pt(f):
+        ox, oy = f.screen_offset()
+        return _Pt(f, ox, oy)
+
+    print(f'== batch 2 (batch2.py): on screen, head / torso / feet <= {B1_JUMP} px, hands / sword <= {B1_HAND_JUMP} px; '
+          f'swing steps head / torso <= {SWING_JUMP} px (decision 5)')
+    # ---- every frame: the technical checks (attack stance where a key pose sits)
+    for st in (1, 2, 4):
+        for view in B2.VIEWS:
+            for i, f in enumerate(B2.frames(st, view)):
+                name = ATTACK_KEY.get((st, i), f'stage {st} {f.name}')
+                label = f'stage {st} / {f.name} / {view}'
+                rows = pose_rows(name, f.pose, 'large', view)
+                bad = [(n, i_) for n, ok, i_ in rows if ok is False]
+                stance = [(n, i_) for n, ok, i_ in rows if ok is not None and n.startswith('attack stance')]
+                comp = [i_ for n, ok, i_ in rows if ok is None and n.startswith('INFO composited')]
+                if bad:
+                    for n, i_ in bad:
+                        out(False, f'{label}: {n}', i_)
+                else:
+                    out(True, f'{label}: {len([r for r in rows if r[1] is not None])} technical checks',
+                        '; '.join(f'{n[15:]} {i_}' for n, i_ in stance) or (comp[0] if comp else ''))
+    # ---- poses
+    print('-- attack poses (appendix C, batch 2)')
+    # the pelvis along the facing, in the character's own space (the side views also show a
+    # sideways shift a little, SIDE_X: that is not the pelvis going forward); screen x reported
+    for st in (1, 2, 4):
+        fr = B2.frames(st, 'east')
+        if st != 2:
+            prep = [f for f in fr if f.first < B2.ATTACK[st][0]]         # the start-up frames
+            back = max(-f.pose['root'][0] for f in prep)
+            out(back >= PREP_BACK - 0.05, f'stage {st}: start-up pelvis at least {PREP_BACK} px back',
+                f'{back:.1f} px ({", ".join(f.name for f in prep)})')
+        top_i, end_i = {1: (1, 3), 2: (1, 3), 4: (2, 4)}[st]
+        fwd = fr[end_i].pose['root'][0] - fr[top_i].pose['root'][0]
+        scr = {v: (B2.frames(st, v)[end_i].debug['pelvis'][0] - B2.frames(st, v)[top_i].debug['pelvis'][0]) * PR.VIEWS[v]['facing']
+               for v in ('east', 'west')}
+        out(fwd >= END_FWD - 0.05, f'stage {st}: pelvis {END_FWD} px ahead at the follow-through ({fr[top_i].name} -> {fr[end_i].name})',
+            f'{fwd:.1f} px; on screen east {scr["east"]:.1f}, west {scr["west"]:.1f}')
+    for st, key in ((1, PQ.L1_END), (2, PQ.L2_END), (4, PQ.L4_END)):
+        lean = key['lean']
+        lo, hi = END_LEAN
+        out(lo <= lean <= hi, f'stage {st}: follow-through lean {lo}-{hi} deg', f'{lean} deg')
+    for view in B2.VIEWS:
+        def ang(f):
+            fist = f.debug['hands']['R']
+            tip = max(f.debug['blade'], key=lambda q: (q[0] - fist[0]) ** 2 + (q[1] - fist[1]) ** 2)
+            return _m.degrees(_m.atan2(tip[1] - fist[1], tip[0] - fist[0]))
+        d = abs((ang(B2.frames(2, view)[3]) - ang(B2.frames(1, view)[1]) + 180) % 360 - 180)
+        out(d <= BLADE_ANGLE_MAX, f'{view}: stage 2 end vs stage 1 top blade angle <= {BLADE_ANGLE_MAX} deg', f'{d:.1f} deg')
+    apex = B2.frames(4, 'east')[2]
+    out(apex.dur >= APEX_HOLD, f'stage 4 apex held at least {APEX_HOLD} sim frames', f'{apex.first}-{apex.last} ({apex.dur})')
+    print('-- item 7 (user): stage 1 top -> contact -> follow-through, the sword point per step <= 20 px on screen')
+    for view in B2.VIEWS:
+        fr = B2.frames(1, view)
+        steps = [screen_moves(pt(fr[i]), pt(fr[i + 1]))['sword'] for i in (1, 2)]
+        out(max(steps) <= B1_HAND_JUMP + 1e-6, f'item 7 {view}', f'{steps[0]:.1f} / {steps[1]:.1f} px')
+    # ---- moves between frames, on screen
+    print('-- moves between consecutive frames, on screen')
+    for st in (1, 2, 3, 4):
+        for view in B2.VIEWS:
+            fr = B2.frames(st, view)
+            worst, bad = {}, []
+            for i in range(len(fr) - 1):
+                m = screen_moves(pt(fr[i]), pt(fr[i + 1]))
+                if (st, i, i + 1) in EXEMPT_STEPS:
+                    out(None, f'stage {st} {view}: {fr[i].name} -> {fr[i + 1].name} (decision 1: not limited)', _fmt_moves(m))
+                    continue
+                body = SWING_JUMP if (st, i, i + 1) in SWING_STEPS else B1_JUMP
+                if not _ok(m, body):
+                    bad.append(f'{fr[i].name} -> {fr[i + 1].name}: {_fmt_moves(m)}')
+                for k, v in m.items():
+                    if v is not None:
+                        worst[k] = max(worst.get(k, 0), v)
+            out(not bad, f'stage {st} {view}: {len(fr) - 1} steps within the limits', '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+    # ---- the weight foot stays put on screen
+    print(f'-- the foot bearing the weight moves at most {DRIFT_MAX} px on screen (decision 2)')
+    for st in (1, 2, 3, 4):
+        for view in B2.VIEWS:
+            fr = B2.frames(st, view)
+            drifts = []
+            for i in range(len(fr) - 1):
+                a, b = fr[i], fr[i + 1]
+                for s_ in {a.weight, b.weight} - {None}:
+                    fa, fb = a.pose['feet'][s_], b.pose['feet'][s_]
+                    if fa[2] or fb[2]:
+                        continue                      # lifted in one of them: a step, not a drift
+                    if not (s_ == a.weight == b.weight):
+                        continue                      # the weight moves to the other foot here
+                    k = s_ if view in ('south', 'north') else ('near' if PR.VIEWS[view]['near'] == s_ else 'far')
+                    pa, pb = pt(a).ankles[k], pt(b).ankles[k]
+                    # along the floor only: a heel rising onto the toe lifts the ankle, it does
+                    # not move the foot (side views: across; front / back: up and down)
+                    d = abs(pa[0] - pb[0]) if view in ('east', 'west') else abs(pa[1] - pb[1])
+                    drifts.append((d, f'{a.name}->{b.name} {s_}'))
+            w = max(drifts) if drifts else (0, '')
+            out(w[0] <= DRIFT_MAX + 1e-6, f'stage {st} {view}: weight foot on screen', f'largest {w[0]:.1f} px ({w[1]})')
+    # ---- chaining, entering, leaving
+    print('-- chaining at the earliest frame, entering from idle / guard / walking, back to idle')
+    def total(st):
+        return B2.ATTACK[st][3]
+    for view in B2.VIEWS:
+        fx, fy = B2.FWD_SCREEN[view]
+        for a_st, b_st in ((1, 2), (2, 3), (3, 4)):
+            a = B2.frames(a_st, view)[3 if a_st != 3 else 2]       # the follow-through shows when the chain comes
+            b = B2.frames(b_st, view)[0]
+            pa = pt(a)
+            pb = _Pt(b, fx * (total(a_st) + b.adv), fy * (total(a_st) + b.adv))
+            m = screen_moves(pa, pb)
+            out(_ok(m), f'{view}: chain stage {a_st} {a.name} -> stage {b_st} {b.name} (sim frame {B2.ATTACK[a_st][0] + B2.ATTACK[a_st][1]})', _fmt_moves(m))
+            for late in B2.frames(a_st, view)[(4 if a_st != 3 else 3):]:     # the recovery frames
+                pl = pt(late)
+                m = screen_moves(pl, pb)
+                out(_ok(m, sword=False), f'{view}: late chain stage {a_st} {late.name} -> stage {b_st} {b.name} (decision 3: head / torso / feet <= 4)', _fmt_moves(m))
+        f1 = B2.frames(1, view)[0]
+        p1 = pt(f1)
+        idle = B1.frames('idle', view)[0]
+        guard = [f for f in B1.frames('guard', view) if f.name.startswith('hold')]
+        slow = B1.frames('guard_walk', view)
+        for label, src in [('idle 1', idle)] + [(f'guard {g.name}', g) for g in guard] + [(f'guard walk {g.name}', g) for g in slow]:
+            m = screen_moves(_Pt(src, small=True), p1)
+            out(_ok(m, sword=False), f'{view}: {label} -> stage 1 f1 (decision 3: the sword is free)', _fmt_moves(m))
+        for st in (1, 2, 4):
+            last = B2.frames(st, view)[-1]
+            m = screen_moves(pt(last), _Pt(idle, fx * total(st), fy * total(st), small=True))
+            ok = all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet'))
+            out(ok, f'{view}: stage {st} {last.name} vs idle 1: head, torso, feet within {RETURN_MAX} px', _fmt_moves(m))
+    print('BATCH 2: ALL PASSED' if not failed else 'BATCH 2: SOME CHECKS FAILED')
+    return failed
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     if '--poses' in args:
         sys.exit(1 if pose_checks() else 0)
     if '--batch1' in args:
         sys.exit(1 if batch1_checks() else 0)
+    if '--batch2' in args:
+        sys.exit(1 if batch2_checks() else 0)
     sys.exit(main())

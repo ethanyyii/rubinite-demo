@@ -78,18 +78,22 @@ L1_TOP = dict(root=(-1, -1, -3), lean=-2, roll=-6,
               arms={'R': hand('R', 10, -5, 4, elbow=(0, -1, -1)), 'L': hand('L', 5, 6, -5, elbow=(0, 1, -1))},
               sword=dict(hand='R', dir=(0.65, -0.1, 0.75)),
               cape=(-1, 0, 0), plume=(-1, 0, 0))
-# stage 1 follow-through (C3): blade low across to the other side, weight on the front foot
-L1_END = dict(root=(2, 2, -4), lean=12, roll=8,
+# stage 1 follow-through (C3): blade low across to the other side, weight on the front foot.
+# Batch 2 decision 4: the pelvis ends 4 px ahead of the top (root f 3; batch 0 had 2)
+L1_END = dict(root=(3, 2, -4), lean=12, roll=8,
               feet={'R': (-6, -5, 0, 'toe'), 'L': (5, 5, 0, 'flat')},
               arms={'R': hand('R', 8, 4, -5, elbow=(0, -1, 0)), 'L': hand('L', -2, 9, -5, elbow=(0, 1, 0))},
               sword=dict(hand='R', dir=(0.65, 0.5, -0.45),
                          dir_view={'south': (0.45, 0.85, -0.2), 'north': (0.45, 0.85, -0.2)}),
               cape=(-3, 0, 1), plume=(-3, 0, 1))
-# stage 2 follow-through: the backhand ends high on the sword side
+# stage 2 follow-through: the backhand ends high on the sword side. Stage 3 starts from stage
+# 1's top after it, so its blade is within 22.5 deg of that top in every view (batch 2 decision
+# 4: front / back were 39 / 29 deg off; the blade stands a little straighter there)
 L2_END = dict(root=(2, -1, -3), lean=8, roll=-6,
               feet={'R': (-6, -5, 0, 'toe'), 'L': (5, 5, 0, 'flat')},
               arms={'R': hand('R', 7, -9, 3, elbow=(0, -1, -1)), 'L': hand('L', 1, 8, -6, elbow=(0, 1, 0))},
-              sword=dict(hand='R', dir=(0.45, -0.6, 0.65)),
+              sword=dict(hand='R', dir=(0.45, -0.6, 0.65),
+                         dir_view={'south': (0.45, -0.3, 0.8), 'north': (0.45, -0.3, 0.8)}),
               cape=(-2, 1, 1), plume=(-2, 1, 0))
 # stage 4 wind-up: sword drawn far back, body coiled, weight back and low
 L4_TOP = dict(root=(-3, -2, -4), lean=-5, roll=-8,

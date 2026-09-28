@@ -550,6 +550,7 @@ class PoseRig:
 
         # ---- legs
         feet = pose.get('feet', {})
+        self._foot_below = pose.get('foot_below', FOOT_BELOW)
         if side:
             hip_w = apply(base, *v['hip'])
             near = v['near']
@@ -786,7 +787,9 @@ class PoseRig:
         kf = KD_FEET if view == 'south' else -KD_FEET
         # a foot nearer the camera than the anchor may sit at most FOOT_BELOW px under the
         # ground row (animation-review §4.4: 2 px allowed; the walk uses 1)
-        off = (l_ * PROJ[view]['L'][0] * FEET_W[view], min(f_ * kf, FOOT_BELOW) - lift)
+        # a pose may allow the rule's full 2 px under the floor (batch 2: a planted foot held
+        # back while the program carries the body away from the camera)
+        off = (l_ * PROJ[view]['L'][0] * FEET_W[view], min(f_ * kf, getattr(self, '_foot_below', FOOT_BELOW)) - lift)
         ank_d = (g['dest_x'] + self.ox + off[0], g['ankle'][1] + self.oy + off[1])
         boot = self.base.L[name + '_boot']
         top, bot = self._leg_halves(name, g)
