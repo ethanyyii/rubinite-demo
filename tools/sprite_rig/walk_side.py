@@ -90,6 +90,7 @@ CAPE_WAVE = (1.6, 1.04, 0.72)      # trail, wave, lift in px (50 px: 2.0, 1.3, 0
 PLUME_WAVE = (0.8, 0.96, 0.72, 17.6)   # trail, wave, bob, length (50 px: 1.0, 1.2, 0.9, 22)
 SCARF_WAVE = (0.48, 0.64)          # trail, wave (50 px: 0.6, 0.8)
 FILL_RADIUS = 8                    # body backing reaches this far under parts (50 px: 10)
+BACK_TRAIL = 0.0                   # walking backward: the cape / plume / scarf do not stream behind
 
 
 PALETTE = [tuple(int(v) for v in line.split()) for line in open(A.D + 'palette.txt') if line.strip()]
@@ -168,9 +169,17 @@ class SideRig:
         out.px.update(ring)
         out.px.update(body)
 
-    def frame(self, i):
+    def frame(self, i, rev=False):
+        """Frame i of the walk. rev (batch 3 decision 8): walking backward, i = the frame
+        shown. The legs and the body run the cycle the other way (leg phase -i), and whatever
+        lags (the head, the cloth waves) is recomputed to lag in the order the frames are
+        shown: the forward cycle played in reverse would make them lead by a frame. Going
+        backward the cape does not stream behind (it hangs against the back)."""
         c = self.cfg
         f = c['facing']
+        lag = -1 if rev else 1                 # a phase lag's sign in the leg cycle's own phase
+        trail_k = BACK_TRAIL if rev else 1
+        i = (-i) % N if rev else i
         phi = 2 * math.pi * i / N
         meta = A.META[c['sprite']]
         ox, oy = A.CX - meta['cx'], A.GROUND - meta['feet']
@@ -180,7 +189,7 @@ class SideRig:
         lean = f * (4.0 + 1.5 * math.sin(2 * phi + 0.8))
         root = mat_mul(T(ox, oy + bob), R(lean, hx, hy))
         # head lags the body by one frame and nods a little
-        head_lag = BOB[(i - 1) % N] - bob
+        head_lag = BOB[(i - lag) % N] - bob
         head = mat_mul(root, mat_mul(T(0, 0.6 * head_lag), R(-f * 1.5 * math.sin(2 * phi), *c['neck'])))
         # arms swing opposite their legs; + swing = near hand moves back
         swing = f * 12.0 * math.cos(phi)
@@ -208,27 +217,27 @@ class SideRig:
         def cape_disp(px_, py_):
             v = max(0.0, min(1.0, math.hypot(px_ - ax0, py_ - ay0) / clen))
             trail, wave, lift = CAPE_WAVE
-            return (-f * v ** 1.3 * (trail + wave * math.sin(2 * phi - 3.2 * v)),
-                    -lift * v ** 1.5 * (1 + math.sin(2 * phi - 3.2 * v - 0.6)))
+            return (-f * v ** 1.3 * (trail * trail_k + wave * math.sin(2 * phi - lag * 3.2 * v)),
+                    -lift * v ** 1.5 * (1 + math.sin(2 * phi - lag * 3.2 * v - lag * 0.6)))
 
         kx, ky = c['knob']
 
         def plume_disp(px_, py_):
             trail, wave, bob_, length = PLUME_WAVE
             v = max(0.0, min(1.0, math.hypot(px_ - kx, py_ - ky) / length))
-            return (-f * v * (trail + wave * math.sin(2 * phi - 3.0 * v)),
-                    bob_ * v * math.sin(2 * phi - 3.0 * v - 1.2))
+            return (-f * v * (trail * trail_k + wave * math.sin(2 * phi - lag * 3.0 * v)),
+                    bob_ * v * math.sin(2 * phi - lag * 3.0 * v - lag * 1.2))
 
         scx, scy = c['scarf_anchor']
 
         def scarf_disp(px_, py_):
             v = max(0.0, min(1.0, (py_ - scy) / c['scarf_len']))
-            return -f * v * (SCARF_WAVE[0] + SCARF_WAVE[1] * math.sin(2 * phi - 2.0 * v)), 0
+            return -f * v * (SCARF_WAVE[0] * trail_k + SCARF_WAVE[1] * math.sin(2 * phi - lag * 2.0 * v)), 0
 
         out = A.Frame()
         px = out.px
         # exposed for checks.py: where the head is this frame
-        self.debug = {'head_y': apply(head, *c['knob'])[1]}
+        self.debug = {'head_y': apply(head, *c['knob'])[1], 'hip_y': apply(root, hx, hy)[1]}
         self.L['backing'].render(root, out=px)
         self.L['helmet'].render(mat_mul(head, T(0, 1)), out=px)
         self.L['cape'].render(root, cape_disp, out=px)

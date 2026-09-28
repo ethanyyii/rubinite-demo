@@ -1,7 +1,14 @@
 """Batch 1 of the player's actions (docs/art-progress.md): idle; guard hold, plain block hit,
-perfect deflect and its return; heal; and one set of slow legs (forward, backward = forward
-played in reverse, sidestep) shared by guard-walk and heal-walk (and by charge-walk in
-batch 3). All on the 56 x 56 canvas, foot anchor (28, 53).
+perfect deflect and its return; heal; and one set of slow legs (forward, backward, sidestep to
+either side) shared by guard-walk and heal-walk (and by charge-walk in batch 3). All on the
+56 x 56 canvas, foot anchor (28, 53).
+
+Batch 3 (decision 8, 2026-09-28): backward and the sidestep to the character's right are no
+longer the forward / left cycles played in reverse. Played in reverse, the head and the cloth
+ends (computed to lag the frame before) would lead by a frame; they are made on their own with
+the legs' phase running the other way and the lags recomputed (walk_pose rev=True). The forward
+and left frames are unchanged. Decision 1: each frame is held 2 sim frames walking with the guard
+(50 px/s), 3 with the heal (30 px/s), so the planted foot does not slide.
 
 Timing is in simulation frames (60 Hz), from scripts/combat/player_data.gd and
 scripts/state_machines/player_sim.gd (docs/art-progress.md appendix A); the frame tables
@@ -412,8 +419,10 @@ def _fb_foot(view, s_, lateral, lift_px):
     return (f_, lateral / PR.FEET_W[view], lift, 'flat')
 
 
-def slow_feet(view, kind, i, stance):
-    """Feet, pelvis bob and the bob one frame earlier for frame i of the slow legs. The cycle
+def slow_feet(view, kind, i, stance, lag=1, tables=None):
+    """Feet, pelvis bob and the bob of the frame shown before (lag = 1: frame i - 1; -1, the
+    cycle run backward: frame i + 1) for frame i of the slow legs. tables: the sidestep's own
+    (side_fb, side_side) in place of SIDE_FB / SIDE_SIDE (batch 3: the locked walk steps wider). The cycle
     (phase, half stride, lifts) is the same for every action; it swings about the action's own
     stance (`stance` = its pose's feet): the guard keeps its braced, wide feet while it walks,
     the heal its feet under the hips, so starting and stopping never jump the feet."""
@@ -423,7 +432,7 @@ def slow_feet(view, kind, i, stance):
     near = v.get('near')
     far = ('L' if near == 'R' else 'R') if near else None
     if kind == 'fwd':
-        bob, prev = WALK_BOB[i], WALK_BOB[(i - 1) % N_FWD]
+        bob, prev = WALK_BOB[i], WALK_BOB[(i - lag) % N_FWD]
         feet = {}
         if side:
             for s_, k in ((near, i), (far, (i + 4) % N_FWD)):
@@ -437,13 +446,14 @@ def slow_feet(view, kind, i, stance):
             f_, l_, lift, _ = _fb_foot(view, s_, inward, SLOW_LIFT[ph])
             feet[s_] = (st[s_][0] + f_, st[s_][1] + l_, lift, 'flat')
         return feet, bob, prev
-    bob, prev = (SIDE_SIDE_BOB if side else SIDE_BOB)[i], (SIDE_SIDE_BOB if side else SIDE_BOB)[(i - 1) % N_SIDE]
+    bob, prev = (SIDE_SIDE_BOB if side else SIDE_BOB)[i], (SIDE_SIDE_BOB if side else SIDE_BOB)[(i - lag) % N_SIDE]
+    side_fb, side_side = tables or (SIDE_FB, SIDE_SIDE)
     if side:
-        nl, fl = SIDE_SIDE[i]
+        nl, fl = side_side[i]
         feet = {near: (st[near][0], st[near][1], nl, 'swing' if nl else 'flat'),
                 far: (st[far][0], st[far][1], fl, 'swing' if fl else 'flat')}
         return feet, bob, prev
-    ll, lu, rl, ru = SIDE_FB[i]
+    ll, lu, rl, ru = side_fb[i]
     feet = {}
     for s_, lat, up_ in (('L', ll, lu), ('R', rl, ru)):
         f_, l_, lift, _ = _fb_foot(view, s_, lat, -up_)
@@ -451,28 +461,48 @@ def slow_feet(view, kind, i, stance):
     return feet, bob, prev
 
 
-def walk_pose(upper, view, kind, i, planted=False):
+def walk_pose(upper, view, kind, i, planted=False, rev=False, sway=0.8, tables=None):
     """The action's upper body (a resolved pose) on the slow legs: the upper body rides the
     pelvis rigidly (decision: 1 px bob only), the head a frame late, the cloth ends in a small
-    wave behind the step."""
-    feet, bob, prev = slow_feet(view, kind, i, upper.get('feet', {}))
+    wave behind the step. rev: frame i of the cycle run the other way (backward, or the
+    sidestep to the character's right): the legs at phase -i, the lags recomputed so the head
+    and the cloth still follow in the order the frames are shown (batch 3 decision 8)."""
     n = N_FWD if kind == 'fwd' else N_SIDE
+    lag = -1 if rev else 1
+    i = (-i) % n if rev else i
+    feet, bob, prev = slow_feet(view, kind, i, upper.get('feet', {}), lag, tables)
     phi = 2 * math.pi * i / n
     p = dict(upper)
     p['feet'] = feet
     p['root'] = _add(p.get('root', (0, 0, 0)), (0, 0, -bob))
     p['head'] = _add(p.get('head', (0, 0, 0)), (0, 0, bob - prev))
     if view in ('east', 'west'):
-        p['cape'] = _add(p.get('cape', (0, 0, 0)), (-0.8 * math.sin(2 * phi - 1.2), 0, 0))
-        p['plume'] = _add(p.get('plume', (0, 0, 0)), (0, 0, 0.8 * math.sin(2 * phi - 2.0)))
+        p['cape'] = _add(p.get('cape', (0, 0, 0)), (-sway * math.sin(2 * phi - lag * 1.2), 0, 0))
+        p['plume'] = _add(p.get('plume', (0, 0, 0)), (0, 0, sway * math.sin(2 * phi - lag * 2.0)))
     else:
-        p['cape'] = _add(p.get('cape', (0, 0, 0)), (0, 0.8 * math.sin(phi - 1.0), 0))
+        p['cape'] = _add(p.get('cape', (0, 0, 0)), (0, sway * math.sin(phi - lag * 1.0), 0))
         p['cape_lowered_add'] = p.get('cape_lowered_add', 0.0) + (prev - bob)
-        p['plume'] = _add(p.get('plume', (0, 0, 0)), (0, 0.8 * math.sin(phi - 1.6), 0))
+        p['plume'] = _add(p.get('plume', (0, 0, 0)), (0, sway * math.sin(phi - lag * 1.6), 0))
     return plant(p, bob) if planted else p
 
 
 # ------------------------------------------------------------------ the actions
+def slow_walk(upper, hold, planted=False, sway=0.8):
+    """The slow legs' columns under an action's upper body: forward 1-8, sidestep to the
+    character's left 1-4, backward 1-8, sidestep to the right 1-4 (batch 3 decision 8: the
+    last two are made on their own, not played in reverse). hold = sim frames a frame shows
+    (batch 3 decision 1: the planted foot does not slide at the action's speed); a tuple is a
+    pattern the frames take in turn (the charge's 2, 2, 2, 3 averages 2.25). sway = the cloth
+    ends' wave, px (the charge's low stance already flares the cape: batch 3 uses less)."""
+    holds = hold if isinstance(hold, tuple) else (hold,)
+    out = []
+    for kind, n, name, rev in (('fwd', N_FWD, 'fwd', False), ('side', N_SIDE, 'side', False),
+                               ('fwd', N_FWD, 'back', True), ('side', N_SIDE, 'rside', True)):
+        out += [(f'{name} {i + 1}', holds[i % len(holds)], (lambda v, i=i, kind=kind, rev=rev:
+                                                           walk_pose(upper(v), v, kind, i, planted, rev, sway))) for i in range(n)]
+    return out
+
+
 # (frame name, sim frames it shows, builder(view) -> resolved pose, or ('idle', phase))
 def _guard(view):
     return resolve(PS.GUARD, view)
@@ -534,13 +564,12 @@ ACTIONS = {
             [(f'hold {i + 1}', d, (lambda v, i=i: breathe(_heal(v), v, i, planted=True)))
              for i, d in enumerate((13, 14, 13, 14))] +
             [('out 1', 4, lambda v: heal_out(v, *OUT_T[0])), ('out 2', 4, lambda v: heal_out(v, *OUT_T[1]))],
-    'guard_walk': [(f'fwd {i + 1}', 6, (lambda v, i=i: walk_pose(_guard(v), v, 'fwd', i))) for i in range(N_FWD)] +
-                  [(f'side {i + 1}', 6, (lambda v, i=i: walk_pose(_guard(v), v, 'side', i))) for i in range(N_SIDE)],
-    'heal_walk': [(f'fwd {i + 1}', 10, (lambda v, i=i: walk_pose(_heal(v), v, 'fwd', i, True))) for i in range(N_FWD)] +
-                 [(f'side {i + 1}', 10, (lambda v, i=i: walk_pose(_heal(v), v, 'side', i, True))) for i in range(N_SIDE)],
+    'guard_walk': slow_walk(_guard, 2),
+    'heal_walk': slow_walk(_heal, 3, planted=True),
 }
 TITLES = {'idle': '待機', 'guard': '格擋（保持、受力、彈返、收回）', 'heal': '治療',
-          'guard_walk': '格擋移動（前進 1–8、側移 1–4）', 'heal_walk': '治療移動（前進 1–8、側移 1–4）'}
+          'guard_walk': '格擋移動（前進 1–8、往左側移 1–4、後退 1–8、往右側移 1–4）',
+          'heal_walk': '治療移動（前進 1–8、往左側移 1–4、後退 1–8、往右側移 1–4）'}
 
 
 class Frame:

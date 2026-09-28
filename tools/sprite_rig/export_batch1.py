@@ -100,9 +100,11 @@ def script(action):
         return (hold * 2 + [(idx['hit'], 6)] + hold + [(idx['deflect'], 11), (idx['back 1'], 2), (idx['back 2'], 2)] + hold)
     if action == 'heal':
         return [(i, fr[i].dur) for i in range(len(fr))]
-    fwd = [(i, fr[i].dur) for i in range(B.N_FWD)]
-    side = [(B.N_FWD + i, fr[B.N_FWD + i].dur) for i in range(B.N_SIDE)]
-    return fwd * 2 + fwd[::-1] * 2 + side * 3 + side[::-1] * 3
+    # batch 3 decision 8: backward and the sidestep to the right are their own frames (the
+    # forward / left frames played in reverse made the head and the cloth lead)
+    cyc = lambda k, n: [(idx[f'{k} {i}'], fr[idx[f'{k} {i}']].dur) for i in range(1, n + 1)]
+    return (cyc('fwd', B.N_FWD) * 2 + cyc('back', B.N_FWD) * 2 +
+            cyc('side', B.N_SIDE) * 3 + cyc('rside', B.N_SIDE) * 3)
 
 
 def idle_lead(n_sim):

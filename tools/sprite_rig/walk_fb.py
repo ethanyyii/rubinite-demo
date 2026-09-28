@@ -101,8 +101,12 @@ class FBRig:
             self.L[n + '_strip'] = Layer(n, {k: v for k, v in parts[n].items() if k[1] < bt}, size)
             self.L[n + '_boot'] = Layer(n, {k: v for k, v in parts[n].items() if k[1] >= bt}, size)
 
-    def frame(self, i):
+    def frame(self, i, rev=False):
+        """Frame i of the walk; rev = walking backward (see walk_side.SideRig.frame): the leg
+        phase runs -i, the head and the cloth waves still lag in the order shown."""
         c = self.cfg
+        lag = -1 if rev else 1
+        i = (-i) % N if rev else i
         phi = 2 * math.pi * i / N
         meta = A.META[c['sprite']]
         ox, oy = A.CX - meta['cx'], A.GROUND - meta['feet']
@@ -113,7 +117,7 @@ class FBRig:
         roll = -ROLL * math.sin(phi + 0.6)
         base = T(ox + sway, oy)
         root = mat_mul(base, mat_mul(T(0, bob), R(roll, px_, py_)))
-        head_lag = BOB[(i - 1) % N] - bob
+        head_lag = BOB[(i - lag) % N] - bob
         head = mat_mul(root, mat_mul(T(0, 0.6 * head_lag), R(-0.6 * roll + 1.2 * math.sin(2 * phi), *c['neck'])))
         # arm swing: 'fwd' > 0 = hand toward the camera (drops a pixel, tucks in)
         fwd_l = -math.cos(phi)
@@ -130,21 +134,21 @@ class FBRig:
             # hangs from the shoulder line: the top edge stays put, the hem moves most
             v = max(0.0, min(1.0, (y - ay0) / c['cape_len']))
             swing_, flutter, lift = CAPE_WAVE
-            return (v ** 1.2 * (swing_ * math.sin(phi - 2.4 * v) + flutter * math.sin(2 * phi - 3 * v)),
-                    -lift * v ** 1.5 * (1 + math.sin(2 * phi - 3 * v)))
+            return (v ** 1.2 * (swing_ * math.sin(phi - lag * 2.4 * v) + flutter * math.sin(2 * phi - lag * 3 * v)),
+                    -lift * v ** 1.5 * (1 + math.sin(2 * phi - lag * 3 * v)))
 
         kx, ky = c['knob']
 
         def plume_disp(x, y):
             v = max(0.0, min(1.0, math.hypot(x - kx, y - ky) / c['plume_len']))
             swing_, lean, bob_ = PLUME_WAVE
-            return (v * (swing_ * math.sin(phi - 2.6 * v) + lean * c['plume_side']),
-                    bob_ * v * math.sin(2 * phi - 2.6 * v - 1.0))
+            return (v * (swing_ * math.sin(phi - lag * 2.6 * v) + lean * c['plume_side']),
+                    bob_ * v * math.sin(2 * phi - lag * 2.6 * v - lag * 1.0))
 
         out = A.Frame()
         px = out.px
         # exposed for checks.py: head height and where each boot landed this frame
-        self.debug = {'head_y': apply(head, *c['knob'])[1], 'boots': {}, 'lift': {}}
+        self.debug = {'head_y': apply(head, *c['knob'])[1], 'hip_y': apply(root, px_, py_)[1], 'boots': {}, 'lift': {}}
         # filled body underneath everything (only visible where a moving part uncovers it)
         self.L['backing'].render(root, out=px)
         # legs: straight down from the hips; the swinging leg lifts its knee toward the camera

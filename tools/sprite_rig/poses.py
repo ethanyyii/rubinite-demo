@@ -116,16 +116,31 @@ L4_END = dict(root=(4, 3, -4), lean=20, roll=10,
               cape=(-5, 0, 4), plume=(-4, 0, 1))
 
 # ------------------------------------------------------------------ charge, thrust (batch 3)
-CHARGE = dict(root=(-3, -1, -3), lean=6, roll=-5,
-              feet={'R': (-6, -5, 0, 'flat'), 'L': (5, 5, 0, 'flat')},
-              arms={'R': hand('R', -3, -7, -6, elbow=(-1, -1, 0)), 'L': hand('L', 9, 3, -1, elbow=(0, 1, -1))},
-              sword=dict(hand='R', dir=(1.0, -0.35, 0.05), dir_view={'north': (0.6, -0.7, 0.05)}),
+# Batch 3 decision 2 (user, 2026-09-28) replaces batch 0's charge: from the front and the back
+# its blade pointed at the camera and it read as "crouched, hand at the hip" like the heal
+# (outline difference 8-10 %). Now: the sword hand drawn back to the hip, the blade level with
+# its point forward; the off hand reaching forward and out to aim; the pelvis 4 px down (as the
+# thrust) and at least 2 px behind the feet's midpoint in both side views (the library's east and
+# west stances differ: the front foot +7, the back foot -5 put it 2.3 / 4.7 px back; weight on the
+# back foot; a pelvis 1 px further back instead brought the front view's guard outline down to 12 %); front / back, the upper body
+# tilts 8 deg toward the off hand (the heal leans 10 deg toward the sword: the other way) and the
+# blade reaches out level on the sword side. Each view's blade angle keeps it level on screen
+# (appendix C: +-1 px): the side views level in 3D; the front view rises a little and the back
+# view dips a little to cancel the depth's slant on screen.
+# Guard vs charge and charge vs heal are hard checks now (>= 12 %, checks.py --batch3).
+CHARGE = dict(root=(-3, -1, -4), lean=6, roll=8,
+              feet={'R': (-5, -5, 0, 'flat'), 'L': (7, 5, 0, 'flat')},
+              arms={'R': hand('R', 0, -9, -6, elbow=(-1, -1, 0)), 'L': hand('L', 11, 9, 1, elbow=(0, 1, -1))},
+              sword=dict(hand='R', dir=(1.0, -0.35, 0.0),
+                         dir_view={'south': (0.35, -0.9, 0.15), 'north': (0.45, -0.85, -0.16)}),
               cape=(-1, 0, 0), plume=(-1, 0, 0))
 THRUST = dict(root=(4, -1, -4), lean=24, roll=-4,
               feet={'R': (-9, -5, 0, 'toe'), 'L': (9, 5, 0, 'flat')},
               arms={'R': hand('R', 13, -3, -1, elbow=(0, -1, 0)), 'L': hand('L', -6, 8, -3, elbow=(-1, 1, 0))},
-              sword=dict(hand='R', dir=(1.0, -0.25, 0.05),
-                         dir_view={'south': (0.6, -0.7, 0.1), 'north': (0.6, -0.7, 0.1)}),
+              # batch 3 decision 9: only the blade's angle turned so it is level on screen (+-1 px;
+              # batch 0 had its ends 1.5-4.5 px apart); the body is the approved D1 pose
+              sword=dict(hand='R', dir=(1.0, -0.25, 0.0),
+                         dir_view={'south': (0.6, -0.7, 0.2), 'north': (0.6, -0.7, -0.2)}),
               cape=(-6, 0, 5), plume=(-2, 0, 1))
 
 # ------------------------------------------------------------------ locomotion (batch 3)

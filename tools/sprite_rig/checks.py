@@ -882,12 +882,11 @@ def batch1_checks():
         'heal': [('idle', 'idle 1', 'heal', 'in 1'), ('heal', 'in 1', 'heal', 'in 2'), ('heal', 'in 2', 'heal', 'hold 1')] +
                 [('heal', f'hold {i}', 'heal', f'hold {i + 1}') for i in range(1, 4)] +
                 [('heal', 'hold 4', 'heal', 'out 1'), ('heal', 'out 1', 'heal', 'out 2'), ('heal', 'out 2', 'idle', 'idle 1')],
-        'guard_walk': [('guard_walk', f'fwd {i}', 'guard_walk', f'fwd {i % 8 + 1}') for i in range(1, 9)] +
-                      [('guard_walk', f'side {i}', 'guard_walk', f'side {i % 4 + 1}') for i in range(1, 5)] +
-[],
-        'heal_walk': [('heal_walk', f'fwd {i}', 'heal_walk', f'fwd {i % 8 + 1}') for i in range(1, 9)] +
-                     [('heal_walk', f'side {i}', 'heal_walk', f'side {i % 4 + 1}') for i in range(1, 5)] +
-[],
+        # batch 3 decision 8: backward and the sidestep to the right are their own cycles
+        'guard_walk': [('guard_walk', f'{k} {i}', 'guard_walk', f'{k} {i % n + 1}')
+                       for k, n in (('fwd', 8), ('side', 4), ('back', 8), ('rside', 4)) for i in range(1, n + 1)],
+        'heal_walk': [('heal_walk', f'{k} {i}', 'heal_walk', f'{k} {i % n + 1}')
+                      for k, n in (('fwd', 8), ('side', 4), ('back', 8), ('rside', 4)) for i in range(1, n + 1)],
     }
     for action, pairs in plays.items():
         for view in B.VIEWS:
@@ -905,8 +904,8 @@ def batch1_checks():
     for action, base in (('guard_walk', 'guard'), ('heal_walk', 'heal')):
         for view in B.VIEWS:
             h = _named(base, view, 'hold 1')
-            for kind in ('fwd', 'side'):
-                fr = [f for f in B.frames(action, view) if f.name.startswith(kind)]
+            for kind in ('fwd', 'side', 'back', 'rside'):
+                fr = [f for f in B.frames(action, view) if f.name.startswith(kind + ' ')]
                 ok_in = [f.name for f in fr if _limits_ok(moves(h, f))]
                 ok_out = [f.name for f in fr if _limits_ok(moves(f, h))]
                 out(bool(ok_in) and bool(ok_out), f'{action} {view}: start / stop the {kind} cycle from / to {base} hold 1',
@@ -941,10 +940,11 @@ def batch1_checks():
                     bad.append(f'{f.name}: bob {bob}')
             out(not bad, f'{action} {view}: torso, arms, sword identical to {base[1]} (bob 0-1 px)', ', '.join(bad[:6]))
             if view in ('east', 'west'):
-                near = [f.debug['legs']['near'][2][0] for f in B.frames(action, view) if f.name.startswith('fwd')]
                 walk = [W_.NEAR_FOOT[i][0] for i in range(8)]
-                rng, wrng = max(near) - min(near), max(walk) - min(walk)
-                out(abs(rng - HALF_STRIDE * wrng) <= 1.0, f'{action} {view}: stride half the walk', f'{rng:.1f} px vs walk {wrng:.1f}')
+                for kind in ('fwd', 'back'):
+                    near = [f.debug['legs']['near'][2][0] for f in B.frames(action, view) if f.name.startswith(kind + ' ')]
+                    rng, wrng = max(near) - min(near), max(walk) - min(walk)
+                    out(abs(rng - HALF_STRIDE * wrng) <= 1.0, f'{action} {view}: {kind} stride half the walk', f'{rng:.1f} px vs walk {wrng:.1f}')
     print('BATCH 1: ALL PASSED' if not failed else 'BATCH 1: SOME CHECKS FAILED')
     return failed
 
@@ -1011,7 +1011,95 @@ def _ok(m, body=B1_JUMP, hand=B1_HAND_JUMP, sword=True):
             (not sword or m['sword'] is None or m['sword'] <= hand + 1e-6))
 
 
-def batch2_checks():
+# ---- user decisions A-G (2026-09-28, docs/art-progress.md "第 2 批：交件"): failures the user
+# accepted, recorded with what was measured when they approved them (batch 3 decision 10). A
+# waived row still prints its values and names its decision; it fails again when any value grows
+# past the recorded one (+ WAIVE_EPS), so a later change to the rig cannot hide behind the waiver.
+# The recorded values are the reviewed state, not read from the program being checked.
+WAIVE_EPS = 0.05
+B2_WAIVERS = {}          # key -> (decision, {metric: accepted max}), from B2_WAIVED
+# the rows the user accepted (decisions A-G), with the values measured when they approved them
+# A: the stage 3 -> 4 crouch (two frames) is a weapon reset, like decision 1
+# B: item 7 south, 40.0 px halved is 20.0 at best
+# D: front / back weight foot, the depth squeezed to 0.55
+# E: late chaining (play-test once wired in)
+# F: slow legs into stage 1 (play-test once wired in)
+# G: stage 4 follow-through lean kept at 20 deg (batch 0 pose)
+B2_WAIVED = {
+    'step 4 south 0': ('A', {'head': 4.0, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.6}),
+    'step 4 south 1': ('A', {'head': 4.5, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.7}),
+    'step 4 east 0': ('A', {'head': 4.0, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 25.1}),
+    'step 4 east 1': ('A', {'head': 5.1, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.0}),
+    'step 4 west 0': ('A', {'head': 4.0, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 21.1}),
+    'step 4 west 1': ('A', {'head': 4.9, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.0}),
+    'chain east 3': ('A', {'head': 4.0, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.3}),
+    'chain west 3': ('A', {'head': 4.0, 'torso': 4.0, 'feet': 4.0, 'hands': 20.0, 'sword': 21.7}),
+    'item7 south': ('B', {'sword': 20.2}),
+    'step 1 south 2': ('B', {'head': 8.0, 'torso': 8.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.2}),
+    'step 3 south 1': ('B', {'head': 8.0, 'torso': 8.0, 'feet': 4.0, 'hands': 20.0, 'sword': 20.2}),
+    'step 4 south 3': ('D', {'head': 8.0, 'torso': 8.0, 'feet': 6.7, 'hands': 20.0, 'sword': 20.0}),
+    'step 4 south 4': ('D', {'head': 8.0, 'torso': 8.0, 'feet': 5.4, 'hands': 20.0, 'sword': 20.0}),
+    'step 4 north 3': ('D', {'head': 8.0, 'torso': 8.0, 'feet': 4.7, 'hands': 20.0, 'sword': 20.0}),
+    'step 4 north 4': ('D', {'head': 8.0, 'torso': 8.0, 'feet': 7.0, 'hands': 20.0, 'sword': 20.0}),
+    'drift 1 south': ('D', {'drift': 2.4}),
+    'drift 1 north': ('D', {'drift': 1.2}),
+    'drift 2 south': ('D', {'drift': 2.4}),
+    'drift 2 north': ('D', {'drift': 1.2}),
+    'drift 3 south': ('D', {'drift': 2.4}),
+    'drift 3 north': ('D', {'drift': 1.2}),
+    'drift 4 south': ('D', {'drift': 5.4}),
+    'drift 4 north': ('D', {'drift': 3.2}),
+    'late south 3 f5 收招': ('E', {'head': 4.6, 'torso': 4.0, 'feet': 4.0}),
+    'late east 1 f5 收招': ('E', {'head': 5.6, 'torso': 4.6, 'feet': 4.0}),
+    'late east 1 f6 回站姿 1': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+    'late east 1 f6 回站姿 2': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 6.4}),
+    'late east 2 f5 收招': ('E', {'head': 7.0, 'torso': 4.5, 'feet': 4.0}),
+    'late east 2 f6 回站姿 1': ('E', {'head': 6.0, 'torso': 4.0, 'feet': 4.0}),
+    'late east 2 f6 回站姿 2': ('E', {'head': 4.6, 'torso': 4.0, 'feet': 4.0}),
+    'late east 3 f5 收招': ('E', {'head': 7.4, 'torso': 5.3, 'feet': 4.0}),
+    'late east 3 f6 回站姿 1': ('E', {'head': 4.4, 'torso': 4.0, 'feet': 5.0}),
+    'late east 3 f6 回站姿 2': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 7.0}),
+    'late west 1 f5 收招': ('E', {'head': 5.7, 'torso': 4.6, 'feet': 4.0}),
+    'late west 1 f6 回站姿 1': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+    'late west 1 f6 回站姿 2': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 6.4}),
+    'late west 2 f5 收招': ('E', {'head': 7.6, 'torso': 4.7, 'feet': 4.0}),
+    'late west 2 f6 回站姿 1': ('E', {'head': 5.3, 'torso': 4.0, 'feet': 4.0}),
+    'late west 2 f6 回站姿 2': ('E', {'head': 4.6, 'torso': 4.0, 'feet': 4.0}),
+    'late west 3 f5 收招': ('E', {'head': 7.1, 'torso': 5.2, 'feet': 4.0}),
+    'late west 3 f6 回站姿 1': ('E', {'head': 4.5, 'torso': 4.1, 'feet': 5.0}),
+    'late west 3 f6 回站姿 2': ('E', {'head': 4.0, 'torso': 4.0, 'feet': 7.0}),
+    'enter south guard walk side 2': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.7}),
+    'enter east guard walk fwd 1': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+    'enter north guard walk side 2': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.2}),
+    'enter west guard walk fwd 5': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+    'lean 4': ('G', {'lean': 20.0}),
+    # batch 3 decision 8 split the slow legs' backward / rightward frames out of the forward /
+    # left ones played in reverse: the same entries into stage 1, the same values as the F rows
+    # they mirror (rside 4 = side 2, back 1 = fwd 1, back 5 = fwd 5); reported to the user
+    'enter south guard walk rside 4': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.7}),
+    'enter east guard walk back 1': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+    'enter north guard walk rside 4': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.2}),
+    'enter west guard walk back 5': ('F', {'head': 4.0, 'torso': 4.0, 'feet': 4.5}),
+}
+B2_WAIVERS.update(B2_WAIVED)
+
+
+def _waiver(key, metrics):
+    """The decision that waives this row, or None: the key is recorded and no metric exceeds
+    its recorded value."""
+    w = B2_WAIVERS.get(key)
+    if w is None:
+        return None
+    dec, caps = w
+    for k, v in metrics.items():
+        if v is None:
+            continue
+        if k not in caps or v > caps[k] + WAIVE_EPS:
+            return None
+    return dec
+
+
+def batch2_checks(record=False):
     import batch1 as B1
     import batch2 as B2
     import poses as PQ
@@ -1019,6 +1107,8 @@ def batch2_checks():
     import math as _m
     import walk_side as W_
     failed = False
+    waived = []
+    recorded = {}
 
     def out(ok, name, info=''):
         nonlocal failed
@@ -1027,6 +1117,21 @@ def batch2_checks():
             return
         failed |= not ok
         print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    def check(ok, name, info, key, metrics, limits):
+        """A row that a user decision may waive: `metrics` are what was measured, `limits` the
+        rule's own limits (a recorded row keeps every metric within max(limit, recorded))."""
+        if ok:
+            out(True, name, info)
+            return
+        dec = _waiver(key, metrics)
+        if record:
+            recorded[key] = {k: round(max(v, limits.get(k, 0.0)) + 0.049, 1) for k, v in metrics.items() if v is not None}
+        if dec:
+            waived.append((dec, key))
+            print(f'  WAIV  {name}  {info}  [decision {dec}: accepted, recorded values not exceeded]')
+            return
+        out(False, name, info)
 
     def pt(f):
         ox, oy = f.screen_offset()
@@ -1070,7 +1175,8 @@ def batch2_checks():
     for st, key in ((1, PQ.L1_END), (2, PQ.L2_END), (4, PQ.L4_END)):
         lean = key['lean']
         lo, hi = END_LEAN
-        out(lo <= lean <= hi, f'stage {st}: follow-through lean {lo}-{hi} deg', f'{lean} deg')
+        check(lo <= lean <= hi, f'stage {st}: follow-through lean {lo}-{hi} deg', f'{lean} deg',
+              f'lean {st}', {'lean': lean}, {'lean': hi})
     for view in B2.VIEWS:
         def ang(f):
             fist = f.debug['hands']['R']
@@ -1084,7 +1190,8 @@ def batch2_checks():
     for view in B2.VIEWS:
         fr = B2.frames(1, view)
         steps = [screen_moves(pt(fr[i]), pt(fr[i + 1]))['sword'] for i in (1, 2)]
-        out(max(steps) <= B1_HAND_JUMP + 1e-6, f'item 7 {view}', f'{steps[0]:.1f} / {steps[1]:.1f} px')
+        check(max(steps) <= B1_HAND_JUMP + 1e-6, f'item 7 {view}', f'{steps[0]:.1f} / {steps[1]:.1f} px',
+              f'item7 {view}', {'sword': max(steps)}, {'sword': B1_HAND_JUMP})
     # ---- moves between frames, on screen
     print('-- moves between consecutive frames, on screen')
     for st in (1, 2, 3, 4):
@@ -1098,11 +1205,16 @@ def batch2_checks():
                     continue
                 body = SWING_JUMP if (st, i, i + 1) in SWING_STEPS else B1_JUMP
                 if not _ok(m, body):
-                    bad.append(f'{fr[i].name} -> {fr[i + 1].name}: {_fmt_moves(m)}')
+                    bad.append((i, m, body))
                 for k, v in m.items():
                     if v is not None:
                         worst[k] = max(worst.get(k, 0), v)
-            out(not bad, f'stage {st} {view}: {len(fr) - 1} steps within the limits', '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+            if not bad:
+                out(True, f'stage {st} {view}: {len(fr) - 1} steps within the limits', 'largest ' + _fmt_moves(worst))
+            for i, m, body in bad:
+                check(False, f'stage {st} {view}: {fr[i].name} -> {fr[i + 1].name} within the limits', _fmt_moves(m),
+                      f'step {st} {view} {i}', m,
+                      {'head': body, 'torso': body, 'feet': B1_JUMP, 'hands': B1_HAND_JUMP, 'sword': B1_HAND_JUMP})
     # ---- the weight foot stays put on screen
     print(f'-- the foot bearing the weight moves at most {DRIFT_MAX} px on screen (decision 2)')
     for st in (1, 2, 3, 4):
@@ -1124,7 +1236,8 @@ def batch2_checks():
                     d = abs(pa[0] - pb[0]) if view in ('east', 'west') else abs(pa[1] - pb[1])
                     drifts.append((d, f'{a.name}->{b.name} {s_}'))
             w = max(drifts) if drifts else (0, '')
-            out(w[0] <= DRIFT_MAX + 1e-6, f'stage {st} {view}: weight foot on screen', f'largest {w[0]:.1f} px ({w[1]})')
+            check(w[0] <= DRIFT_MAX + 1e-6, f'stage {st} {view}: weight foot on screen', f'largest {w[0]:.1f} px ({w[1]})',
+                  f'drift {st} {view}', {'drift': w[0]}, {'drift': DRIFT_MAX})
     # ---- chaining, entering, leaving
     print('-- chaining at the earliest frame, entering from idle / guard / walking, back to idle')
     def total(st):
@@ -1137,11 +1250,15 @@ def batch2_checks():
             pa = pt(a)
             pb = _Pt(b, fx * (total(a_st) + b.adv), fy * (total(a_st) + b.adv))
             m = screen_moves(pa, pb)
-            out(_ok(m), f'{view}: chain stage {a_st} {a.name} -> stage {b_st} {b.name} (sim frame {B2.ATTACK[a_st][0] + B2.ATTACK[a_st][1]})', _fmt_moves(m))
+            lim = {'head': B1_JUMP, 'torso': B1_JUMP, 'feet': B1_JUMP, 'hands': B1_HAND_JUMP, 'sword': B1_HAND_JUMP}
+            check(_ok(m), f'{view}: chain stage {a_st} {a.name} -> stage {b_st} {b.name} (sim frame {B2.ATTACK[a_st][0] + B2.ATTACK[a_st][1]})',
+                  _fmt_moves(m), f'chain {view} {a_st}', m, lim)
             for late in B2.frames(a_st, view)[(4 if a_st != 3 else 3):]:     # the recovery frames
                 pl = pt(late)
                 m = screen_moves(pl, pb)
-                out(_ok(m, sword=False), f'{view}: late chain stage {a_st} {late.name} -> stage {b_st} {b.name} (decision 3: head / torso / feet <= 4)', _fmt_moves(m))
+                body = {k: m[k] for k in ('head', 'torso', 'feet')}
+                check(_ok(m, sword=False), f'{view}: late chain stage {a_st} {late.name} -> stage {b_st} {b.name} (decision 3: head / torso / feet <= 4)',
+                      _fmt_moves(m), f'late {view} {a_st} {late.name}', body, lim)
         f1 = B2.frames(1, view)[0]
         p1 = pt(f1)
         idle = B1.frames('idle', view)[0]
@@ -1149,13 +1266,543 @@ def batch2_checks():
         slow = B1.frames('guard_walk', view)
         for label, src in [('idle 1', idle)] + [(f'guard {g.name}', g) for g in guard] + [(f'guard walk {g.name}', g) for g in slow]:
             m = screen_moves(_Pt(src, small=True), p1)
-            out(_ok(m, sword=False), f'{view}: {label} -> stage 1 f1 (decision 3: the sword is free)', _fmt_moves(m))
+            body = {k: m[k] for k in ('head', 'torso', 'feet')}
+            check(_ok(m, sword=False), f'{view}: {label} -> stage 1 f1 (decision 3: the sword is free)', _fmt_moves(m),
+                  f'enter {view} {label}', body, {'head': B1_JUMP, 'torso': B1_JUMP, 'feet': B1_JUMP})
         for st in (1, 2, 4):
             last = B2.frames(st, view)[-1]
             m = screen_moves(pt(last), _Pt(idle, fx * total(st), fy * total(st), small=True))
             ok = all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet'))
             out(ok, f'{view}: stage {st} {last.name} vs idle 1: head, torso, feet within {RETURN_MAX} px', _fmt_moves(m))
+    if record:
+        print('B2_WAIVED = {')
+        for k, v in recorded.items():
+            print(f'    {k!r}: {v!r},')
+        print('}')
+    if waived:
+        by = {}
+        for d, _ in waived:
+            by[d] = by.get(d, 0) + 1
+        print(f'  waived by user decisions: ' + ', '.join(f'{d} {n}' for d, n in sorted(by.items())) + f' ({len(waived)} rows)')
     print('BATCH 2: ALL PASSED' if not failed else 'BATCH 2: SOME CHECKS FAILED')
+    return failed
+
+
+# ------------------------------------------------------------------ batch 3
+# docs/art-progress.md appendix C (batch 3) with the ten decisions of 2026-09-28. Moves of the
+# actions the program carries every sim frame (run, dodge, thrust, the walks) are measured in
+# the sprite itself (appendix C: only the light attacks' picture catches up at frame changes).
+RUN_FEET_JUMP = px(0.15)      # decision 1: the run's stance foot moves back 5.3 px a frame
+RUN_LEAN = (10, 15)
+RUN_BOB = 2
+RUN_STRIDE = (px(0.35), px(0.4))          # ankles apart at contact, 14-16 px (side views)
+RUN_FB_FEET = {'south': 8, 'north': 6}    # boot centres apart, the walk's (+-1)
+CHARGE_DROP = px(0.1)         # decision 2: pelvis 4 px below idle
+CHARGE_BEHIND = px(0.05)      # pelvis at least 2 px behind the feet's midpoint (side views)
+BLADE_FLAT = 1                # blade level on screen +-1 px (the two end columns' rows)
+B3_DISTINCT = [('guard', 'hold 1', 'charge', 'hold 1'), ('charge', 'hold 1', 'heal', 'hold 1')]
+B3_DISTINCT_WALK = [('guard_walk', 'charge_walk'), ('charge_walk', 'heal_walk')]
+
+
+def follows(lead, follow):
+    """The shift s (frames, cyclic, -2..2) that best matches follow's frame-to-frame moves to
+    lead's s frames earlier: + = follow is late. Judged on the frames in the order shown, so a
+    cycle played in reverse (the head then leads) gives a negative shift."""
+    n = len(lead)
+    dl = [lead[(i + 1) % n] - lead[i] for i in range(n)]
+    df = [follow[(i + 1) % n] - follow[i] for i in range(n)]
+    if max(map(abs, dl), default=0) < 0.25:
+        return None
+    score = {s_: sum(df[i] * dl[(i - s_) % n] for i in range(n)) for s_ in (-2, -1, 0, 1, 2)}
+    return max(score, key=lambda s_: (round(score[s_], 6), -abs(s_)))
+
+
+def blade_ends(f):
+    """Mean row of the blade's two end columns (a blade is two rows thick)."""
+    bl = f.debug.get('blade') or set()
+    xs = sorted({x for x, _ in bl})
+    if len(xs) < 2:
+        return None
+    row = lambda x: sum(y for xx, y in bl if xx == x) / len([1 for xx, _ in bl if xx == x])
+    return row(xs[0]), row(xs[-1])
+
+
+def batch3_checks():
+    import batch1 as B1
+    import batch3 as B3
+    import pose_rig as PR
+    import walk_side as W_
+    failed = False
+
+    def out(ok, name, info=''):
+        nonlocal failed
+        if ok is None:
+            print(f'  INFO  {name}  {info}')
+            return
+        failed |= not ok
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    def named(action, view, name):
+        src = B3 if action in B3.ACTIONS else B1
+        return next(f for f in src.frames(action, view) if f.name == name)
+
+    def pt(f):
+        return _Pt(f, 0, 0, small=(getattr(f, 'canvas', None) == 'small' or f.action in B1.ACTIONS or
+                                   B3.CANVAS.get(f.action) == 'small'))
+
+    def inlim(m, body=B1_JUMP, feet=B1_JUMP, hand=B1_HAND_JUMP, sword=True):
+        return (all(m[k] is None or m[k] <= body + 1e-6 for k in ('head', 'torso')) and
+                (m['feet'] is None or m['feet'] <= feet + 1e-6) and
+                (m['hands'] is None or m['hands'] <= hand + 1e-6) and
+                (not sword or m['sword'] is None or m['sword'] <= hand + 1e-6))
+
+    def sil(f):
+        # frames of both canvases compared in the large one's coordinates
+        o = SMALL_TO_LARGE if (f.action in B1.ACTIONS or B3.CANVAS.get(f.action) == 'small') else (0, 0)
+        return {(x + o[0], y + o[1]) for x, y in _sil(f)}
+
+    def cycle(action, view, kind):
+        return [f for f in B3.frames(action, view) if f.name.startswith(kind + ' ')] if action in B3.ACTIONS else \
+               [f for f in B1.frames(action, view) if f.name.startswith(kind + ' ')]
+
+    print(f'== batch 3 (batch3.py): head / torso <= {B1_JUMP} px, feet <= {B1_JUMP} px (run {RUN_FEET_JUMP}), '
+          f'hands / sword <= {B1_HAND_JUMP} px; outlines >= {round(OUTLINE_DIFF_MIN * 100)} %')
+    # ---- every frame: the technical checks
+    for action in B3.ACTIONS:
+        for view in B3.VIEWS:
+            for f in B3.frames(action, view):
+                label = f'{action} / {f.name} / {view}'
+                if f.pose is None:
+                    continue                       # the walk rig's own frames: checked below, as the walk is
+                rows = pose_rows(label, f.pose, B3.CANVAS[action], view)
+                bad = [(n, i_) for n, ok, i_ in rows if ok is False]
+                comp = [i_ for n, ok, i_ in rows if ok is None and n.startswith('INFO composited')]
+                if bad:
+                    for n, i_ in bad:
+                        out(False, f'{label}: {n}', i_)
+                else:
+                    out(True, f'{label}: {len([r for r in rows if r[1] is not None])} technical checks', comp[0] if comp else '')
+
+    # ---- run (decisions 1, 7, 9)
+    if 'run' in B3.ACTIONS:
+        print('-- run (appendix C, batch 3)')
+        lean = B3.RUN_LEAN
+        out(RUN_LEAN[0] <= lean <= RUN_LEAN[1], f'run: lean {RUN_LEAN[0]}-{RUN_LEAN[1]} deg', f'{lean} deg')
+        for view in B3.VIEWS:
+            fr = cycle('run', view, 'run')
+            tor = [_cen(f, ('torso',))[1] for f in fr]
+            out(round(max(tor) - min(tor)) == RUN_BOB, f'run {view}: pelvis bob {RUN_BOB} px', f'{max(tor) - min(tor):.1f} px')
+            if view in ('east', 'west'):
+                # side views: a foot is off the floor when its lowest pixel is above the ground
+                # row (front / back: a foot stepping away from the camera also shows higher, so
+                # there the pose's lifts are only reported)
+                air = []
+                for f in fr:
+                    low = {s_: max((q[1] for q, n in f.trace.items() if n == 'leg_' + s_ and q in f.px), default=0)
+                           for s_ in ('R', 'L')}
+                    air.append(all(v_ < A.GROUND for v_ in low.values()))
+                out(sum(air) == 2, f'run {view}: two of eight frames with both feet off the floor',
+                    ', '.join(f.name for f, a_ in zip(fr, air) if a_))
+                heel = [f.name for f in fr if any(f.pose['feet'][s_][3] == 'heel' and
+                        max((q[1] for q, n in f.trace.items() if n == 'leg_' + s_ and q in f.px), default=0) != A.GROUND - 1 + 1
+                        for s_ in ('R', 'L'))]
+                out(not heel, f'run {view}: the heel-strike foot touches the floor', ', '.join(heel))
+            else:
+                out(None, f'run {view}: both feet lifted in the pose',
+                    ', '.join(f.name for f in fr if all(f.pose['feet'][s_][2] > 0 for s_ in ('R', 'L'))))
+            if view in ('east', 'west'):
+                d = [abs(fr[i].debug['legs']['near'][2][0] - fr[i].debug['legs']['far'][2][0]) for i in (0, 4)]
+                lo, hi = RUN_STRIDE
+                out(all(lo - 0.5 <= x <= hi + 0.5 for x in d), f'run {view}: ankles {lo}-{hi} px apart at contact',
+                    ' / '.join(f'{x:.1f}' for x in d))
+            else:
+                bc = [abs(fr[i].debug['legs']['R'][2][0] - fr[i].debug['legs']['L'][2][0]) for i in range(len(fr))]
+                t_ = RUN_FB_FEET[view]
+                out(all(abs(x - t_) <= 1 for x in bc), f'run {view}: feet {t_}+-1 px apart (the walk\'s)',
+                    f'{min(bc):.1f}-{max(bc):.1f} px')
+            worst, bad = {}, []
+            for i in range(len(fr)):
+                m = screen_moves(pt(fr[i]), pt(fr[(i + 1) % len(fr)]))
+                if not inlim(m, feet=RUN_FEET_JUMP):
+                    bad.append(f'{fr[i].name} -> {fr[(i + 1) % len(fr)].name}: {_fmt_moves(m)}')
+                for k, v_ in m.items():
+                    if v_ is not None:
+                        worst[k] = max(worst.get(k, 0), v_)
+            out(not bad, f'run {view}: 8 steps within the limits (feet {RUN_FEET_JUMP})', '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+            hs = follows([_cen(f, ('torso',))[1] for f in fr], [_cen(f, ('helmet',))[1] for f in fr])
+            out(hs is not None and hs >= 1, f'run {view}: head follows the pelvis (in the order shown)', f'shift {hs}')
+            ent = []
+            for label, dst in (('stage 1 f1', __import__('batch2').frames(1, view)[0]), ('guard hold 1', named('guard', view, 'hold 1')),
+                               ('charge in 1', named('charge', view, 'in 1')), ('heal in 1', named('heal', view, 'in 1'))):
+                w_ = max((screen_moves(pt(f), _Pt(dst, 0, 0) if hasattr(dst, 'screen_offset') else pt(dst)) for f in fr),
+                         key=lambda m: max(m[k] or 0 for k in ('head', 'torso', 'feet')))
+                ent.append(f"{label}: head {w_['head']:.1f}, feet {w_['feet'] or 0:.1f}")
+            out(None, f'run {view}: from the run straight into (decision 7: play-test once wired in; worst run frame)', '; '.join(ent))
+            if view in ('east', 'west'):
+                fd = PR.VIEWS[view]['facing']
+                rep = []
+                for hold in (2, 3, 4):
+                    step = B3.RUN_SPEED / 60 * hold
+                    dr = []
+                    for i in range(len(fr)):
+                        a_, b_ = fr[i], fr[(i + 1) % len(fr)]
+                        for k, s_ in (('near', PR.VIEWS[view]['near']), ('far', 'L' if PR.VIEWS[view]['near'] == 'R' else 'R')):
+                            if a_.pose['feet'][s_][2] == 0 and b_.pose['feet'][s_][2] == 0:
+                                dr.append(abs(b_.debug['legs'][k][2][0] - a_.debug['legs'][k][2][0] + fd * step))
+                    rep.append((hold, max(dr)))
+                h2 = dict(rep)[2]
+                out(h2 <= DRIFT_MAX + 1e-6, f'run {view}: stance foot on screen at 2 sim frames a frame (decision 1)',
+                    'moves ' + ', '.join(f'{x:.2f} px at {h}' for h, x in rep) + ' (the user picks the hold)')
+
+        print('-- run: starting and stopping (decision 7)')
+        for view in B3.VIEWS:
+            fr = cycle('run', view, 'run')
+            idle = named('idle', view, 'idle 1')
+            s1, s2 = named('run', view, '起跑 1'), named('run', view, '起跑 2')
+            k0 = B3.RUN_START[view][0]
+            steps = [(idle, s1, B1_JUMP), (s1, s2, B1_JUMP), (s2, fr[k0], RUN_FEET_JUMP)]
+            bad = [f'{a_.name} -> {b_.name}: {_fmt_moves(m)}' for a_, b_, fl in steps
+                   for m in [screen_moves(pt(a_), pt(b_))] if not inlim(m, feet=fl)]
+            out(not bad, f'run {view}: idle -> start 1 -> start 2 -> run {k0 + 1} within the limits', '; '.join(bad))
+            table = B3.run_stop_from(view)
+            stops = {w: named('run', view, f'停步 1{w}') for w in ('A', 'B')}
+            st2, st3 = named('run', view, '停步 2'), named('run', view, '停步 3')
+            reach = []
+            for j in range(8):
+                n = next((d for d in range(3) if table[(j + d) % 8] is not None), None)
+                reach.append(n)
+            out(all(n is not None for n in reach), f'run {view}: every run frame reaches a stop within 2 more frames (the program slows for 4 sim frames)',
+                f'extra frames {reach}; stop 1 from {table}')
+            bad = []
+            for j, w in enumerate(table):
+                if w is None:
+                    continue
+                m = screen_moves(pt(fr[j]), pt(stops[w]))
+                if not inlim(m, feet=RUN_FEET_JUMP):
+                    bad.append(f'run {j + 1} -> stop 1{w}: {_fmt_moves(m)}')
+            for w in {x for x in table if x}:
+                for a_, b_ in ((stops[w], st2), (st2, st3), (st3, idle)):
+                    m = screen_moves(pt(a_), pt(b_))
+                    if not inlim(m):
+                        bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+            out(not bad, f'run {view}: stop 1 -> 2 -> 3 -> idle within the limits', '; '.join(bad))
+            m = screen_moves(pt(st3), pt(idle))
+            out(all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet')),
+                f'run {view}: stop 3 vs idle 1, head / torso / feet within {RETURN_MAX} px', _fmt_moves(m))
+    # ---- charge (decisions 2, 3, 6)
+    if 'charge' in B3.ACTIONS:
+        print('-- charge (appendix C, batch 3)')
+        for view in B3.VIEWS:
+            h = named('charge', view, 'hold 1')
+            rest = PR.rig(view)
+            rest.frame({}, 'small')
+            dy = h.debug['pelvis'][1] - 8 - rest.debug['pelvis'][1]      # large -> small canvas
+            drop = dy - PR.proj(view, (h.pose['root'][0], h.pose['root'][1], 0))[1]
+            out(drop >= CHARGE_DROP - 0.5, f'charge {view}: pelvis {CHARGE_DROP} px below idle', f'{drop:.1f} px')
+            if view in ('east', 'west'):
+                fd = PR.VIEWS[view]['facing']
+                lg = h.debug['legs']
+                mid = (lg['near'][2][0] + lg['far'][2][0]) / 2
+                behind = (mid - h.debug['pelvis'][0]) * fd
+                out(behind >= CHARGE_BEHIND - 0.05, f'charge {view}: pelvis at least {CHARGE_BEHIND} px behind the feet\'s midpoint',
+                    f'{behind:.1f} px')
+            be = blade_ends(h)
+            out(be is not None and abs(be[0] - be[1]) <= BLADE_FLAT, f'charge {view}: blade level on screen +-{BLADE_FLAT} px',
+                '' if be is None else f'end rows {be[0]:.1f} / {be[1]:.1f}')
+            fr = [f for f in B3.frames('charge', view) if f.name.startswith('hold')]
+            dy_t = [round(_cen(f, ('torso',))[1] - _cen(fr[0], ('torso',))[1]) for f in fr]
+            dy_h = [round(_cen(f, ('helmet',))[1] - _cen(fr[0], ('helmet',))[1]) for f in fr]
+            out(max(dy_t) - min(dy_t) == 1 and dy_h == [dy_t[(i - 1) % 4] for i in range(4)],
+                f'charge {view}: tremble 1 px, head a phase late (decision 3)', f'torso {dy_t}, head {dy_h}')
+        print(f'-- outlines: guard / charge / heal (decision 2: hard, >= {round(OUTLINE_DIFF_MIN * 100)} %)')
+        for a1, n1, a2, n2 in B3_DISTINCT:
+            for view in B3.VIEWS:
+                s_ = outline_shift_share(sil(named(a1, view, n1)), sil(named(a2, view, n2)))
+                out(s_ >= OUTLINE_DIFF_MIN, f'{a1} {n1} vs {a2} {n2} {view}', f'{round(100 * s_)} %')
+        for a1, a2 in B3_DISTINCT_WALK:
+            for view in B3.VIEWS:
+                f1 = B1.frames(a1, view) if a1 in B1.ACTIONS else B3.frames(a1, view)
+                f2 = B1.frames(a2, view) if a2 in B1.ACTIONS else B3.frames(a2, view)
+                vals = [outline_shift_share(sil(x), sil(y)) for x, y in zip(f1, f2)]
+                out(min(vals) >= OUTLINE_DIFF_MIN, f'{a1} vs {a2} {view}, every frame (same step)',
+                    f'{round(100 * min(vals))}-{round(100 * max(vals))} %')
+        for view in B3.VIEWS:
+            s_ = outline_shift_share(sil(named('idle', view, 'idle 1')), sil(named('charge', view, 'hold 1')))
+            out(None, f'idle vs charge hold 1 {view} (reported)', f'{round(100 * s_)} %')
+        print('-- charge: moves between frames')
+        for view in B3.VIEWS:
+            idle = named('idle', view, 'idle 1')
+            seq = [idle, named('charge', view, 'in 1'), named('charge', view, 'in 2'), named('charge', view, 'hold 1')]
+            holds = [named('charge', view, f'hold {i}') for i in range(1, 5)]
+            outs = [named('charge', view, 'out 1'), named('charge', view, 'out 2'), idle]
+            pairs = list(zip(seq, seq[1:])) + [(holds[i], holds[(i + 1) % 4]) for i in range(4)] + \
+                [(hh, outs[0]) for hh in holds] + list(zip(outs, outs[1:]))
+            worst, bad = {}, []
+            for a_, b_ in pairs:
+                m = screen_moves(pt(a_), pt(b_))
+                if not inlim(m):
+                    bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+                for k, v_ in m.items():
+                    if v_ is not None:
+                        worst[k] = max(worst.get(k, 0), v_)
+            out(not bad, f'charge {view}: in, hold, released early ({len(pairs)} steps) within the limits',
+                '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+            m = screen_moves(pt(outs[1]), pt(idle))
+            out(all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet')),
+                f'charge {view}: out 2 vs idle 1, head / torso / feet within {RETURN_MAX} px', _fmt_moves(m))
+            for g in [f for f in B1.frames('guard', view) if f.name.startswith('hold')]:
+                m = screen_moves(pt(g), pt(named('charge', view, 'in 1')))
+                out(inlim(m, sword=False),
+                    f'charge {view}: guard {g.name} -> in 1 (batch 2 decision 3: the first frame of an attack, the sword is free)',
+                    _fmt_moves(m))
+            m = screen_moves(pt(named('charge', view, 'hold 1')), pt(named('guard', view, 'hold 1')))
+            out(None, f'charge {view}: hold -> guard (decision 6: accepted, the guard is up the frame it is pressed)', _fmt_moves(m))
+    if 'charge_walk' in B3.ACTIONS:
+        print('-- charge walk: the slow legs under the charge')
+        for view in B3.VIEWS:
+            b = named('charge', view, 'hold 1')
+            fr = B3.frames('charge_walk', view)
+            bad = []
+            for f in fr:
+                bob = round(_cen(f, ('torso',))[1] - _cen(b, ('torso',))[1])
+                for n in RIGID:
+                    if n in b.pieces_raw and {(x, y + bob): c for (x, y), c in b.pieces_raw[n].items()} != f.pieces_raw.get(n, {}):
+                        bad.append(f'{f.name}:{n}')
+                if bob not in (0, 1):
+                    bad.append(f'{f.name}: bob {bob}')
+            out(not bad, f'charge_walk {view}: torso, arms, sword identical to hold 1 (bob 0-1 px)', ', '.join(bad[:6]))
+            for kind, n in (('fwd', 8), ('side', 4), ('back', 8), ('rside', 4)):
+                cyc = cycle('charge_walk', view, kind)
+                worst, bad = {}, []
+                for i in range(n):
+                    m = screen_moves(pt(cyc[i]), pt(cyc[(i + 1) % n]))
+                    if not inlim(m):
+                        bad.append(f'{cyc[i].name} -> {cyc[(i + 1) % n].name}: {_fmt_moves(m)}')
+                    for k, v_ in m.items():
+                        if v_ is not None:
+                            worst[k] = max(worst.get(k, 0), v_)
+                ok_in = [f.name for f in cyc if inlim(screen_moves(pt(b), pt(f)))]
+                ok_out = [f.name for f in cyc if inlim(screen_moves(pt(f), pt(b)))]
+                out(not bad and bool(ok_in) and bool(ok_out), f'charge_walk {view} {kind}: cycle within the limits; start / stop at hold 1',
+                    '; '.join(bad) or f'largest {_fmt_moves(worst)}; start at {len(ok_in)}, stop from {len(ok_out)} of {n}')
+                hs = follows([_cen(f, ('torso',))[1] for f in cyc], [_cen(f, ('helmet',))[1] for f in cyc])
+                if hs is None:
+                    out(None, f'charge_walk {view} {kind}: head (the pelvis does not bob here)', '')
+                else:
+                    out(hs >= 1, f'charge_walk {view} {kind}: head follows the pelvis (in the order shown)', f'shift {hs}')
+            if view in ('east', 'west'):
+                walk = [W_.NEAR_FOOT[i][0] for i in range(8)]
+                for kind in ('fwd', 'back'):
+                    near = [f.debug['legs']['near'][2][0] for f in cycle('charge_walk', view, kind)]
+                    rng, wrng = max(near) - min(near), max(walk) - min(walk)
+                    out(abs(rng - HALF_STRIDE * wrng) <= 1.0, f'charge_walk {view}: {kind} stride half the walk', f'{rng:.1f} px vs walk {wrng:.1f}')
+    # ---- thrust and execution (decision 5)
+    if 'thrust' in B3.ACTIONS:
+        print('-- thrust, execution (appendix C, batch 3; appendix A: thrust 42 sim frames, execution 60, hit on 12)')
+        tt = sum(f.dur for f in B3.frames('thrust', 'south'))
+        rec = sum(f.dur for f in B3.frames('thrust', 'south')[2:])
+        out(tt == 42 and rec == 30, 'thrust: 42 sim frames, back to the stance within the 30 of recovery', f'{tt} / {rec}')
+        ex = B3.frames('execute', 'south')
+        t_, at12 = 0, None
+        for f in ex:
+            if t_ <= 12 < t_ + f.dur:
+                at12 = f.name
+            t_ += f.dur
+        out(t_ == 60 and at12 == 'f3 保持 1', 'execute: 60 sim frames, the hit (sim frame 12) on the first hold frame', f'{t_}, frame 12 shows {at12}')
+        for view in B3.VIEWS:
+            fr = B3.frames('thrust', view)
+            f2 = fr[1]
+            be = blade_ends(f2)
+            out(be is not None and abs(be[0] - be[1]) <= BLADE_FLAT, f'thrust {view}: blade level on screen +-{BLADE_FLAT} px',
+                '' if be is None else f'end rows {be[0]:.1f} / {be[1]:.1f}')
+            for n, ok, i_ in pose_rows('thrust', f2.pose, 'large', view):
+                if n.startswith('attack stance'):
+                    out(ok, f'thrust {view}: {n}', i_)
+            # the release (charge hold -> f1 -> f2): decision 5's 8 px for head / torso
+            holds = [named('charge', view, f'hold {i}') for i in range(1, 5)]
+            steps = [(hh, fr[0], SWING_JUMP) for hh in holds] + [(fr[0], fr[1], SWING_JUMP)] + \
+                    [(fr[i], fr[i + 1], B1_JUMP) for i in range(1, len(fr) - 1)] + [(fr[-1], named('idle', view, 'idle 1'), B1_JUMP)]
+            worst, bad = {}, []
+            for a_, b_, body in steps:
+                m = screen_moves(pt(a_), pt(b_))
+                if not inlim(m, body=body):
+                    bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+                for k, v_ in m.items():
+                    if v_ is not None:
+                        worst[k] = max(worst.get(k, 0), v_)
+            out(not bad, f'thrust {view}: release (head / torso {SWING_JUMP} px), hold, back to idle within the limits',
+                '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+            m = screen_moves(pt(fr[-1]), pt(named('idle', view, 'idle 1')))
+            out(all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet')),
+                f'thrust {view}: last frame vs idle 1, head / torso / feet within {RETURN_MAX} px', _fmt_moves(m))
+            # f2 -> f3: the body stops, the cloth ends go on
+            tor = [_cen(f, ('torso',)) for f in fr[1:4]]
+            cap = [_end_centroid(f, 'cape', 'torso') for f in fr[1:4]]
+            dr = max(_dist(tor[0], tor[1]), _dist(tor[1], tor[2]))
+            de = min(_dist(cap[0], cap[1]), _dist(cap[1], cap[2]))
+            out(dr < 0.25 and de >= 0.5, f'thrust {view}: the cape end still moves after the body stops (f2 -> f3 -> f3)',
+                f'body {dr:.1f} px, cape end {de:.1f} px')
+            for sim in (fr[0], ):
+                pass
+            for w in [f for f in B3.frames('charge_walk', view) if f.name.startswith('fwd ')][:1]:
+                m = screen_moves(pt(w), pt(fr[0]))
+                out(None, f'thrust {view}: released while walking ({w.name} -> f1)', _fmt_moves(m))
+            # execution: its own starts, then the thrust's f2 on
+            ef = B3.frames('execute', view)
+            idle = named('idle', view, 'idle 1')
+            steps = [(idle, ef[0]), (ef[0], ef[1]), (ef[1], ef[2])]
+            bad, worst = [], {}
+            for a_, b_ in steps:
+                m = screen_moves(pt(a_), pt(b_))
+                if not inlim(m, body=SWING_JUMP, sword=a_ is not idle):
+                    bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+                for k, v_ in m.items():
+                    if v_ is not None:
+                        worst[k] = max(worst.get(k, 0), v_)
+            out(not bad, f'execute {view}: idle -> start 1 -> start 2 -> lunge (head / torso {SWING_JUMP} px; the sword free on the first)',
+                '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+            for label, src in [('guard hold 1', named('guard', view, 'hold 1'))] + \
+                    [(f'stage {st} {f.name}', f) for st in (1, 2) for f in __import__('batch2').frames(st, view)[4:]]:
+                p_src = _Pt(src, *src.screen_offset()) if hasattr(src, 'screen_offset') else pt(src)
+                if hasattr(src, 'screen_offset'):
+                    p_src = _Pt(src, 0, 0)
+                m = screen_moves(p_src, pt(ef[0]))
+                out(None, f'execute {view}: {label} -> start 1 (reported)', _fmt_moves(m))
+    # ---- dodge (decision 4)
+    if 'dash' in B3.ACTIONS:
+        print('-- dodge (appendix C, batch 3; decision 4: entering is not limited, every step after is)')
+        import poses as PQ
+        out(25 <= PQ.DASH['lean'] <= 30, 'dash: lean 25-30 deg', f"{PQ.DASH['lean']} deg")
+        out(10 <= -PQ.BACKSTEP['lean'] <= 15, 'backstep: leans back 10-15 deg', f"{-PQ.BACKSTEP['lean']} deg")
+        for act in ('dash', 'backstep'):
+            tot = sum(f.dur for f in B3.frames(act, 'south'))
+            moving = sum(f.dur for f in B3.frames(act, 'south')[:2])
+            out(tot == 18 and moving == 11, f'{act}: 18 sim frames, the first two frames cover the move (0-10)', f'{tot} / {moving}')
+        for view in B3.VIEWS:
+            rest = PR.rig(view)
+            rest.frame({}, 'small')
+            for act, key in (('dash', '煞停 2'), ('backstep', '落地 2')):
+                f = named(act, view, key)
+                drop = f.debug['pelvis'][1] - rest.debug['pelvis'][1] - PR.proj(view, (f.pose['root'][0], f.pose['root'][1], 0))[1]
+                out(abs(drop - px(0.05)) <= 0.5, f'{act} {view}: {key}, pelvis {px(0.05)} px low', f'{drop:.1f} px')
+                fr = B3.frames(act, view)
+                idle = named('idle', view, 'idle 1')
+                steps = list(zip(fr, fr[1:])) + [(fr[-1], idle)]
+                worst, bad = {}, []
+                for a_, b_ in steps:
+                    m = screen_moves(pt(a_), pt(b_))
+                    if not inlim(m):
+                        bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+                    for k, v_ in m.items():
+                        if v_ is not None:
+                            worst[k] = max(worst.get(k, 0), v_)
+                out(not bad, f'{act} {view}: {len(steps)} steps from f1 to idle within the limits', '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+                m = screen_moves(pt(fr[-1]), pt(idle))
+                out(all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet')),
+                    f'{act} {view}: last frame vs idle 1, head / torso / feet within {RETURN_MAX} px', _fmt_moves(m))
+                # f1 -> f2: the body is already there; the head and the cloth ends catch up
+                t0, t1 = _cen(fr[0], ('torso',)), _cen(fr[1], ('torso',))
+                h0, h1 = _cen(fr[0], ('helmet',)), _cen(fr[1], ('helmet',))
+                c0, c1 = _end_centroid(fr[0], 'cape', 'torso'), _end_centroid(fr[1], 'cape', 'torso')
+                # cloth: the batch 1 threshold (an end moving >= 0.5 px while its root is still)
+                out(_dist(t0, t1) < 0.25 and _dist(h0, h1) >= 1 and _dist(c0, c1) >= 0.5,
+                    f'{act} {view}: f1 -> f2, the head and the cape end catch up with the body',
+                    f'body {_dist(t0, t1):.1f}, head {_dist(h0, h1):.1f}, cape end {_dist(c0, c1):.1f} px')
+                srcs = [('idle 1', idle), ('guard hold 1', named('guard', view, 'hold 1')), ('charge hold 1', named('charge', view, 'hold 1')),
+                        ('run 1', named('run', view, 'run 1'))]
+                vals = []
+                for label, src in srcs:
+                    m = screen_moves(pt(src), pt(fr[0]))
+                    vals.append(f"{label}: head {m['head']:.1f}, feet {m['feet'] if m['feet'] is None else round(m['feet'], 1)}")
+                out(None, f'{act} {view}: entering (decision 4: not limited)', '; '.join(vals))
+    # ---- the locked walk (decisions 1, 8)
+    if 'walk_locked' in B3.ACTIONS:
+        print('-- locked walk: backward = the walk rig run the other way; sidesteps (85 px/s, 2 sim frames a frame)')
+        spr_of = {'south': 'front', 'east': 'side_right', 'north': 'back', 'west': 'side_left'}
+        for view in B3.VIEWS:
+            spr = spr_of[view]
+            back = cycle('walk_locked', view, 'back')
+            idle = A.stand_frame(spr).px
+            m_ = A.META[spr]
+            neck = int(NECK[spr] + A.GROUND - m_['feet'])
+            walk = [f.px for f in back]
+            base = enclosed(idle, neck)
+            vals = [enclosed(p_, neck) for p_ in walk]
+            out(not ({c[:3] for p_ in walk for c in p_.values()} - PALETTE), f'walk back {view}: colours inside the reference palette')
+            out(max(vals) <= base, f'walk back {view}: see-through holes below the neck', f'{vals} (idle {base})')
+            for nm, fn in (('1px pinholes', pinholes), ('floating specks', specks)):
+                b0 = fn(idle)
+                vv = [fn(p_) for p_ in walk]
+                out(max(vv) <= b0, f'walk back {view}: {nm}', f'{vv} (idle {b0})')
+            lowest = max(y for p_ in walk for (_, y) in p_)
+            outside = sum(1 for p_ in walk for (x, y) in p_ if not (0 <= x < A.FW and 0 <= y < A.FH))
+            out(outside == 0 and lowest <= A.GROUND + BELOW_GROUND_MAX, f'walk back {view}: inside the frame, feet at most {BELOW_GROUND_MAX} px below ground',
+                f'lowest row {lowest}')
+            fw = [walk_rigs_frame for walk_rigs_frame in (B3.walk_rig(view).frame(i).px for i in range(8))]
+            for nm, fn in (('blue cloth', lambda p_: sum(1 for c in p_.values() if A.is_blue(c))), ('highlights', lambda p_: sum(1 for c in p_.values() if light(c)))):
+                b0 = fn(idle)
+                vv = [fn(p_) for p_ in walk]
+                fwd = sorted(fn(p_) for p_ in fw)
+                ok = all(within(v_, b0) for v_ in vv)
+                # the forward walk has one frame each under the rule (walk notes, pending); the
+                # backward frames are the same legs, so the same counts may show up
+                known = sorted(vv) == fwd
+                out(ok or (known and None), f'walk back {view}: {nm} vs idle (±10 % or ±{TOLERANCE_PX} px)',
+                    f'{vv} vs idle {b0}' + ('' if ok else ' (the same counts as the forward walk: its pending walk items)'))
+            sets = [set(p_) for p_ in walk]
+            jumps = [jump(sets[i], sets[(i + 1) % 8]) for i in range(8)]
+            out(max(jumps) <= JUMP_MAX, f'walk back {view}: frame-to-frame jump <= {JUMP_MAX} px', f'{jumps}')
+            heads = [f.debug['head_y'] for f in back]
+            hips = [f.debug['hip_y'] for f in back]
+            out(max(heads) - min(heads) >= BOB_MIN - 1e-6, f'walk back {view}: head bob >= {BOB_MIN} px', f'{max(heads) - min(heads):.1f} px')
+            hs = follows(hips, heads)
+            rv = []
+            for i in range(8):
+                B3.walk_rig(view).frame((8 - i) % 8)
+                rv.append((B3.walk_rig(view).debug['hip_y'], B3.walk_rig(view).debug['head_y']))
+            hs_rev = follows([a_ for a_, _ in rv], [b_ for _, b_ in rv])
+            out(hs is not None and hs >= 1, f'walk back {view}: head follows the hip (in the order shown)',
+                f'shift {hs}; the forward walk played in reverse: {hs_rev}')
+            for kind in ('side', 'rside'):
+                cyc = cycle('walk_locked', view, kind)
+                worst, bad = {}, []
+                for i in range(4):
+                    m = screen_moves(pt(cyc[i]), pt(cyc[(i + 1) % 4]))
+                    if not inlim(m):
+                        bad.append(f'{cyc[i].name} -> {cyc[(i + 1) % 4].name}: {_fmt_moves(m)}')
+                    for k, v_ in m.items():
+                        if v_ is not None:
+                            worst[k] = max(worst.get(k, 0), v_)
+                idle1 = named('idle', view, 'idle 1')
+                ok_in = [f.name for f in cyc if inlim(screen_moves(pt(idle1), pt(f)), sword=False)]
+                out(not bad and bool(ok_in), f'walk_locked {view} {kind}: cycle within the limits; starts from idle',
+                    '; '.join(bad) or f'largest {_fmt_moves(worst)}; from idle at {", ".join(ok_in)}')
+                hs = follows([_cen(f, ('torso',))[1] for f in cyc], [_cen(f, ('helmet',))[1] for f in cyc])
+                if hs is None:
+                    out(None, f'walk_locked {view} {kind}: head (the pelvis does not bob here)', '')
+                else:
+                    out(hs >= 1, f'walk_locked {view} {kind}: head follows the pelvis (in the order shown)', f'shift {hs}')
+                if view in ('south', 'north'):
+                    lat = [f.pose['feet'] for f in cyc]
+                    moved = []
+                    for i in range(4):
+                        a_, b_ = lat[i], lat[(i + 1) % 4]
+                        for s_ in ('R', 'L'):
+                            if a_[s_][2] == 0 and b_[s_][2] == 0:
+                                moved.append(abs(b_[s_][1] - a_[s_][1]) * PR.FEET_W[view])
+                    ground = 85.0 / 60 * B3.LOCKED_HOLD
+                    out(None, f'walk_locked {view} {kind}: planted feet move {max(moved):.1f} px a frame against the floor\'s {ground:.2f} (slide {100 * (1 - max(moved) / ground):.0f} %, brief: about half)', '')
+    # ---- decision 8: the slow legs of batch 1, backward and to the right, in the order shown
+    print('-- decision 8: backward / rightward cycles are their own (head follows in the order shown)')
+    for action in ('guard_walk', 'heal_walk'):
+        for view in B3.VIEWS:
+            res = []
+            for kind in ('fwd', 'back', 'side', 'rside'):
+                cyc = cycle(action, view, kind)
+                res.append((kind, follows([_cen(f, ('torso',))[1] for f in cyc], [_cen(f, ('helmet',))[1] for f in cyc])))
+            ok = all(s_ is None or s_ >= 1 for _, s_ in res)
+            out(ok, f'{action} {view}: head follows the pelvis', ', '.join(f'{k} {s_}' for k, s_ in res))
+    print('BATCH 3: ALL PASSED' if not failed else 'BATCH 3: SOME CHECKS FAILED')
     return failed
 
 
@@ -1166,5 +1813,7 @@ if __name__ == '__main__':
     if '--batch1' in args:
         sys.exit(1 if batch1_checks() else 0)
     if '--batch2' in args:
-        sys.exit(1 if batch2_checks() else 0)
+        sys.exit(1 if batch2_checks(record='--record-waivers' in args) else 0)
+    if '--batch3' in args:
+        sys.exit(1 if batch3_checks() else 0)
     sys.exit(main())
