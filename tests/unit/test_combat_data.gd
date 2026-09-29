@@ -185,6 +185,8 @@ func test_player_attack_table_matches_doc() -> void:
 		assert_near(a.advance, r[5])
 		assert_eq(a.cancelable, i < 3, "第 %d 段取消規則" % (i + 1))
 		assert_eq(a.can_short_stagger, i == 3)
+		# §8.1（2026-09-29）：只有第 4 段收招後有停頓
+		assert_near(a.end_lag, PlayerData.FINISHER_END_LAG if i == 3 else 0.0)
 	var heavy := PlayerData.heavy_thrust()
 	assert_eq(heavy.damage, TUNED_PLAYER_DAMAGE[60], "重擊傷害（tuning-log）")
 	assert_near(heavy.toughness, TUNED_PLAYER_TOUGHNESS[15], 0.0001, "重擊削韌（tuning-log）")
@@ -329,6 +331,8 @@ func test_player_constants_match_doc() -> void:
 	assert_near(PlayerData.ATTACK_ARC_DEG, 100.0)
 	assert_near(PlayerData.ATTACK_RADIUS, 40.0)
 	assert_near(PlayerData.CANCEL_DELAY, 0.05)
+	assert_near(PlayerData.COMBO_GRACE, 0.2)
+	assert_near(PlayerData.FINISHER_END_LAG, 0.2)
 	assert_near(PlayerData.CHARGE_TIME, 0.9)
 	assert_near(PlayerData.THRUST_DISTANCE, 72.0)
 	assert_near(PlayerData.THRUST_TIME, 0.2)

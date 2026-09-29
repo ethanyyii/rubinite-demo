@@ -32,13 +32,15 @@ var locked := false
 var running := false
 
 # --- 攻擊（§8） ---
-## 目前（或剛結束）的輕攻擊段數 0..3
+## 進行中的輕攻擊段數 0..3（攻擊狀態以外是 0；接段寬限另存在 _grace_stage）
 var combo_index := 0
 ## 進行中的攻擊資料（輕攻擊某段或重擊突刺）
 var attack: PlayerAttackData
 ## 這一段是否已經打中（每段只打中一次）
 var attack_connected := false
 var charge_full := false
+## 剛結束的第 1–3 段（0..2）：待機的前 12 幀內按攻擊接它的下一段（§8.1 接段寬限）；沒有時 -1。進入任何狀態都會清掉
+var _grace_stage := -1
 
 # --- 閃身（§7） ---
 var dodge_dir := Vector2.DOWN
@@ -78,6 +80,7 @@ var _posture_regen_delay := Frames.of(PlayerData.POSTURE_REGEN_DELAY)
 var _heal_frames := Frames.of(PlayerData.HEAL_TIME)
 var _buffer_frames := Frames.of(PlayerData.INPUT_BUFFER)
 var _cancel_delay := Frames.of(PlayerData.CANCEL_DELAY)
+var _combo_grace := Frames.of(PlayerData.COMBO_GRACE)
 var _dodge_frames := Frames.of(PlayerData.DODGE_TIME)
 var _dodge_total := Frames.of(PlayerData.DODGE_TIME) + Frames.of(PlayerData.DODGE_RECOVERY)
 var _dodge_inv_start := Frames.of(PlayerData.DODGE_INVULN_START)
@@ -132,6 +135,7 @@ func enter_state(s: State) -> void:
 	state = s
 	state_start = sim.combat_frame
 	_decel_step = 0.0
+	_grace_stage = -1
 	if not can_run_in(s):
 		running = false
 	if s != State.ATTACK and s != State.THRUST:
@@ -205,8 +209,11 @@ func _advance_state(input: InputFrame) -> void:
 	match state:
 		State.ATTACK:
 			if e >= attack.total_frames():
+				var ended := combo_index
 				combo_index = 0
 				enter_state(State.IDLE)
+				if ended < PlayerData.last_light_stage():
+					_grace_stage = ended
 		State.THRUST:
 			if e >= _thrust_frames + Frames.of(attack.recovery):
 				enter_state(State.IDLE)
@@ -293,18 +300,36 @@ func can_start(action: StringName) -> bool:
 				State.IDLE, State.CHARGE, State.BLOCK:
 					return true
 				State.ATTACK:
-					return attack.cancelable and e >= attack.active_end_frame() + _cancel_delay
+					return _can_defend_in_attack(e)
 	return false
+
+
+## 攻擊中能不能用格擋或閃身取消（§8.3）：第 1–3 段判定結束 0.05 秒後；第 4 段只在收招後的停頓中
+func _can_defend_in_attack(e: int) -> bool:
+	return (attack.cancelable and e >= attack.active_end_frame() + _cancel_delay) \
+		or e >= attack.recovery_end_frame()
+
+
+## 是否在接段寬限中（§8.1：第 1–3 段收招結束後 0.2 秒內的待機）。
+## ahead：往後看幾幀（機器人在這一幀之後才決定按鍵，按鍵落在下一幀，所以傳 1）
+func in_combo_grace(ahead := 0) -> bool:
+	return state == State.IDLE and _grace_stage >= 0 and state_elapsed() + ahead < _combo_grace
+
+
+## 按攻擊會出第幾段（0..3）：收招中或接段寬限中接下一段，其他情況從第 1 段開始。ahead 同 in_combo_grace
+func next_combo_stage(ahead := 0) -> int:
+	if state == State.ATTACK and combo_index < PlayerData.last_light_stage():
+		return combo_index + 1
+	if in_combo_grace(ahead):
+		return _grace_stage + 1
+	return 0
 
 
 func _start_attack(input: InputFrame) -> void:
 	if sim.boss.can_be_executed(pos):
 		_start_execute()
 		return
-	if state == State.ATTACK:
-		combo_index = mini(combo_index + 1, PlayerData.light_attacks().size() - 1)
-	else:
-		combo_index = 0
+	combo_index = next_combo_stage()
 	attack = PlayerData.light_attacks()[combo_index]
 	attack_connected = false
 	vel = Vector2.ZERO
@@ -450,13 +475,13 @@ func _try_block(input: InputFrame) -> void:
 	enter_state(State.BLOCK)
 
 
-## 這一幀能不能進入格擋（§8.3：待機、蓄力中隨時；輕攻擊第 1–3 段判定結束 0.05 秒後）
+## 這一幀能不能進入格擋（§8.3：待機、蓄力中隨時；輕攻擊第 1–3 段判定結束 0.05 秒後、第 4 段收招後的停頓）
 func can_block() -> bool:
 	match state:
 		State.IDLE, State.CHARGE, State.BLOCK:
 			return true
 		State.ATTACK:
-			return attack.cancelable and state_elapsed() >= attack.active_end_frame() + _cancel_delay
+			return _can_defend_in_attack(state_elapsed())
 	return false
 
 

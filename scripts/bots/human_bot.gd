@@ -131,7 +131,9 @@ func decide(sim: CombatSim) -> InputFrame:
 			f.move = to_boss.normalized()
 		return f
 	if p.can_start(&"attack"):
-		var chaining := p.state == PlayerSim.State.ATTACK
+		# 收招中或接段寬限中（§8.1）按下是接段
+		var next_stage: int = p.next_combo_stage(1)  # 按鍵落在下一幀
+		var chaining: bool = next_stage > 0
 		if not chaining:
 			# 開新的連段：要是看得懂的空檔、看到之後過了反應時間、沒有起手預兆
 			if not _is_opening(b) or sim.combat_frame - _state_seen < reaction_frames \
@@ -141,7 +143,6 @@ func decide(sim: CombatSim) -> InputFrame:
 			_chain_used = 0
 		elif _chain_used >= _chain_budget:
 			return f
-		var next_stage := 0 if not chaining else p.combo_index + 1
 		var need := SAFE_LIGHT
 		if next_stage >= 3:
 			need = SAFE_FINISHER if rng.randf() >= greed_finisher else SAFE_LIGHT + 10

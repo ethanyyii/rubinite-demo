@@ -3,6 +3,7 @@ extends Node2D
 ## 特效以 _process 的 delta 播放：頓幀（只停戰鬥模擬）期間繼續；F2 慢動作時一起變慢。只讀取 sim 的狀態與事件。
 
 const BossView := preload("res://scripts/view/boss_view.gd")
+const PlayerView := preload("res://scripts/view/player_view.gd")
 
 var arena: CombatArena
 ## 每個特效：{kind, pos, dir, t, life, ...}
@@ -102,8 +103,21 @@ func _draw_player_attack() -> void:
 			return
 		var sweep := clampf(float(e - st + 1) / (act_end - st), 0.0, 1.0)
 		var fade := 1.0 - clampf(float(e - act_end + 1) / (tail + 1), 0.0, 1.0)
-		_draw_slash(p.pos, p.facing, PlayerData.ATTACK_ARC_DEG, PlayerData.ATTACK_RADIUS,
-			p.combo_index == 1, 3.0 if p.combo_index == 3 else 2.0, sweep, fade)
+		if p.combo_index == 3:
+			# 第 4 段雙手高舉劈地：沿面向的直立弧
+			_draw_chop(p.pos, p.facing, PlayerData.ATTACK_RADIUS, sweep, fade)
+		else:
+			# 刀光掃過的方向和劍一樣（player_view.swing_range：第 1 段右 → 左、第 2 段反手、第 3 段迴旋），範圍夾在判定的扇形內
+			var r: Vector2 = PlayerView.swing_range(p.combo_index)
+			var half := deg_to_rad(PlayerData.ATTACK_ARC_DEG) * 0.5
+			var from := clampf(r.x, -half, half)
+			var to := clampf(r.y, -half, half)
+			if p.combo_index == 2:
+				# 迴旋斬：身邊再淡淡畫一圈（只是轉身的樣子，判定仍是前方的扇形）
+				var ring := Palette.SLASH
+				ring.a *= 0.3 * fade
+				DrawUtil.stroke_ellipse(self, p.pos + Vector2(0, -14), Vector2(PlayerData.ATTACK_RADIUS, PlayerData.ATTACK_RADIUS * 0.55), ring, 2.0, 32)
+			_draw_slash(p.pos, p.facing, from, to, PlayerData.ATTACK_RADIUS, 2.0, sweep, fade)
 	elif p.state == PlayerSim.State.THRUST:
 		var n := Frames.of(PlayerData.THRUST_TIME)
 		if e >= n + 4:
@@ -114,15 +128,36 @@ func _draw_player_attack() -> void:
 		draw_line((base - p.facing * 20).round(), (base + p.facing * PlayerData.THRUST_REACH).round(), c, 3.0)
 
 
-## 輕攻擊的刀光：沿攻擊扇形（100°、半徑 40）掃過的弧（俯視角，貼齊判定）
-func _draw_slash(pos: Vector2, dir: Vector2, arc_deg: float, r: float, reverse: bool, width: float, sweep: float, fade: float) -> void:
+## 第 4 段劈地的刀光：沿面向的直立弧，從頭頂上方劈到前方地面（判定仍是 100° 扇形）
+func _draw_chop(pos: Vector2, dir: Vector2, r: float, sweep: float, fade: float) -> void:
+	var shoulder := pos + Vector2(0, -20)
+	var c := Palette.SLASH
+	c.a *= fade
+	var pts := PackedVector2Array()
+	var inner := PackedVector2Array()
+	var steps := 10
+	for i in steps + 1:
+		var th := lerpf(-0.2, deg_to_rad(125.0), sweep * float(i) / steps)
+		var d := dir * sin(th) + Vector2(0, -cos(th))
+		var o := shoulder + d * r
+		o.y = minf(o.y, pos.y)
+		var thick := lerpf(0.15, 0.4, float(i) / steps)
+		pts.append(o)
+		inner.append(shoulder + d * r * (1.0 - thick))
+	var poly := pts.duplicate()
+	inner.reverse()
+	poly.append_array(inner)
+	var fill := c
+	fill.a *= 0.45
+	if poly.size() >= 3 and Geometry2D.triangulate_polygon(poly).size() > 0:
+		draw_colored_polygon(poly, fill)
+	draw_polyline(pts, c, 2.0)
+
+
+## 輕攻擊的刀光：沿攻擊扇形（半徑 40）從 from 掃到 to 的弧（相對面向的角度，正值是角色的右手側；俯視角，貼齊判定）
+func _draw_slash(pos: Vector2, dir: Vector2, from: float, to_end: float, r: float, width: float, sweep: float, fade: float) -> void:
 	var origin: Vector2 = pos + Vector2(0, -14)
-	var arc: float = deg_to_rad(arc_deg)
-	var from := -arc * 0.5
-	var to := from + arc * sweep
-	if reverse:
-		from = arc * 0.5
-		to = from - arc * sweep
+	var to := lerpf(from, to_end, sweep)
 	var c := Palette.SLASH
 	c.a *= fade
 	var outer := PackedVector2Array()
@@ -132,7 +167,7 @@ func _draw_slash(pos: Vector2, dir: Vector2, arc_deg: float, r: float, reverse: 
 		var a := dir.angle() + lerpf(from, to, float(i) / steps)
 		var d := Vector2(cos(a), sin(a))
 		# 刀光前緣最亮最粗，尾端變細
-		var thick := lerpf(0.25, 0.45, float(i) / steps) if not reverse else lerpf(0.45, 0.25, float(i) / steps)
+		var thick := lerpf(0.25, 0.45, float(i) / steps)
 		outer.append(origin + d * r)
 		inner.append(origin + d * r * (1.0 - thick))
 	if outer.size() < 2:

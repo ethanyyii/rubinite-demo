@@ -49,6 +49,10 @@ const ATTACK_ARC_DEG := 100.0
 const ATTACK_RADIUS := 40.0
 ## 第 1–3 段判定結束後多久可以用格擋或閃身取消（§8.3）
 const CANCEL_DELAY := 0.05
+## 第 1–3 段收招結束後，這段時間內按攻擊仍接下一段（§8.1，2026-09-29 新增；見 tuning-log）
+const COMBO_GRACE := 0.2
+## 第 4 段收招之後的停頓：不能出招、不能移動，可以格擋或閃身（§8.1、§8.3，2026-09-29 新增；見 tuning-log）
+const FINISHER_END_LAG := 0.2
 
 # §8.2 蓄力重擊
 const CHARGE_TIME := 0.9
@@ -99,9 +103,14 @@ static func light_attacks() -> Array[PlayerAttackData]:
 			_atk(&"light_1", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
 			_atk(&"light_2", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
 			_atk(&"light_3", 0.12, 0.08, 0.28, 11, 1.4, 6.0, true, false, &"light_hit"),
-			_atk(&"light_4", 0.18, 0.10, 0.45, 18, 4.2, 14.0, false, true, &"finisher_hit"),
+			_atk(&"light_4", 0.18, 0.10, 0.45, 18, 4.2, 14.0, false, true, &"finisher_hit", FINISHER_END_LAG),
 		]
 	return _light
+
+
+## 最後一段（第 4 段）的索引
+static func last_light_stage() -> int:
+	return light_attacks().size() - 1
 
 
 ## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手；依 tuning-log：傷害 60 → 42、削韌 15 → 10.5）
@@ -112,12 +121,14 @@ static func heavy_thrust() -> PlayerAttackData:
 
 
 static func _atk(id: StringName, startup: float, active: float, recovery: float, damage: int,
-		toughness: float, advance: float, cancelable: bool, stagger: bool, feedback: StringName) -> PlayerAttackData:
+		toughness: float, advance: float, cancelable: bool, stagger: bool, feedback: StringName,
+		end_lag := 0.0) -> PlayerAttackData:
 	var a := PlayerAttackData.new()
 	a.id = id
 	a.startup = startup
 	a.active = active
 	a.recovery = recovery
+	a.end_lag = end_lag
 	a.damage = damage
 	a.toughness = toughness
 	a.advance = advance

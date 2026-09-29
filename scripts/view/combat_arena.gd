@@ -322,7 +322,10 @@ func _apply_boss_mode() -> void:
 func extra_debug_lines() -> Array[String]:
 	var p := sim.player
 	var lines: Array[String] = []
-	lines.append("  段數 %d  緩衝 %s  閃身冷卻 %d  無敵 %s  蓄滿 %s" % [p.combo_index + 1,
+	var stage := "%d" % (p.combo_index + 1) if p.state == PlayerSim.State.ATTACK else "-"
+	if p.in_combo_grace():
+		stage += "（寬限，下一段 %d）" % (p.next_combo_stage() + 1)
+	lines.append("  段數 %s  緩衝 %s  閃身冷卻 %d  無敵 %s  蓄滿 %s" % [stage,
 		String(p.buffered_action) if p.buffered_action != &"" else "-",
 		maxi(Frames.of(PlayerData.DODGE_INTERVAL) - (sim.combat_frame - p.last_dodge_start), 0),
 		"是" if p.is_invulnerable() else "否", "是" if p.charge_full else "否"])

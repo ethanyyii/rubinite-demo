@@ -6,6 +6,8 @@ extends Resource
 @export var startup := 0.1
 @export var active := 0.08
 @export var recovery := 0.25
+## 收招之後的停頓（§8.1：只有第 4 段）。期間不能出招、不能移動，可以格擋或閃身
+@export var end_lag := 0.0
 @export var damage := 15
 ## 對 Boss 的削韌（combat-design §11.3）
 @export var toughness := 2.0
@@ -27,5 +29,10 @@ func active_end_frame() -> int:
 	return Frames.of(startup) + Frames.of(active)
 
 
-func total_frames() -> int:
+## 收招結束（停頓開始）的幀；沒有停頓時等於 total_frames()
+func recovery_end_frame() -> int:
 	return active_end_frame() + Frames.of(recovery)
+
+
+func total_frames() -> int:
+	return recovery_end_frame() + Frames.of(end_lag)

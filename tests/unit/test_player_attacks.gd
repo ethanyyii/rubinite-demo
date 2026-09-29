@@ -65,8 +65,211 @@ func test_light_1_ends_after_recovery_and_resets_combo() -> void:
 	assert_eq(player().state, S.ATTACK, "第 25 幀仍在收招")
 	advance(1)
 	assert_eq(player().state, S.IDLE, "6+5+15 = 26 幀後回到待機")
+	advance(Frames.of(PlayerData.COMBO_GRACE) - 1)
 	press(&"attack")
-	assert_eq(player().combo_index, 0, "收招結束還沒按就重置回第一段")
+	assert_eq(player().combo_index, 0, "收招結束後接段寬限（12 幀）內還沒按就重置回第一段")
+
+
+func test_combo_continues_within_grace_after_recovery() -> void:
+	# §8.1（2026-09-29）：第 1–3 段收招結束後 0.2 秒（12 幀）內按攻擊，仍接下一段。
+	# 待機的第 k 幀按下：k ≤ 11 接下一段，k = 12 重置。
+	var grace := Frames.of(PlayerData.COMBO_GRACE)
+	assert_eq(grace, 12)
+	for stage in 3:
+		for case in [[1, stage + 1], [grace - 1, stage + 1], [grace, 0]]:
+			sim = CombatSim.new(1)
+			place_near_boss(50.0)
+			_go_to_stage(stage)
+			while player().state == S.ATTACK:
+				advance(1)
+			assert_eq(player().state_elapsed(), 0)
+			var k: int = case[0]
+			assert_eq(player().next_combo_stage(), stage + 1, "第 %d 段剛結束：下一段是 %d" % [stage + 1, stage + 2])
+			advance(k - 1)
+			press(&"attack")
+			assert_eq(player().state, S.ATTACK)
+			assert_eq(player().combo_index, case[1], "第 %d 段結束後待機第 %d 幀按攻擊 → 第 %d 段" % [stage + 1, k, case[1] + 1])
+
+
+func test_grace_ends_when_another_state_starts() -> void:
+	press(&"attack")
+	while player().state == S.ATTACK:
+		advance(1)
+	held["block"] = true
+	advance(1)
+	assert_eq(player().state, S.BLOCK)
+	held["block"] = false
+	advance(1)
+	assert_eq(player().state, S.IDLE)
+	assert_eq(player().next_combo_stage(), 0, "中間格擋過：寬限取消")
+	press(&"attack")
+	assert_eq(player().combo_index, 0, "格擋之後從第 1 段開始")
+
+
+func test_grace_ends_on_dodge_heal_or_hit() -> void:
+	# 閃身、治療、被打中都會進入別的狀態，寬限跟著取消
+	for kind in [&"dodge", &"heal", &"hit"]:
+		sim = CombatSim.new(1)
+		place_near_boss(50.0)
+		press(&"attack")
+		while player().state == S.ATTACK:
+			advance(1)
+		match kind:
+			&"dodge":
+				press(&"dodge")
+				assert_eq(player().state, S.DODGE)
+			&"heal":
+				press(&"heal")
+				assert_eq(player().state, S.HEAL)
+			&"hit":
+				var hit: BossHitData = VeltharisData.moves(1).values()[0].hits[0]
+				player().receive_boss_hit(hit, boss().pos)
+				assert_true(player().is_in_hit_reaction())
+		assert_eq(player().next_combo_stage(), 0, "%s 之後寬限取消" % kind)
+
+
+func test_bot_lookahead_at_grace_boundary() -> void:
+	# 機器人在一幀的最後決定、按鍵落在下一幀：next_combo_stage(1) 預告下一幀的段數
+	press(&"attack")
+	while player().state == S.ATTACK:
+		advance(1)
+	advance(Frames.of(PlayerData.COMBO_GRACE) - 2)  # 待機第 10 幀
+	assert_eq(player().next_combo_stage(1), 1, "下一幀是第 11 幀：還在寬限內")
+	advance(1)  # 第 11 幀
+	assert_eq(player().next_combo_stage(), 1)
+	assert_eq(player().next_combo_stage(1), 0, "下一幀是第 12 幀：寬限已過")
+
+
+func test_moving_during_grace_keeps_combo() -> void:
+	press(&"attack")
+	while player().state == S.ATTACK:
+		advance(1)
+	move = Vector2.RIGHT
+	advance(5)
+	move = Vector2.ZERO
+	press(&"attack")
+	assert_eq(player().combo_index, 1, "寬限內走動不會中斷連段")
+
+
+func test_no_grace_after_fourth_stage() -> void:
+	_go_to_stage(3)
+	while player().state == S.ATTACK:
+		advance(1)
+	assert_eq(player().next_combo_stage(), 0)
+	press(&"attack")
+	assert_eq(player().combo_index, 0, "第 4 段之後一律從第 1 段開始")
+
+
+func test_fourth_stage_end_lag_frames() -> void:
+	# §8.1（2026-09-29）：第 4 段收招之後停頓 0.2 秒（12 幀）。第 4 段共 11 + 6 + 27 + 12 = 56 幀。
+	var a: PlayerAttackData = PlayerData.light_attacks()[3]
+	assert_eq(Frames.of(PlayerData.FINISHER_END_LAG), 12)
+	assert_eq(a.recovery_end_frame(), 44)
+	assert_eq(a.total_frames(), 56)
+	for i in 3:
+		var b: PlayerAttackData = PlayerData.light_attacks()[i]
+		assert_eq(b.recovery_end_frame(), b.total_frames(), "第 %d 段沒有停頓" % (i + 1))
+	_go_to_stage(3)
+	while player().state_elapsed() < 55:
+		advance(1)
+	assert_eq(player().state, S.ATTACK, "第 55 幀仍在停頓")
+	advance(1)
+	assert_eq(player().state, S.IDLE, "56 幀後回到待機")
+
+
+func test_attack_cannot_start_during_end_lag() -> void:
+	_go_to_stage(3)
+	while player().state_elapsed() < 43:
+		advance(1)
+	press(&"attack")  # elapsed 44：停頓第 1 幀，離結束 12 幀（超過緩衝 9 幀）
+	assert_eq(player().state_elapsed(), 44)
+	assert_eq(player().state, S.ATTACK)
+	assert_eq(player().combo_index, 3, "停頓中按攻擊不會出招")
+	while player().state == S.ATTACK:
+		advance(1)
+	advance(1)
+	assert_eq(player().state, S.IDLE, "離結束 12 幀前按的攻擊被丟棄，不會在停頓後自動出招")
+
+
+func test_attack_buffered_in_end_lag_starts_right_after() -> void:
+	_go_to_stage(3)
+	while player().state_elapsed() < 49:
+		advance(1)
+	press(&"attack")  # elapsed 50：離結束 6 幀
+	while player().state == S.ATTACK and player().combo_index == 3:
+		advance(1)
+	assert_eq(player().state, S.ATTACK, "停頓最後 0.15 秒內按的攻擊在停頓結束時執行")
+	assert_eq(player().combo_index, 0)
+	assert_eq(player().state_elapsed(), 0)
+
+
+func test_end_lag_buffer_boundary() -> void:
+	# 第 4 段共 56 幀：第 47 幀按的攻擊（離結束 9 幀）會在第 56 幀出招，第 46 幀按的（10 幀）被丟棄
+	for case in [[46, false], [47, true]]:
+		sim = CombatSim.new(1)
+		place_near_boss(50.0)
+		_go_to_stage(3)
+		while player().state_elapsed() < case[0] - 1:
+			advance(1)
+		press(&"attack")
+		assert_eq(player().state_elapsed(), case[0])
+		while player().state == S.ATTACK and player().combo_index == 3:
+			advance(1)
+		assert_eq(player().state == S.ATTACK, case[1], "停頓第 %d 幀按攻擊：停頓後%s出招" % [case[0], "" if case[1] else "不"])
+
+
+func test_no_movement_during_end_lag() -> void:
+	_go_to_stage(3)
+	while player().state_elapsed() < 44:
+		advance(1)
+	var p0 := player().pos
+	move = Vector2.RIGHT
+	while player().state_elapsed() < 55:
+		advance(1)
+	assert_eq(player().state, S.ATTACK)
+	assert_eq(player().pos, p0, "停頓中（第 44–55 幀）不能移動")
+
+
+func test_dodge_and_block_allowed_during_end_lag() -> void:
+	# 第 4 段收招（第 17–43 幀）照舊不可取消；停頓（第 44–55 幀）可以閃身或格擋
+	_go_to_stage(3)
+	while player().state_elapsed() < 42:
+		advance(1)
+	sim.player.facing = Vector2.UP
+	press(&"dodge")  # elapsed 43：收招最後一幀
+	assert_eq(player().state, S.ATTACK, "收招中不能閃身")
+	advance(1)
+	assert_eq(player().state, S.DODGE, "停頓第 1 幀執行緩衝的閃身")
+
+	sim = CombatSim.new(1)
+	place_near_boss(50.0)
+	_go_to_stage(3)
+	while player().state_elapsed() < 43:
+		advance(1)
+	held["block"] = true
+	advance(1)
+	assert_eq(player().state, S.BLOCK, "停頓中可以格擋")
+
+
+func test_mashing_gives_four_stages_then_a_pause() -> void:
+	# 每一幀都按攻擊：1→2→3→4 在最早的幀接上，第 4 段之後停頓，再從第 1 段開始
+	sim.boss.set_dummy()
+	sim.boss.pos = Vector2(0, -300)
+	sim.player.pos = Vector2(0, 60)
+	var starts: Array = []
+	for i in 160:
+		tick([&"attack"])
+		for e in sim.events:
+			if e["type"] == &"player_attack":
+				starts.append([sim.combat_frame, e["stage"]])
+	var stages: Array = []
+	var gaps: Array = []
+	for i in starts.size():
+		stages.append(starts[i][1])
+		if i > 0:
+			gaps.append(starts[i][0] - starts[i - 1][0])
+	assert_eq(stages.slice(0, 5), [0, 1, 2, 3, 0], "連按：四段後回到第 1 段")
+	assert_eq(gaps.slice(0, 4), [11, 11, 12, 56], "第 4 段到下一次出招：收招 27 + 停頓 12 + 起手 11 + 判定 6")
 
 
 func test_pressing_in_recovery_chains_immediately() -> void:
@@ -87,7 +290,7 @@ func test_full_combo_damage_and_toughness() -> void:
 			advance(1)
 		press(&"attack")
 		assert_eq(player().combo_index, i + 1)
-	advance(50)
+	advance(60)
 	assert_eq(boss().hp, VeltharisData.MAX_HP - (11 + 11 + 11 + 18), "四段總傷害 70（tuning-log：11 + 11 + 11 + 18 = 51）")
 	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - (1.4 + 1.4 + 1.4 + 4.2), 0.001, "四段總削韌 12（tuning-log：× 0.7 = 8.4）")
 	assert_eq(player().state, S.IDLE)
@@ -154,7 +357,7 @@ func test_buffer_limit_is_9_frames() -> void:
 
 func test_buffered_attack_after_fourth_stage_starts_new_combo() -> void:
 	_go_to_stage(3)
-	var total: int = _stage_frames(3)[0] + _stage_frames(3)[1] + _stage_frames(3)[2]
+	var total: int = PlayerData.light_attacks()[3].total_frames()
 	while player().state_elapsed() < total - 5:
 		advance(1)
 	press(&"attack")

@@ -72,7 +72,7 @@ func decide(sim: CombatSim) -> InputFrame:
 		return f
 	# 進攻：能接就接，依安全幀數決定出不出第 4 段
 	if p.can_start(&"attack"):
-		var next_stage := 0 if p.state != PlayerSim.State.ATTACK else p.combo_index + 1
+		var next_stage: int = p.next_combo_stage(1)  # 按鍵落在下一幀
 		var need := SAFE_FINISHER if next_stage >= 3 else SAFE_LIGHT
 		if safe >= need:
 			f.attack_pressed = true

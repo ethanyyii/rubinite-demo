@@ -52,7 +52,9 @@ static func combos_to_break_by_attack(gap_seconds: float) -> float:
 			if e["type"] == &"boss_hit":
 				hits += 1
 				if hits % 4 == 0:
-					wait_until = sim.combat_frame + Frames.of(0.45) + Frames.of(gap_seconds)
+					# 間隔從第 4 段結束（收招＋停頓，§8.1）算起
+					var a4: PlayerAttackData = PlayerData.light_attacks()[PlayerData.last_light_stage()]
+					wait_until = sim.combat_frame + a4.total_frames() - a4.startup_frames() + Frames.of(gap_seconds)
 			elif e["type"] == &"boss_break":
 				return floorf(hits / 4.0) + (hits % 4) / 4.0
 	return -1.0

@@ -294,9 +294,11 @@ func test_cannot_block_during_stage4_or_thrust_or_dodge() -> void:
 		press(&"attack")
 	assert_eq(player().combo_index, 3)
 	held["block"] = true
-	while player().state == S.ATTACK and player().state_elapsed() < player().attack.total_frames() - 1:
+	while player().state == S.ATTACK and player().state_elapsed() < player().attack.recovery_end_frame() - 1:
 		advance(1)
-		assert_eq(player().state, S.ATTACK, "第 4 段全程不能用格擋取消")
+		assert_eq(player().state, S.ATTACK, "第 4 段起手到收招結束都不能用格擋取消")
+	advance(1)
+	assert_eq(player().state, S.BLOCK, "收招後的停頓（§8.1）可以格擋")
 	# 突刺
 	sim = CombatSim.new(1)
 	held["block"] = false
