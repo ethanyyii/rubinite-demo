@@ -19,6 +19,26 @@ def hand(s, f, l, u, **kw):
     return spec
 
 
+def planted(feet):
+    """Feet placed the same way in every view (batch 3 fix): {'R' / 'L': (ahead, out, lift,
+    state)}, `ahead` = px in front of the foot anchor along the facing, `out` = px to the
+    character's side. The rig measures a foot from that view's own idle stance (the library's
+    east and west stances differ by 3-4 px), so the same offset put the charge's front foot 12
+    px from its hip in the west view (its leg is ~9 px: drawn stretched flat) and 8 in the east.
+    Returns a feet_view dict for pose_rig."""
+    out = {}
+    for view, v in P.VIEWS.items():
+        fv = {}
+        for s_, (ahead, side, lift, state) in feet.items():
+            if v['kind'] == 'side':
+                hip = 1.0 if s_ == v['near'] else -1.0
+                fv[s_] = (ahead - P.SIDE_REST_DX[view][s_] - hip, side, lift, state)
+            else:
+                fv[s_] = (ahead, side, lift, state)
+        out[view] = fv
+    return out
+
+
 def two_hand_grip(f, l, u, blade, back=3.0, elbow_up=-1.0):
     """Right hand at (f, l, u); the left hand holds the grip `back` px toward the pommel
     (placed by the rig from the blade angle each view uses). elbow_up: the elbows' hint
@@ -128,19 +148,75 @@ L4_END = dict(root=(4, 3, -4), lean=20, roll=10,
 # (appendix C: +-1 px): the side views level in 3D; the front view rises a little and the back
 # view dips a little to cancel the depth's slant on screen.
 # Guard vs charge and charge vs heal are hard checks now (>= 12 %, checks.py --batch3).
-CHARGE = dict(root=(-3, -1, -4), lean=6, roll=8,
-              feet={'R': (-5, -5, 0, 'flat'), 'L': (7, 5, 0, 'flat')},
-              arms={'R': hand('R', 0, -9, -6, elbow=(-1, -1, 0)), 'L': hand('L', 11, 9, 1, elbow=(0, 1, -1))},
-              sword=dict(hand='R', dir=(1.0, -0.35, 0.0),
-                         dir_view={'south': (0.35, -0.9, 0.15), 'north': (0.45, -0.85, -0.16)}),
+# Fix of 2026-09-28 (the user, reviewing batch 3 again): the charge is a thrust drawn back, so the
+# blade points FORWARD in every view, as perspective shows it: level in the side views, a short
+# stub toward the camera from the front, hidden behind the body from the back (only the fist,
+# pulled back over the cape). Decision 2's sideways blade in front / back read as charging a sweep.
+# And its legs came apart in every view: the legs are ~6 px from hip to ankle, and the pelvis 4 px
+# down with the feet 14 px apart put the west front foot 12 px from its hip - a ~9 px leg drawn
+# stretched flat ("like a worm"); in front / back, feet stepped in depth were drawn as a squat
+# with the knees splayed. Now:
+#   - the feet are planted() the same way in every view: 4.5 px ahead / 7 behind the anchor, the
+#     back foot 7 px out to the sword side (from the front it sits higher, being further back, and
+#     the body leaning over it hid all but 2-3 px of it nearer in);
+#   - the pelvis 2.5 px down and 2 back: the front knee bends up and the back leg reaches back (an
+#     arch from the side), every near leg within its length standing and walking (checks.py);
+#   - front / back knees bend by the legs' real reach (legs3d), the blade is held to the floor at
+#     its own depth (floor3d);
+#   - without the sideways blade the front view's outline was 9-11 % off the guard's (hard check
+#     >= 12 %): the weight sits over the back foot on the sword side, the body leaning 16 deg that
+#     way (it shows from the front / back only; upright from the side) - guard vs charge and charge
+#     vs heal >= 14 % in every view. Decision 2's lean toward the off hand was only there to set it
+#     apart from the heal;
+#   - the head 1 px forward (eyes on the target): the thrust's release is two steps of <= 8 px.
+# Second fix (2026-09-28, the user: "not fixed"; looked at frame by frame, legs drawn alone):
+#   - the side legs' bones are ~1.35x the standing reach, so a foot set ahead of the hip threw the
+#     knee up level with the hip: the legs drew as a table (east) or an "M" (west). And the west hip
+#     joint sat 2.4 px lower on its leg than the east one: 3.6 px from hip to ankle, any step laid
+#     it flat. soft_knee (pose_rig) keeps the bones just longer than the reach (the front knee bends
+#     1-2 px forward, the back leg nearly straight) and hangs the west legs from where they part;
+#   - from the front / back a foot 7 px back rose 3.9 px (KD_FEET) onto the tassets and hung there
+#     with no leg: kd_feet takes the body's own KD, and the stance is 9 px (4.5 each way) with the
+#     pelvis 1.5 down: every leg keeps >= 2.5 px on screen and the back boot stays on the floor
+#     (walking, the back foot lifted and further away would still climb onto the tassets: fb_leg_min
+#     holds each leg at >= 2.5 px on screen, as FOOT_BELOW holds a foot stepping toward the camera).
+#     Sideways the feet step 5 px out (the front / back views stand as wide as an attack must);
+#   - the 16 deg lean over the back foot (put in to pass the outline check) read as falling over:
+#     gone. The body leans 8 deg toward the target instead (coiled, in every view; charge vs heal
+#     >= 13 % in every view with the hand 12 px out);
+#   - the sword hand sits at the hip's outer side (12 px out, low): from the front the stub toward
+#     the camera hangs clear of the body (over the tassets' chain mail it vanished), and it points
+#     straight ahead (no toe-in: from the front it drew a slanted stub, not one pointing at us);
+#     from behind the hilt shows past the fist (hilt_depth).
+# front knee bent a little, back leg nearly straight (the front one was 1.1 until the west legs hung
+# crossed like the east ones: its knee then rose level with the hip, table-like)
+_CHARGE_KNEES = {'L': 1.05, 'R': 1.03}
+CHARGE = dict(root=(-0.5, 0, -1.5), lean=8, legs3d=True, floor3d=True, head=(1, 0, 0),
+              soft_knee=_CHARGE_KNEES, kd_feet=0.35, fb_leg_min=2.5, body_hides_far=True,
+              feet={'R': (0, 0, 0, 'flat'), 'L': (0, 0, 0, 'flat')},
+              # 5 px out to each side: from the front / back an attack stands at least as wide as the
+              # idle (checks ATTACK_STANCE, review 1); invisible from the side (SIDE_X)
+              feet_view=planted({'R': (-4.5, -5, 0, 'flat'), 'L': (4.5, 5, 0, 'flat')}),
+              arms={'R': hand('R', -3, -12, -6, elbow=(-1, -1, 0), over_cape=True),
+                    'L': hand('L', 10, 7, -1, elbow=(0, 1, -1))},
+              sword=dict(hand='R', dir=(1.0, 0.0, 0.0), hilt_depth={'north': 35.2}),
               cape=(-1, 0, 0), plume=(-1, 0, 0))
+# Second fix: the side views are the approved D1 lunge (only the west back knee, thrown up by the
+# long bones, now straight: soft_knee); from the front / back the feet foreshorten like the body
+# (kd_feet: the back boot rose onto the tassets and came loose from its leg); a foot toward the
+# camera may sit the rule's full 2 px under the floor.
 THRUST = dict(root=(4, -1, -4), lean=24, roll=-4,
               feet={'R': (-9, -5, 0, 'toe'), 'L': (9, 5, 0, 'flat')},
-              arms={'R': hand('R', 13, -3, -1, elbow=(0, -1, 0)), 'L': hand('L', -6, 8, -3, elbow=(-1, 1, 0))},
+              # second fix: the sword hand 2 px higher (chest height still, under the visor from the
+              # side): from the front, where reaching at the camera carries it down the screen, its
+              # point ran 3 px past the floor line and read as stuck in the ground
+              arms={'R': hand('R', 13, -3, 1, elbow=(0, -1, 0)), 'L': hand('L', -6, 8, -3, elbow=(-1, 1, 0))},
               # batch 3 decision 9: only the blade's angle turned so it is level on screen (+-1 px;
               # batch 0 had its ends 1.5-4.5 px apart); the body is the approved D1 pose
-              sword=dict(hand='R', dir=(1.0, -0.25, 0.0),
-                         dir_view={'south': (0.6, -0.7, 0.2), 'north': (0.6, -0.7, -0.2)}),
+              # 2026-09-28 fix: forward in every view, as the charge (the front / back views had it
+              # turned sideways: a sweep, not a thrust); front / back knees by the 3D reach
+              sword=dict(hand='R', dir=(1.0, 0.0, 0.0)), legs3d=True, floor3d=True,
+              soft_knee=_CHARGE_KNEES, kd_feet=0.35, foot_below=2, fb_leg_min=2.5, body_hides_far=True,
               cape=(-6, 0, 5), plume=(-2, 0, 1))
 
 # ------------------------------------------------------------------ locomotion (batch 3)

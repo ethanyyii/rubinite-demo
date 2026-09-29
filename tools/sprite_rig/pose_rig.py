@@ -356,6 +356,14 @@ BODY_POLY = {
 # idle stance of each foot relative to its own hip, along the facing (side views, from the
 # walk rigs' boot cuts: east near boot ankle col 13 / hip 18.2, far 18 / 16.2 ...)
 SIDE_REST_DX = {'east': {'R': -5.2, 'L': 1.8}, 'west': {'L': 2.2, 'R': -1.8}}
+# (2026-09-28, second charge fix) where the side legs hang from, for poses with soft_knee: the west
+# hip joint sits 1.4 px under the top of its leg strip (rows 38-43) while the east one is 1 px above
+# its strip (42-47), so drawn from `hip` the west legs were 3.6 px from hip to ankle against the
+# east's 6 and any step laid them nearly flat (the charge's "worm"). The legs of the library itself
+# part from row 41 (west) / 44 (east): 3 px under the joint in the east, so the west joint is taken
+# 1.4 px higher. Only the legs move; the body's pivot stays `hip`.
+SOFT_LEG_TOP = {'east': 0.0, 'west': -1.4}
+SOFT_HIP_CROSS = 4.5    # px of foot ahead of / behind the pelvis that puts its hip the full 1 px the other way
 
 
 class PoseRig:
@@ -441,7 +449,7 @@ class PoseRig:
         # the head in the picture plane, so a bow there is a sinking head, not a turned one;
         # and a sword planted beside the feet needs the hand lower in the side views (to reach
         # the floor at a slant) than in front (for a blade long enough to read) (batch 1 heal)
-        pose = dict(pose, **{k: pose[k + '_view'][view] for k in ('lean', 'roll', 'head', 'head_tilt', 'arms')
+        pose = dict(pose, **{k: pose[k + '_view'][view] for k in ('lean', 'roll', 'head', 'head_tilt', 'arms', 'feet')
                              if view in pose.get(k + '_view', {})})
         items = []   # (depth, order, fn(px))
         seq = [0]
@@ -551,19 +559,55 @@ class PoseRig:
         # ---- legs
         feet = pose.get('feet', {})
         self._foot_below = pose.get('foot_below', FOOT_BELOW)
+        # front / back legs: a pose may bend the knee by the leg's real 3D reach (legs3d) instead of
+        # its length on screen: a foot stepped toward / away from the camera then reads as a
+        # foreshortened straight leg, not as a squat with the knees splayed out (batch 3 fix: the
+        # charge's front / back legs came apart). Poses without it are drawn as before
+        self._legs3d = pose.get('legs3d', False)
+        self._drop = max(0.0, -pose.get('root', (0, 0, 0))[2])
+        # side legs: a pose may give soft_knee (a factor, or {side: factor}): the thigh and shin
+        # are then only that much longer than the hip -> ankle reach, so the knee bends a little
+        # and a shorter reach squashes the leg instead of folding it. The walk's bone lengths are
+        # ~1.35x the standing reach, so a foot set ahead of the hip threw the knee up level with
+        # the hip: the charge's legs drew as a table or an "M" (2026-09-28, second fix)
+        self._soft_knee = pose.get('soft_knee')
+        # front / back feet: a pose may foreshorten its steps in depth by the body's own KD
+        # (kd_feet) instead of KD_FEET. The legs are ~5 px from hip to ankle there: at 0.55 a foot
+        # set 4 px back rose 2.2 px, its leg vanished under the tassets and the boot hung from
+        # them (the charge, 2026-09-28 second fix)
+        self._kd_feet = pose.get('kd_feet', KD_FEET)
+        # front / back legs: a pose may keep every leg at least fb_leg_min px from hip to ankle on
+        # screen - a foot further from the camera (and lifted, walking) rises at most that far, as
+        # FOOT_BELOW holds a foot nearer the camera. Past it the boot rode up onto the tassets with
+        # no leg under them (the charge's walk, 2026-09-28 second fix)
+        self._fb_leg_min = pose.get('fb_leg_min')
         if side:
             hip_w = apply(base, *v['hip'])
             near = v['near']
             far = 'L' if near == 'R' else 'R'
             for which, s_, dim, dep in (('far', far, 0.78, -60), ('near', near, 1.0, -55)):
                 f_, l_, lift, state = feet.get(s_, (0, 0, 0, 'flat'))
-                hip = (hip_w[0] + fdir * (1 if which == 'near' else -1), hip_w[1])
+                hip = (hip_w[0] + fdir * (1 if which == 'near' else -1),
+                       hip_w[1] + (SOFT_LEG_TOP[view] if self._soft_knee else 0.0))
                 # foot position: its rest stance plus the pose offset, measured from the hip;
                 # the root offset moves the hip, so a planted foot is compensated here
                 rf = pose.get('root', (0, 0, 0))[0]
                 dx = SIDE_REST_DX[view][s_] + f_ - rf
-                add(dep, lambda px, which=which, dx=dx, lift=lift, state=state, dim=dim, hip=hip:
-                    self._side_leg(px, (dx, lift, state), which, dim, hip), 'leg_' + s_)
+                ax_abs = None
+                if self._soft_knee:
+                    # (2026-09-28, the user: the west legs looked odd next to the east ones) the walk
+                    # rig hangs the near leg 1 px ahead of the far one in both views. In the east that
+                    # is the back leg: the thighs cross under the hips and the legs read as a clean
+                    # inverted V; in the west the near leg is the front one, the legs hung parallel
+                    # and, with the west's longer boots, closed into one block. Here a leg hangs
+                    # from a hip up to 1 px on the far side of its foot (a foot ahead: its hip
+                    # behind), by how far the foot is from the pelvis, so both views cross the same
+                    # way and a passing foot moves its hip smoothly. The foot stays where it was
+                    ax_abs = hip[0] + fdir * dx
+                    rel = (ax_abs - hip_w[0]) * fdir
+                    hip = (hip_w[0] - fdir * max(-1.0, min(1.0, rel / SOFT_HIP_CROSS)), hip[1])
+                add(dep, lambda px, which=which, dx=dx, lift=lift, state=state, dim=dim, hip=hip, s_=s_, ax_abs=ax_abs:
+                    self._side_leg(px, (dx, lift, state), which, dim, hip, s_, ax_abs), 'leg_' + s_)
         else:
             order = []
             for s_ in ('R', 'L'):
@@ -622,6 +666,8 @@ class PoseRig:
             # hand comes round to the front of the chest; front / back views: a hand pushed
             # forward goes in front of (south) or behind (north) the body
             chest = vadd(hand3, chest_sh(view, s_))
+            self._chest_hand = getattr(self, '_chest_hand', {})
+            self._chest_hand[s_] = chest
             tw = depth(view, chest)
             if side:
                 d_up = 20 if s_ == v['near'] else -70
@@ -679,9 +725,22 @@ class PoseRig:
                 ln = math.hypot(*d2)
                 # the tip never goes below the floor: past the ground row the blade reads as
                 # planted, so it is shortened to touch the floor (animation-review §4.4)
+                floor_tip = floor_hilt = float(A.GROUND)
+                if pose.get('floor3d') and not side:
+                    # (2026-09-28 fix) the floor where the blade is: in front / back views a point
+                    # nearer the camera sits lower on screen, so a level blade pointing at the
+                    # camera runs down the screen by perspective, not into the floor. The hand's
+                    # depth: the root, the lean carrying the chest forward, the hand in chest space
+                    kd = abs(PROJ[view]['F'][1])
+                    hc = getattr(self, '_chest_hand', {}).get(sw.get('hand', 'R'), (0.0, 0.0, 0.0))
+                    h_ = v['pelvis'][1] - v['neck'][1]
+                    fwd = pose.get('root', (0, 0, 0))[0] + h_ * math.sin(math.radians(pose.get('lean', 0.0))) + hc[0]
+                    hand_c = (fwd, hc[1], 0.0)
+                    floor_hilt += kd * max(0.0, depth(view, hand_c))
+                    floor_tip += kd * max(0.0, depth(view, vadd(hand_c, vscale(d3, SW.BLADE))))
                 if ln > 1e-6 and d2[1] > 0:
                     uy = d2[1] / ln
-                    room = (A.GROUND - 1.5) - (hand[1] + uy * SW.GUARD_AT)
+                    room = (floor_tip - 1.5) - (hand[1] + uy * SW.GUARD_AT)
                     if uy * SW.BLADE * ln > room:
                         ln = max(0.1, room / (uy * SW.BLADE))
                 dep = sw.get('depth', {}).get(view)
@@ -692,29 +751,61 @@ class PoseRig:
                 # armour wherever it crosses the body (animation-review §4.5); a pose may turn
                 # it off per view with bright=(views...)
                 br = view in sw['bright'] if 'bright' in sw else True
-                def draw_sword(px, hand=hand, d2=d2, ln=ln, w=sw.get('width', {}).get(view, 2), gb=gb, br=br):
+                hilt_dep = sw.get('hilt_depth', {}).get(view)
+
+                def draw_sword(px, hand=hand, d2=d2, ln=ln, w=sw.get('width', {}).get(view, 2), gb=gb, br=br, fh=floor_hilt,
+                               hilt_only=False):
                     spx, blade = SW.sword_pixels(hand, d2, ln, w, gb, br)
                     # a low hand can still put the guard or pommel under the floor: the whole
                     # sword slides up in the fist (as the walk does), whole pixels only
-                    sink = max(y for (_, y) in spx) - A.GROUND
+                    if fh != A.GROUND:
+                        # floor3d: only the hilt is held to the floor under the hand
+                        sink = max(y for q, y in ((q, q[1]) for q in spx) if q not in blade) - int(math.floor(fh))
+                    else:
+                        sink = max(y for (_, y) in spx) - A.GROUND
                     if sink > 0:
                         spx = {(x, y - sink): c for (x, y), c in spx.items()}
                         blade = {(x, y - sink) for (x, y) in blade}
+                    if hilt_dep is not None:
+                        # (2026-09-28) a blade pointing away from the camera hides behind the body
+                        # while its hilt, nearer the camera than the fist, shows: the grip and
+                        # pommel (and their outline) go in front, the blade stays at `dep`
+                        core = {q for q, c in spx.items() if q not in blade and c != SW.OUT}
+                        near = {q for q in spx if q in core or (q not in blade and any(
+                            (q[0] + a, q[1] + b) in core for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))))}
+                        if hilt_only:
+                            px.update({q: spx[q] for q in near})
+                            return
+                        spx = {q: c for q, c in spx.items() if q not in near}
                     px.update(spx)
                     self.debug['blade'] = blade
                 add(dep, draw_sword, 'sword')
+                if hilt_dep is not None:
+                    add(hilt_dep, lambda px, f=draw_sword: f(px, hilt_only=True), 'sword_hilt')
 
         # every piece is drawn on its own, then laid down in depth order; trace keeps
         # which piece owns each pixel (for inspecting a pose)
         self.trace = {}
         self.pieces = {}
         self.pieces_raw = {}      # as drawn, before cloth folding on the floor
+        # (2026-09-28, the user: facing west the sword should hide behind the body) the backing is
+        # body too: where a moved near arm left it showing, the far arm and a sword behind the body
+        # must not show through it. Only for poses with body_hides_far (the charge and the thrust):
+        # everything else is drawn as before
+        hide_far = side and pose.get('body_hides_far')
+        body_under = set()
         for dep, _, fn, name in sorted(items, key=lambda it: (it[0], it[1])):
             tmp = {}
             fn(tmp)
             self.pieces_raw.setdefault(name, {}).update(tmp)
-            if not name.startswith('leg'):
-                # cloth (or a tasset corner) that a lean swings past the floor rests on it
+            if hide_far and name == 'backing':
+                body_under = set(tmp)
+            elif hide_far and dep < 0 and name.startswith(('upper_', 'fore_', 'fist_', 'sword')):
+                # hidden in the picture only: pieces_raw keeps them whole (where the fist is, for the checks)
+                tmp = {k: c for k, c in tmp.items() if k not in body_under}
+            if not name.startswith('leg') and not (name == 'sword' and pose.get('floor3d')):
+                # cloth (or a tasset corner) that a lean swings past the floor rests on it (a
+                # floor3d blade was already held to the floor at its own depth)
                 for k in [k for k in tmp if k[1] > A.GROUND]:
                     c = tmp.pop(k)
                     tmp.setdefault((k[0], A.GROUND), c)
@@ -749,7 +840,7 @@ class PoseRig:
             body = dimmed(body, dim)
         outline(body, px)
 
-    def _side_leg(self, px, foot, which, dim, hip):
+    def _side_leg(self, px, foot, which, dim, hip, s_=None, ankle_x=None):
         """The walk rig's side leg (SideRig.leg), except that the knee never folds below the
         ankle: in a crouch the hip comes down close to the ankle and the two-bone solution
         bending forward can drop under the floor. The walk itself is untouched."""
@@ -761,13 +852,21 @@ class PoseRig:
         bx0, bx1, by0, by1, bax = c[which + '_boot']
         heel_x = bx0 if f > 0 else bx1 + 1
         toe_x = bx1 + 1 if f > 0 else bx0
-        ax = hip[0] + f * dx
+        ax = hip[0] + f * dx if ankle_x is None else ankle_x
         ay = A.GROUND - (by1 - by0 + 1) - lift - (W.TOE_RAISE if state == 'toe' else 0)
         ls = c[which + '_leg']
         ox, oy = self.ox, self.oy
         body = {}
+        lens = W.LEG_LENS
+        soft = getattr(self, '_soft_knee', None)
+        if isinstance(soft, dict):
+            soft = soft.get(s_)
+        if soft:
+            reach = math.hypot(ax - hip[0], ay - hip[1])
+            k = reach * soft / sum(W.LEG_LENS)
+            lens = (W.LEG_LENS[0] * k, W.LEG_LENS[1] * k)
         knee = leg_tex(body, base.shifted(ox, oy), hip, (ax, ay), f,
-                       (ls[0] + ox, ls[1] + ox, ls[2] + oy, ls[3] + oy), W.LEG_LENS, W.LEG_RADII)
+                       (ls[0] + ox, ls[1] + ox, ls[2] + oy, ls[3] + oy), lens, W.LEG_RADII)
         self.debug.setdefault('legs', {})[which] = (hip, knee, (ax, ay))
         pvx = heel_x if pivot == 'heel' else toe_x
         world = mat_mul(T(ax - bax, ay - by0), R(f * pitch, pvx, by1 + 1.0))
@@ -784,13 +883,19 @@ class PoseRig:
         hip_d = apply(base, g['dest_x'], g['hip'][1])
         # a step toward / away from the camera is exaggerated a little over the body's KD:
         # at 40 px a 9 px lunge would otherwise move the boot only 3 px
-        kf = KD_FEET if view == 'south' else -KD_FEET
+        kd = getattr(self, '_kd_feet', KD_FEET)
+        kf = kd if view == 'south' else -kd
         # a foot nearer the camera than the anchor may sit at most FOOT_BELOW px under the
         # ground row (animation-review §4.4: 2 px allowed; the walk uses 1)
         # a pose may allow the rule's full 2 px under the floor (batch 2: a planted foot held
         # back while the program carries the body away from the camera)
         off = (l_ * PROJ[view]['L'][0] * FEET_W[view], min(f_ * kf, getattr(self, '_foot_below', FOOT_BELOW)) - lift)
         ank_d = (g['dest_x'] + self.ox + off[0], g['ankle'][1] + self.oy + off[1])
+        if getattr(self, '_fb_leg_min', None) is not None and not kneel:
+            # only a foot that rose is held down, and never past where it would stand on the floor
+            # (a pelvis sunk low in a lunge would otherwise push the front foot under it)
+            floor_y = g['ankle'][1] + self.oy + max(0.0, min(f_ * kf, getattr(self, '_foot_below', FOOT_BELOW)))
+            ank_d = (ank_d[0], max(ank_d[1], min(hip_d[1] + self._fb_leg_min, floor_y)))
         boot = self.base.L[name + '_boot']
         top, bot = self._leg_halves(name, g)
         mid = ((g['hip'][0] + g['ankle'][0]) / 2, (g['hip'][1] + g['ankle'][1]) / 2)
@@ -798,6 +903,8 @@ class PoseRig:
             # knee on the ground: the thigh reaches the floor toward the camera (south) or away
             # (north); the shin and boot lie behind it, the boot's top peeking out
             knee = (ank_d[0], A.GROUND - 1.5 + (0 if view == 'south' else -2))
+            # batch 4: where the checks find this leg (the knee on the floor stands for the foot)
+            self.debug.setdefault('legs', {})[s_] = (hip_d, knee, knee)
             bt = T(ank_d[0] - g['ankle'][0], ank_d[1] - g['ankle'][1] - (3 if view == 'south' else 1))
             under = boot.render(bt)
             thigh = {}
@@ -814,13 +921,27 @@ class PoseRig:
         # crouch seen from the front reads as knees apart, not as a shorter leg)
         lr = math.hypot(g['ankle'][0] - g['hip'][0], g['ankle'][1] - g['hip'][1])
         lc = math.hypot(ank_d[0] - hip_d[0], ank_d[1] - hip_d[1])
+        if getattr(self, '_legs3d', False):
+            # the hip -> ankle distance in the character's own space: across the screen, the step
+            # in depth (full length), and down (the rest leg less the drop and the lift)
+            lc = math.sqrt((ank_d[0] - hip_d[0]) ** 2 + f_ ** 2 + max(0.0, lr - self._drop - lift) ** 2)
         mx, my = (hip_d[0] + ank_d[0]) / 2, (hip_d[1] + ank_d[1]) / 2
         out_ = math.sqrt(max((lr / 2) ** 2 - (lc / 2) ** 2, 0.0)) * KNEE_OUT
         knee = (mx + g['side'] * out_, my)
         self.debug.setdefault('legs', {})[s_] = (hip_d, knee, ank_d)
-        top.render(axis_map(g['hip'], mid, hip_d, knee), out=px)
-        bot.render(axis_map(mid, g['ankle'], knee, ank_d), out=px)
-        px.update(boot.render(T(ank_d[0] - g['ankle'][0], ank_d[1] - g['ankle'][1])))
+        bt = boot.render(T(ank_d[0] - g['ankle'][0], ank_d[1] - g['ankle'][1]))
+        if getattr(self, '_fb_leg_min', None) is not None:
+            # a leg held nearly level (a deep lunge's back leg, fb_leg_min) turns its strip on end:
+            # nothing of it hangs below its own boot's sole
+            sole = max(y for _, y in bt)
+            strip = {}
+            top.render(axis_map(g['hip'], mid, hip_d, knee), out=strip)
+            bot.render(axis_map(mid, g['ankle'], knee, ank_d), out=strip)
+            px.update({q: c for q, c in strip.items() if q[1] <= sole})
+        else:
+            top.render(axis_map(g['hip'], mid, hip_d, knee), out=px)
+            bot.render(axis_map(mid, g['ankle'], knee, ank_d), out=px)
+        px.update(bt)
 
     def _leg_halves(self, name, g):
         key = name + '_halves'
@@ -853,6 +974,7 @@ class PoseRig:
         (before compositing), self.trace which piece owns each pixel, and self.debug the
         hands and the blade (small-frame coordinates; add canvas_offset() for the canvas)."""
         self._out = {}
+        self._chest_hand = {}
         self.debug = {'blade': set()}
         self.canvas = canvas
         return self.render(pose, canvas)

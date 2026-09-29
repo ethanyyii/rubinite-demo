@@ -332,7 +332,12 @@ def blade_contrast(r, p, dx, dy):
 # ~20 px apart. Distances are between the two ankles (where the rig puts each boot).
 ATTACK_STANCE = {   # pose: (pelvis drop px, side-view boot centres apart px)
     'l1_top': (px(0.075), px(0.35)), 'l1_end': (px(0.075), px(0.35)), 'l2_end': (px(0.075), px(0.35)),
-    'charge': (px(0.075), px(0.35)),
+    # 2026-09-28 fix: the charge re-derived from the legs' reach (they are ~6 px from hip to ankle):
+    # 3 px down with the feet 14 apart drew its front leg stretched flat (batch 3, leg reach).
+    # Second fix (same day, the user: still broken): 2.5 down and 11 apart still laid the legs
+    # nearly flat (4.5 / 3.6 px of leg left under the hip, east / west): 1.5 down, 9 apart - legs
+    # at 40-55 deg from upright, the east idle's own near leg is at 41
+    'charge': (1.5, px(0.225)),          # px(0.0375) rounds half to even: 2
     'l4_top': (px(0.1), px(0.45)), 'l4_mid': (px(0.1), px(0.45)), 'l4_end': (px(0.1), px(0.45)),
     'thrust': (px(0.1), px(0.45)),
 }
@@ -434,7 +439,7 @@ def pose_rows(name, pose, canvas, view, lying=False):
         rows.append(('floating specks', specks(p) <= specks(idle), f'{specks(p)} (idle {specks(idle)})'))
         return rows
     # below the ground: legs may step 2 px toward the camera, nothing else goes under the floor
-    low_leg, low_other = -1, -1
+    low_leg, low_other, low_sword = -1, -1, -1
     legpx = {(x + dx, y + dy) for (x, y), n in r.trace.items() if n.startswith('leg')}
     for (x, y) in p:
         n = r.trace.get((x - dx, y - dy), '')
@@ -442,10 +447,16 @@ def pose_rows(name, pose, canvas, view, lying=False):
             n = 'leg (clean-up)'      # a seam the clean-up closed on a boot
         if n.startswith('leg'):
             low_leg = max(low_leg, y)
+        elif n == 'sword' and pose.get('floor3d') and PR.VIEWS[view]['kind'] == 'fb':
+            low_sword = max(low_sword, y)
         else:
             low_other = max(low_other, y)
+    # a floor3d blade pointing at the camera runs down the screen by perspective: at most its
+    # length in depth (0.35 x 17 px = 6) below the ground row (2026-09-28 fix)
+    ls = low_sword
     rows.append((f'feet at most {BELOW_GROUND_MAX} px below ground, nothing else below it',
-                 low_leg <= gy + BELOW_GROUND_MAX and low_other <= gy, f'feet row {low_leg}, others {low_other}, ground {gy}'))
+                 low_leg <= gy + BELOW_GROUND_MAX and low_other <= gy and ls <= gy + BLADE_DEPTH_MAX,
+                 f'feet row {low_leg}, others {low_other}' + (f', blade toward the camera {ls}' if ls >= 0 else '') + f', ground {gy}'))
     helm = [y for (x, y), n in r.trace.items() if n == 'helmet']
     neck = max(helm) + dy if helm else neck0 + dy
     base_holes = enclosed(idle, neck0)
@@ -626,6 +637,8 @@ def _dist(a, b):
 
 
 def _tip(f):
+    if f.debug.get('tip'):
+        return f.debug['tip']          # batch 4's lying frames: the dropped sword's point
     blade = f.debug.get('blade') or set()
     fist = _cen(f, ('fist_R',))
     if blade and fist:
@@ -1297,9 +1310,81 @@ RUN_LEAN = (10, 15)
 RUN_BOB = 2
 RUN_STRIDE = (px(0.35), px(0.4))          # ankles apart at contact, 14-16 px (side views)
 RUN_FB_FEET = {'south': 8, 'north': 6}    # boot centres apart, the walk's (+-1)
-CHARGE_DROP = px(0.1)         # decision 2: pelvis 4 px below idle
-CHARGE_BEHIND = px(0.05)      # pelvis at least 2 px behind the feet's midpoint (side views)
-BLADE_FLAT = 1                # blade level on screen +-1 px (the two end columns' rows)
+# decision 2 set 4 px down and 2 px behind the feet's midpoint; the 2026-09-28 fix re-derived them
+# from the legs' reach (the user saw the legs drawn flat): 2.5 down (the check allows 0.5 less than
+# the target), the weight still behind the midpoint
+CHARGE_DROP = 1.5             # pelvis 1.5 px below idle (+-0.25: the front / back views' projection); second fix, see ATTACK_STANCE
+CHARGE_BEHIND = 0.5           # pelvis behind the feet's midpoint (side views)
+BLADE_FLAT = 1                # blade level on screen +-1 px (the two end columns' rows), side views
+# 2026-09-28 fix (the user): the charge and the thrust point the blade forward in every view, as
+# perspective shows it - level from the side, foreshortened toward the camera from the front (a
+# stub, the point below the hilt), hidden behind the body from the back (only the fist shows)
+BLADE_DEPTH_MAX = px(0.15)    # a blade toward the camera may run 6 px below the ground row (0.35 x 17)
+BLADE_STUB_MAX = px(0.2)      # front: the blade seen end-on spans at most 8 px on screen (its full length ~15)
+BLADE_HIDDEN_MAX = 2          # back: at most 2 blade pixels seen past the body
+FIST_SEEN_MIN = 4             # back: the sword fist still shows (pixels drawn)
+LEG_STRETCH_MAX = 1.0         # side views: the near leg's hip to ankle no longer than the leg (walk_side LEG_LENS)
+FEET_APART_MIN = px(0.175)    # 7 px: the boots (~6 px long) stay apart ("the feet stuck together")
+LEG_STRETCH_FAR = 1.1         # the far leg, drawn behind it at 78 % brightness (the "worm" was a near leg at 1.29)
+RELEASE_FEET_JUMP = px(0.15)  # 6 px: the feet in the thrust's two release steps (second charge fix)
+# Accepted by the user (2026-09-29, second charge fix, option a): the guard and the charge differ by
+# where the blade is (across the chest / at the hip, point forward), which an outline cannot see; a
+# natural pose did not reach 12 % (the first fix's 16-degree lean did, and read as falling over).
+# Recorded shares at approval: the check fails again if the two grow MORE alike than this
+# (WAIVE_OUTLINE_EPS below the record), so a later change cannot hide behind the waiver.
+B3_OUTLINE_WAIVED = {   # (a1, a2, view): (hold 1 vs hold 1, lowest walk frame vs walk frame)
+    ('guard', 'charge', 'south'): (0.0506, 0.0398), ('guard', 'charge', 'east'): (0.0939, 0.0637),
+    ('guard', 'charge', 'north'): (0.0387, 0.0226), ('guard', 'charge', 'west'): (0.0695, 0.0631),
+}
+WAIVE_OUTLINE_EPS = 0.002
+# the user (2026-09-28): a walk slower than the plain walk must not step quicker than it ("the speed
+# is slow, so there is no reason for the motion to be fast": the charge's 0.2 s cycle was a shuffle).
+# The plain walk: 8 frames of 2 sim frames (batch 3 decision 1) at 100 px/s
+WALK_CYCLE_SIM = 16
+# Second charge fix (2026-09-28, the user: "not fixed"; drawing the legs alone showed why): the side
+# legs drew as a table (east: the front knee level with the hip) and an "M" (west: both knees above
+# it), the west legs were 2.4 px shorter from hip to ankle than the east ones, and from the front the
+# back boot rode up onto the tassets with no leg under it. Checked on the charge's frames (in, hold,
+# out, walk); the thrust's lunge lies its legs nearly flat by design (D1, approved from the side).
+KNEE_BELOW_MIN = 0.1          # side: the knee at least 10 % of the hip-to-ankle height under the hip
+SIDE_LEG_SYM = 1.5            # side: hold, east vs west hip-to-ankle height within 1.5 px
+FB_LEG_SEEN_MIN = 2           # front / back: every leg at least 2 px from hip to ankle on screen
+
+
+def leg_shape(f, view):
+    """Side views: (lowest knee drop as a share of hip-to-ankle height, lowest hip-to-ankle height of a
+    planted leg); front / back: (shortest hip-to-ankle height on screen, None)."""
+    legs = f.debug.get('legs') or {}
+    feet = f.pose.get('feet', {}) if hasattr(f, 'pose') else {}
+    if view in ('east', 'west'):
+        near = PR_VIEWS()[view]['near']
+        side_of = {'near': near, 'far': 'L' if near == 'R' else 'R'}
+        knee, planted = [], []
+        for k, (h, kn, a) in legs.items():
+            dy = a[1] - h[1]
+            knee.append((kn[1] - h[1]) / dy if dy > 0.5 else -1.0)
+            ft = feet.get(side_of.get(k, k))
+            if not ft or (len(ft) < 3 or ft[2] < 0.25):
+                planted.append(dy)
+        return min(knee), (min(planted) if planted else None)
+    return min(a[1] - h[1] for (h, _, a) in legs.values()), None
+
+
+def far_sword_shown(f, view):
+    """Side view where the sword hand is the far one (the user, 2026-09-28: facing west the sword
+    held at the right hip is behind the body): (far arm / fist pixels shown, sword pixels shown over
+    the body's own footprint - torso and its backing, as drawn before anything covered them)."""
+    near = PR_VIEWS()[view]['near']
+    far = 'L' if near == 'R' else 'R'
+    arm = sum(1 for q, n in f.trace.items() if n in (f'upper_{far}', f'fore_{far}', f'fist_{far}') and q in f.px)
+    body = set(f.pieces_raw.get('torso', {})) | set(f.pieces_raw.get('backing', {}))
+    over = sum(1 for q, n in f.trace.items() if n == 'sword' and q in body and q in f.px)
+    return arm, over
+
+
+def PR_VIEWS():
+    import pose_rig as PR
+    return PR.VIEWS
 B3_DISTINCT = [('guard', 'hold 1', 'charge', 'hold 1'), ('charge', 'hold 1', 'heal', 'hold 1')]
 B3_DISTINCT_WALK = [('guard_walk', 'charge_walk'), ('charge_walk', 'heal_walk')]
 
@@ -1327,6 +1412,46 @@ def blade_ends(f):
     return row(xs[0]), row(xs[-1])
 
 
+def blade_forward(f, view, fist=True):
+    """(ok, info) for a blade that points forward, as perspective shows it in this view (the
+    2026-09-28 fix): level from the side, a stub toward the camera from the front, hidden behind
+    the body from the back with the sword fist still in sight."""
+    import math as _m
+    bl = f.debug.get('blade') or set()
+    if view in ('east', 'west'):
+        be = blade_ends(f)
+        return (be is not None and abs(be[0] - be[1]) <= BLADE_FLAT,
+                'level from the side +-1 px', '' if be is None else f'end rows {be[0]:.1f} / {be[1]:.1f}')
+    want_fist = fist
+    fist_px = [q for q, n in f.trace.items() if n == 'fist_R' and q in f.px]
+    if view == 'south':
+        if not bl:
+            return False, 'toward the camera', 'no blade'
+        span = max(_m.hypot(a[0] - b[0], a[1] - b[1]) for a in bl for b in bl)
+        fc = _cen(f, ('fist_R',))
+        tip = max(bl, key=lambda q: (q[0] - fc[0]) ** 2 + (q[1] - fc[1]) ** 2)
+        return (span <= BLADE_STUB_MAX and tip[1] > fc[1],
+                f'toward the camera: a stub <= {BLADE_STUB_MAX} px, point below the fist',
+                f'span {span:.1f} px, point row {tip[1]} vs fist {fc[1]:.1f}')
+    seen = sum(1 for q in bl if f.trace.get(q) == 'sword' and q in f.px)
+    need = FIST_SEEN_MIN if want_fist else 0
+    return (seen <= BLADE_HIDDEN_MAX and len(fist_px) >= need,
+            f'away from the camera: blade hidden (<= {BLADE_HIDDEN_MAX} px seen)' + (f', fist seen (>= {FIST_SEEN_MIN} px)' if want_fist else
+                                                                                     ' (the arm reaches forward past the body: the fist is hidden too)'),
+            f'blade {seen} of {len(bl)} px seen, fist {len(fist_px)} px')
+
+
+def leg_stretch(f, which=None):
+    """Side views: a leg's hip-to-ankle distance over the leg's length (walk_side LEG_LENS); all
+    of them, or the 'near' / 'far' one's."""
+    import math as _m
+    import walk_side as W_
+    L = sum(W_.LEG_LENS)
+    legs = f.debug.get('legs') or {}
+    d = {k: _m.hypot(a[0] - h[0], a[1] - h[1]) / L for k, (h, _, a) in legs.items()}
+    return d[which] if which else list(d.values())
+
+
 def batch3_checks():
     import batch1 as B1
     import batch3 as B3
@@ -1341,6 +1466,16 @@ def batch3_checks():
             return
         failed |= not ok
         print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    def outline(share, key, which, name):
+        """The outline row: PASS at >= OUTLINE_DIFF_MIN, else WAIV if the user accepted it and it is not
+        more alike than recorded (B3_OUTLINE_WAIVED), else FAIL."""
+        rec = B3_OUTLINE_WAIVED.get(key)
+        info = f'{100 * share:.1f} %'
+        if share >= OUTLINE_DIFF_MIN or rec is None or share < rec[which] - WAIVE_OUTLINE_EPS:
+            out(share >= OUTLINE_DIFF_MIN, name, info + (f' (recorded {100 * rec[which]:.1f} %)' if rec else ''))
+        else:
+            print(f'  WAIV  {name}  {info}  [2026-09-29, user: accepted; recorded {100 * rec[which]:.1f} %, not more alike]')
 
     def named(action, view, name):
         src = B3 if action in B3.ACTIONS else B1
@@ -1498,7 +1633,7 @@ def batch3_checks():
             rest.frame({}, 'small')
             dy = h.debug['pelvis'][1] - 8 - rest.debug['pelvis'][1]      # large -> small canvas
             drop = dy - PR.proj(view, (h.pose['root'][0], h.pose['root'][1], 0))[1]
-            out(drop >= CHARGE_DROP - 0.5, f'charge {view}: pelvis {CHARGE_DROP} px below idle', f'{drop:.1f} px')
+            out(abs(drop - CHARGE_DROP) <= 0.25, f'charge {view}: pelvis {CHARGE_DROP} px below idle', f'{drop:.2f} px')
             if view in ('east', 'west'):
                 fd = PR.VIEWS[view]['facing']
                 lg = h.debug['legs']
@@ -1506,26 +1641,81 @@ def batch3_checks():
                 behind = (mid - h.debug['pelvis'][0]) * fd
                 out(behind >= CHARGE_BEHIND - 0.05, f'charge {view}: pelvis at least {CHARGE_BEHIND} px behind the feet\'s midpoint',
                     f'{behind:.1f} px')
-            be = blade_ends(h)
-            out(be is not None and abs(be[0] - be[1]) <= BLADE_FLAT, f'charge {view}: blade level on screen +-{BLADE_FLAT} px',
-                '' if be is None else f'end rows {be[0]:.1f} / {be[1]:.1f}')
+            ok, what, info = blade_forward(h, view)
+            out(ok, f'charge {view}: blade forward - {what}', info)
+            if view in ('east', 'west'):
+                fr_ = [f for f in B3.frames('charge', view) if f.name.startswith('hold')] + B3.frames('charge_walk', view)
+                wn = max(leg_stretch(f, 'near') for f in fr_)
+                wf = max(leg_stretch(f, 'far') for f in fr_)
+                out(wn <= LEG_STRETCH_MAX + 1e-6 and wf <= LEG_STRETCH_FAR + 1e-6,
+                    f'charge {view}: legs within their length, hold and walk (hip to ankle / leg: near <= {LEG_STRETCH_MAX}, far <= {LEG_STRETCH_FAR})',
+                    f'near {wn:.2f}, far {wf:.2f}')
+                # the user (2026-09-28, second fix): the walk's quick short steps were a shuffle; it walks
+                # a slow walk now, the feet passing under the body in turn. So: both feet on the floor ->
+                # apart; closer than that -> one of them is off the floor, passing the other
+                gaps, close = [], []
+                for f in fr_:
+                    gap = abs(f.debug['legs']['near'][2][0] - f.debug['legs']['far'][2][0])
+                    lifted = max(ft[2] for ft in f.pose['feet'].values())
+                    if lifted < 0.25:
+                        gaps.append(gap)
+                    elif gap < FEET_APART_MIN:
+                        close.append(lifted)
+                out(min(gaps) >= FEET_APART_MIN and all(c >= 1 for c in close),
+                    f'charge {view}: both feet down -> ankles >= {FEET_APART_MIN} px apart; closer -> one foot up (passing)',
+                    f'both down {min(gaps):.1f}-{max(gaps):.1f} px; {len(close)} passing frames, lift {min(close, default=0):.1f}-{max(close, default=0):.1f} px')
+            # second fix: the legs' shape, every frame of the charge and its walk
+            fr_all = B3.frames('charge', view) + B3.frames('charge_walk', view)
+            shp = [(leg_shape(f, view), f.action + ' ' + f.name) for f in fr_all]
+            if view in ('east', 'west'):
+                worst = min(shp, key=lambda t: t[0][0])
+                out(worst[0][0] >= KNEE_BELOW_MIN, f'charge {view}: no knee level with the hip (table / "M"): knee >= {KNEE_BELOW_MIN} of the leg under the hip',
+                    f'lowest {worst[0][0]:.2f} ({worst[1]})')
+            else:
+                worst = min(shp, key=lambda t: t[0][0])
+                out(worst[0][0] >= FB_LEG_SEEN_MIN, f'charge {view}: every leg >= {FB_LEG_SEEN_MIN} px from hip to ankle on screen (no boot riding on the tassets)',
+                    f'shortest {worst[0][0]:.1f} px ({worst[1]})')
             fr = [f for f in B3.frames('charge', view) if f.name.startswith('hold')]
             dy_t = [round(_cen(f, ('torso',))[1] - _cen(fr[0], ('torso',))[1]) for f in fr]
             dy_h = [round(_cen(f, ('helmet',))[1] - _cen(fr[0], ('helmet',))[1]) for f in fr]
             out(max(dy_t) - min(dy_t) == 1 and dy_h == [dy_t[(i - 1) % 4] for i in range(4)],
                 f'charge {view}: tremble 1 px, head a phase late (decision 3)', f'torso {dy_t}, head {dy_h}')
+        # the sword hand is the far one facing west: behind the body, only the blade past its front shows
+        vw = next(v for v in ('east', 'west') if PR.VIEWS[v]['near'] != 'R')
+        fr_w = B3.frames('charge', vw) + B3.frames('charge_walk', vw)
+        worst = max(((far_sword_shown(f, vw), f.name) for f in fr_w if f.name.startswith(('hold', 'fwd', 'back', 'side', 'rside'))),
+                    key=lambda t: t[0][0] + t[0][1])
+        out(worst[0] == (0, 0), f'charge {vw}: the far sword hand and the sword behind the body do not show through it (hold, walk)',
+            f'worst {worst[1]}: arm / fist {worst[0][0]} px, sword over the body {worst[0][1]} px')
+        hts = {v: leg_shape(named('charge', v, 'hold 1'), v)[1] for v in ('east', 'west')}
+        out(abs(hts['east'] - hts['west']) <= SIDE_LEG_SYM,
+            f'charge: hold 1 east vs west legs the same height from hip to ankle (within {SIDE_LEG_SYM} px)',
+            f'east {hts["east"]:.1f}, west {hts["west"]:.1f} px')
         print(f'-- outlines: guard / charge / heal (decision 2: hard, >= {round(OUTLINE_DIFF_MIN * 100)} %)')
         for a1, n1, a2, n2 in B3_DISTINCT:
             for view in B3.VIEWS:
                 s_ = outline_shift_share(sil(named(a1, view, n1)), sil(named(a2, view, n2)))
-                out(s_ >= OUTLINE_DIFF_MIN, f'{a1} {n1} vs {a2} {n2} {view}', f'{round(100 * s_)} %')
+                outline(s_, (a1, a2, view), 0, f'{a1} {n1} vs {a2} {n2} {view}')
         for a1, a2 in B3_DISTINCT_WALK:
             for view in B3.VIEWS:
                 f1 = B1.frames(a1, view) if a1 in B1.ACTIONS else B3.frames(a1, view)
                 f2 = B1.frames(a2, view) if a2 in B1.ACTIONS else B3.frames(a2, view)
-                vals = [outline_shift_share(sil(x), sil(y)) for x, y in zip(f1, f2)]
-                out(min(vals) >= OUTLINE_DIFF_MIN, f'{a1} vs {a2} {view}, every frame (same step)',
-                    f'{round(100 * min(vals))}-{round(100 * max(vals))} %')
+                # the same step: frames of the same cycle (fwd, side, back, rside) at the nearest
+                # phase (the charge walks its own six-frame step forward / back since 2026-09-28)
+                def by_kind(fr):
+                    out_ = {}
+                    for f in fr:
+                        out_.setdefault(f.name.split(' ')[0], []).append(f)
+                    return out_
+                k1, k2 = by_kind(f1), by_kind(f2)
+                vals = []
+                for kind in k1:
+                    c1, c2 = k1[kind], k2.get(kind, [])
+                    for j, x in enumerate(c2):
+                        y = c1[round(j * len(c1) / len(c2)) % len(c1)]
+                        vals.append(outline_shift_share(sil(y), sil(x)))
+                key = (a1.replace('_walk', ''), a2.replace('_walk', ''), view)
+                outline(min(vals), key, 1, f'{a1} vs {a2} {view}, every frame (same step; lowest shown, highest {100 * max(vals):.1f} %)')
         for view in B3.VIEWS:
             s_ = outline_shift_share(sil(named('idle', view, 'idle 1')), sil(named('charge', view, 'hold 1')))
             out(None, f'idle vs charge hold 1 {view} (reported)', f'{round(100 * s_)} %')
@@ -1559,6 +1749,13 @@ def batch3_checks():
             out(None, f'charge {view}: hold -> guard (decision 6: accepted, the guard is up the frame it is pressed)', _fmt_moves(m))
     if 'charge_walk' in B3.ACTIONS:
         print('-- charge walk: the slow legs under the charge')
+        for kind in ('fwd', 'back'):
+            cyc_sim = sum(f.dur for f in B3.frames('charge_walk', 'south') if f.name.startswith(kind + ' '))
+            out(cyc_sim >= WALK_CYCLE_SIM, f'charge_walk {kind}: a cycle no quicker than the plain walk\'s ({WALK_CYCLE_SIM} sim frames)',
+                f'{cyc_sim} sim frames ({cyc_sim / 60:.2f} s)')
+        for a_ in ('guard_walk', 'heal_walk'):
+            cyc_sim = sum(f.dur for f in B1.frames(a_, 'south') if f.name.startswith('fwd '))
+            out(None, f'{a_} fwd cycle (reported)', f'{cyc_sim} sim frames ({cyc_sim / 60:.2f} s)')
         for view in B3.VIEWS:
             b = named('charge', view, 'hold 1')
             fr = B3.frames('charge_walk', view)
@@ -1571,8 +1768,9 @@ def batch3_checks():
                 if bob not in (0, 1):
                     bad.append(f'{f.name}: bob {bob}')
             out(not bad, f'charge_walk {view}: torso, arms, sword identical to hold 1 (bob 0-1 px)', ', '.join(bad[:6]))
-            for kind, n in (('fwd', 8), ('side', 4), ('back', 8), ('rside', 4)):
+            for kind in ('fwd', 'side', 'back', 'rside'):
                 cyc = cycle('charge_walk', view, kind)
+                n = len(cyc)
                 worst, bad = {}, []
                 for i in range(n):
                     m = screen_moves(pt(cyc[i]), pt(cyc[(i + 1) % n]))
@@ -1591,11 +1789,23 @@ def batch3_checks():
                 else:
                     out(hs >= 1, f'charge_walk {view} {kind}: head follows the pelvis (in the order shown)', f'shift {hs}')
             if view in ('east', 'west'):
-                walk = [W_.NEAR_FOOT[i][0] for i in range(8)]
+                # the 2026-09-28 fix gave the charge its own shorter step forward / back: the
+                # planted foot must move back what the floor does each frame at 40 px/s (no slide)
+                ground = 40.0 / 60 * B3.CW_HOLD
                 for kind in ('fwd', 'back'):
-                    near = [f.debug['legs']['near'][2][0] for f in cycle('charge_walk', view, kind)]
-                    rng, wrng = max(near) - min(near), max(walk) - min(walk)
-                    out(abs(rng - HALF_STRIDE * wrng) <= 1.0, f'charge_walk {view}: {kind} stride half the walk', f'{rng:.1f} px vs walk {wrng:.1f}')
+                    cyc = cycle('charge_walk', view, kind)
+                    fd = PR.VIEWS[view]['facing']
+                    sl = []
+                    for i in range(len(cyc)):
+                        a_, b_ = cyc[i], cyc[(i + 1) % len(cyc)]
+                        for k in ('near', 'far'):
+                            s_ = PR.VIEWS[view]['near'] if k == 'near' else ('L' if PR.VIEWS[view]['near'] == 'R' else 'R')
+                            if a_.pose['feet'][s_][2] == 0 and b_.pose['feet'][s_][2] == 0:
+                                mv = (b_.debug['legs'][k][2][0] - a_.debug['legs'][k][2][0]) * fd
+                                sl.append(abs(mv + (ground if kind == 'fwd' else -ground)))
+                    # 0.25 px: the ankles are exact here (batch 2's 1 px on screen is a quarter of the run's step, 75 % of this one)
+                    out(max(sl) <= 0.25, f'charge_walk {view} {kind}: planted feet keep to the floor ({ground:.2f} px a frame, +-0.25)',
+                        f'off by at most {max(sl):.2f} px')
     # ---- thrust and execution (decision 5)
     if 'thrust' in B3.ACTIONS:
         print('-- thrust, execution (appendix C, batch 3; appendix A: thrust 42 sim frames, execution 60, hit on 12)')
@@ -1612,20 +1822,22 @@ def batch3_checks():
         for view in B3.VIEWS:
             fr = B3.frames('thrust', view)
             f2 = fr[1]
-            be = blade_ends(f2)
-            out(be is not None and abs(be[0] - be[1]) <= BLADE_FLAT, f'thrust {view}: blade level on screen +-{BLADE_FLAT} px',
-                '' if be is None else f'end rows {be[0]:.1f} / {be[1]:.1f}')
+            ok, what, info = blade_forward(f2, view, fist=False)
+            out(ok, f'thrust {view}: blade forward - {what}', info)
             for n, ok, i_ in pose_rows('thrust', f2.pose, 'large', view):
                 if n.startswith('attack stance'):
                     out(ok, f'thrust {view}: {n}', i_)
-            # the release (charge hold -> f1 -> f2): decision 5's 8 px for head / torso
+            # the release (charge hold -> f1 -> f2): decision 5's 8 px for head / torso. Second charge
+            # fix (2026-09-28): the feet too (RELEASE_FEET_JUMP) - the charge stands 9 px wide now and
+            # the approved D1 lunge 23: the back foot travels 8.7 px in the two release steps, over 4
+            # a step whatever the split, while the program carries the body 12 px
             holds = [named('charge', view, f'hold {i}') for i in range(1, 5)]
             steps = [(hh, fr[0], SWING_JUMP) for hh in holds] + [(fr[0], fr[1], SWING_JUMP)] + \
                     [(fr[i], fr[i + 1], B1_JUMP) for i in range(1, len(fr) - 1)] + [(fr[-1], named('idle', view, 'idle 1'), B1_JUMP)]
             worst, bad = {}, []
             for a_, b_, body in steps:
                 m = screen_moves(pt(a_), pt(b_))
-                if not inlim(m, body=body):
+                if not inlim(m, body=body, feet=RELEASE_FEET_JUMP if body == SWING_JUMP else B1_JUMP):
                     bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
                 for k, v_ in m.items():
                     if v_ is not None:
@@ -1806,6 +2018,252 @@ def batch3_checks():
     return failed
 
 
+# ------------------------------------------------------------------ batch 4
+# docs/art-progress.md appendix C (batch 4) and the brief of 2026-09-28 ("第 4 批：動作簡報",
+# its decisions 2-7 and the handoff notes). The knockback moves the character every sim frame
+# (appendix C: measured in the sprite itself). Limits: the first frame of a hit reaction is
+# free; the fall's steps head / torso 8 px (decision 5 of batch 2's kind) and feet 8 px (a
+# stumbling fall: the feet step and pitch while the program carries the body 4 px a sim frame;
+# batch 4's own call, in art-progress.md); the landing and the push up from the lying H 10 px
+# (head, torso, feet); every other step 4 / 20 px; each action's last frame within 4 px of idle.
+FALL_JUMP = px(0.2)           # 8 px
+LAND_JUMP = px(0.25)          # 10 px
+STAGGER_LEAN = (10, 15)
+FOOT_UP = px(0.05)            # stagger f1: a foot at least 2 px off the floor
+KNEEL_TOP = (px(0.1), px(0.175))          # guard break kneel: helmet top 4-7 px lower than idle
+KNEEL_HIP = (0.55, 0.65)      # get-up kneel: pelvis height 55-65 % of the idle's
+IDLE_HIP = 10.0               # the idle hip joint above the floor line, east view (row 54 - 44.0)
+SWAY_PX = 1                   # guard break sway: 1 px each way
+B4_TIMING = {'stagger': 21, 'knockdown': 48, 'launch_air': 21, 'launch_down': 36, 'getup': 30,
+             'guard_break': 72, 'death': 90}      # appendix A (player_data.gd)
+
+
+def lie_rows(f):
+    """Technical checks of a lying / launched frame (the restored H, batch 0's lying rows)."""
+    import concept_pose as CP
+    p = f.px
+    idle, _ = pose_idle('east')
+    rows = [('colours inside the reference palette', not ({c[:3] for c in p.values()} - PALETTE), '')]
+    outside = sum(1 for (x, y) in p if not (0 <= x < A.FW and 0 <= y < A.FH))
+    rows.append(('inside the canvas', outside == 0, f'{outside} px outside'))
+    low = max(y for (_, y) in p)
+    rows.append(('nothing below the ground row', low <= A.GROUND, f'lowest row {low}, ground {A.GROUND}'))
+    e, e0 = enclosed_in(p, A.FW, A.FH, -1), enclosed(idle, -1)
+    rows.append(('see-through holes (the whole figure)', e <= e0, f'{e} (idle {e0})'))
+    sp, sp0 = specks(p), specks(idle)
+    rows.append(('floating specks', sp <= sp0, f'{sp} (idle {sp0})'))
+    m = CP.lying_metrics()
+    lo, hi = LIE_BODY
+    rows.append((f'body height {lo}-{hi} px behind the helmet', lo <= m['body_h'] <= hi, f"{m['body_h']} px"))
+    b, h = counts(p)
+    ref = CP.lying_frame(head_left=(f.row == 'R'))
+    b0, h0 = counts(ref)
+    rows.append(('INFO detail vs batch 0 lying frame', None, f'blue {b}/{b0}, highlights {h}/{h0}'))
+    return rows
+
+
+def batch4_checks():
+    import batch1 as B1
+    import batch4 as B4
+    import concept_pose as CP
+    import pose_rig as PR
+    import poses as PQ
+    failed = False
+
+    def out(ok, name, info=''):
+        nonlocal failed
+        if ok is None:
+            print(f'  INFO  {name}  {info}')
+            return
+        failed |= not ok
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}  {info}")
+
+    def pt(f):
+        return _Pt(f, 0, 0, small=True)
+
+    def inlim(m, body=B1_JUMP, feet=B1_JUMP, hand=B1_HAND_JUMP):
+        return (all(m[k] is None or m[k] <= body + 1e-6 for k in ('head', 'torso')) and
+                (m['feet'] is None or m['feet'] <= feet + 1e-6) and
+                all(m[k] is None or m[k] <= hand + 1e-6 for k in ('hands', 'sword')))
+
+    def steps(label, pairs, body=B1_JUMP, feet=B1_JUMP):
+        worst, bad = {}, []
+        for a_, b_ in pairs:
+            m = screen_moves(pt(a_), pt(b_))
+            if not inlim(m, body, feet):
+                bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
+            for k, v_ in m.items():
+                if v_ is not None:
+                    worst[k] = max(worst.get(k, 0), v_)
+        out(not bad, label, '; '.join(bad) or 'largest ' + _fmt_moves(worst))
+
+    def ret(label, f, idle):
+        m = screen_moves(pt(f), pt(idle))
+        out(all(m[k] is None or m[k] <= RETURN_MAX + 1e-6 for k in ('head', 'torso', 'feet')),
+            f'{label}: last frame vs idle 1, head / torso / feet within {RETURN_MAX} px', _fmt_moves(m))
+
+    idle = {v: next(f for f in B1.frames('idle', v) if f.name == 'idle 1') for v in B4.VIEWS}
+    print(f'== batch 4 (batch4.py): head / torso / feet <= {B1_JUMP} px, hands / sword <= {B1_HAND_JUMP} px; '
+          f'the fall {FALL_JUMP} px, the landing and the push up {LAND_JUMP} px; a hit\'s first frame free')
+    # ---- every frame: the technical checks
+    every = [(a, v, f) for a in B4.VIEW_ACTIONS for v in B4.VIEWS for f in B4.frames(a, v)] + \
+            [(a, r, f) for a in B4.ROW_ACTIONS for r in B4.ROWS for f in B4.frames(a, r)]
+    for action, key, f in every:
+        label = f'{action} / {f.name} / {key}' + ('' if f.view in (key, 'lie') else f' ({f.view})')
+        rows = lie_rows(f) if f.view == 'lie' else pose_rows(label, f.pose, 'small', f.view)
+        bad = [(n, i_) for n, ok, i_ in rows if ok is False]
+        comp = [i_ for n, ok, i_ in rows if ok is None and (n.startswith('INFO composited') or n.startswith('INFO detail'))]
+        if bad:
+            for n, i_ in bad:
+                out(False, f'{label}: {n}', i_)
+        else:
+            out(True, f'{label}: {len([r for r in rows if r[1] is not None])} technical checks', comp[0] if comp else '')
+
+    # ---- stagger
+    print('-- stagger (appendix C: leans back 10-15 deg, a foot >= 2 px off the floor; 21 sim frames)')
+    for v in B4.VIEWS:
+        fr = B4.frames('stagger', v)
+        if v == B4.VIEWS[0]:
+            out(sum(f.dur for f in fr) == B4_TIMING['stagger'], 'stagger: 21 sim frames', f'{sum(f.dur for f in fr)}')
+            lean = -fr[0].pose.get('lean', 0)
+            out(STAGGER_LEAN[0] <= lean <= STAGGER_LEAN[1], f'stagger: f1 leans back {STAGGER_LEAN[0]}-{STAGGER_LEAN[1]} deg', f'{lean} deg')
+        low = {s_: max((q[1] for q, n in fr[0].trace.items() if n == 'leg_' + s_ and q in fr[0].px), default=0) for s_ in ('R', 'L')}
+        up = A.GROUND - min(low.values())
+        if v in ('east', 'west'):
+            out(up >= FOOT_UP, f'stagger {v}: f1 a foot at least {FOOT_UP} px off the floor', f'{up} px')
+        else:
+            out(None, f'stagger {v}: f1 foot off the floor (front / back: depth moves it too)', f'{up} px')
+        steps(f'stagger {v}: f1 -> f2 -> f3 -> idle within the limits', list(zip(fr, fr[1:])) + [(fr[-1], idle[v])])
+        ret(f'stagger {v}', fr[-1], idle[v])
+        if v in ('east', 'west'):
+            # the head a beat late: it goes on back (relative to the torso) after the body
+            # has started to come up (f1 -> f2)
+            back = -PR.VIEWS[v]['facing']
+            rel = [(_cen(f, ('helmet',))[0] - _cen(f, ('torso',))[0]) * back for f in (idle[v],) + tuple(fr)]
+            out(rel[2] > rel[1] + 0.25, f'stagger {v}: the head goes back a beat after the body (head behind the torso, idle / f1 / f2 / f3)',
+                ' / '.join(f'{x:.1f}' for x in rel))
+        m = screen_moves(pt(idle[v]), pt(fr[0]))
+        out(None, f'stagger {v}: idle -> f1 (a hit\'s first frame: free)', _fmt_moves(m))
+
+    # ---- knockdown, launch, death (two rows)
+    print('-- knockdown: turn and pitch forward (decision 2); launch; death')
+    kd0 = B4.frames('knockdown', 'R')
+    t_ = sum(f.dur for f in kd0)
+    fall_ = sum(f.dur for f in kd0[:5])
+    out(t_ == B4_TIMING['knockdown'] and fall_ == 11, 'knockdown: 48 sim frames, the fall 0-10', f'{t_}, fall {fall_}')
+    out(sum(d for _, d in B4.DEATH) == B4_TIMING['death'] and [n for n, _ in B4.DEATH] == [f.name for f in kd0],
+        'death: 90 sim frames on the knockdown\'s frames', f'{sum(d for _, d in B4.DEATH)}')
+    out(B4.LAUNCH_AIR == B4_TIMING['launch_air'] and sum(d for _, d in B4.LAUNCH_DOWN) == B4_TIMING['launch_down'],
+        'launch: 21 in the air, then 36 down', f'{B4.LAUNCH_AIR}, {sum(d for _, d in B4.LAUNCH_DOWN)}')
+    for r in B4.ROWS:
+        k = B4.frames('knockdown', r)
+        rec, turn, stu, pit, land, down = k
+        out(rec.view == B4.FACING_VIEW[r] and turn.view == 'south' and stu.view == pit.view == B4.AWAY_VIEW[r],
+            f'knockdown {r}: recoil facing the attacker, turn facing the camera, stumble and pitch facing away',
+            f'{rec.view}, {turn.view}, {stu.view}, {pit.view}')
+        # the fall goes away from the attacker: the pitch's and the lying frames' heads lie on
+        # the far side of the anchor
+        sgn = -1 if r == 'R' else 1
+        hx = [(_cen(f, ('helmet',))[0] - A.CX) * sgn for f in (pit, land, down)]
+        out(all(x > 0 for x in hx), f'knockdown {r}: pitches away from the attacker (head past the anchor: pitch, landing, lying)',
+            ' / '.join(f'{x:.1f}' for x in hx))
+        for a_, b_ in ((rec, turn), (turn, stu)):
+            m = screen_moves(pt(a_), pt(b_))
+            out(None, f'knockdown {r}: {a_.name} -> {b_.name} (the view changes: shown for the eye)', _fmt_moves(m))
+        steps(f'knockdown {r}: stumble -> pitch within the fall\'s {FALL_JUMP} px', [(stu, pit)], FALL_JUMP, FALL_JUMP)
+        steps(f'knockdown {r}: pitch -> landing within {LAND_JUMP} px', [(pit, land)], LAND_JUMP, LAND_JUMP)
+        steps(f'knockdown {r}: landing -> lying within the limits', [(land, down)])
+        # lying is batch 0's approved frame itself; the landing still has its cloth up
+        out(down.px == CP.lying_frame(head_left=(r == 'R')), f'knockdown {r}: lying is batch 0\'s lying frame, pixel for pixel')
+        # the cape measured against the body under it (the landing is also tipped a little)
+        my = lambda f, n: sum(q[1] for q in f.pieces_raw.get(n, {})) / max(1, len(f.pieces_raw.get(n, {})))
+        cy = lambda f: my(f, 'cape') - my(f, 'torso')
+        out(cy(down) - cy(land) >= 0.5, f'knockdown {r}: the landing\'s cape still up, settled when lying (cape above the body)',
+            f'{-cy(land):.1f} -> {-cy(down):.1f} px')
+        for src in ([f for f in B1.frames('guard', B4.FACING_VIEW[r]) if f.name == 'hold 1'][0], B4.named('guard_break', B4.FACING_VIEW[r], '搖晃 1')):
+            m = screen_moves(pt(src), pt(rec))
+            out(None, f'knockdown {r}: {src.action} {src.name} -> recoil (a hit\'s first frame: free)', _fmt_moves(m))
+        a1, a2 = B4.frames('launch', r)
+        body = lambda f: {q: c for q, c in f.px.items() if f.trace.get(q) not in ('cape', 'plume')}
+        b1_, b2_ = body(a1), body(a2)
+        moved = [q for q in b1_ if q in b2_ and b1_[q] != b2_[q]] + [q for q in b1_ if q not in a2.px]
+        cloth = sum(1 for q in set(a1.px) | set(a2.px) if a1.px.get(q) != a2.px.get(q))
+        out(not moved and cloth > 0, f'launch {r}: the body identical in both air frames, only the cloth moves',
+            f'{len(moved)} body px differ, {cloth} px of cloth differ')
+        steps(f'launch {r}: air 1 <-> air 2 within the limits', [(a1, a2), (a2, a1)])
+        steps(f'launch {r}: air -> landing within {LAND_JUMP} px', [(a1, land), (a2, land)], LAND_JUMP, LAND_JUMP)
+
+    # ---- getting up
+    print('-- getting up (30 sim frames; the kneel takes the program\'s facing)')
+    tot = sum(f.dur for f in B4.frames('getup_floor', 'R')) + sum(f.dur for f in B4.frames('getup', 'south'))
+    durs = [f.dur for f in B4.frames('getup_floor', 'R')] + [f.dur for f in B4.frames('getup', 'south')]
+    out(tot == B4_TIMING['getup'] and all(2 <= d for d in durs), 'getup: 30 sim frames, every frame at least 2', f'{tot}: {durs}')
+    for r in B4.ROWS:
+        down = B4.frames('knockdown', r)[5]
+        gf = B4.frames('getup_floor', r)
+        side = B4.AWAY_VIEW[r]
+        out(all(f.view == side for f in gf), f'getup {r}: all fours and the rise on the lying side ({side})')
+        steps(f'getup {r}: lying -> all fours within {LAND_JUMP} px', [(down, gf[0])], LAND_JUMP, LAND_JUMP)
+        steps(f'getup {r}: all fours -> rise 1-4 -> kneel ({side}) within the limits', list(zip(gf, gf[1:])) + [(gf[-1], B4.frames('getup', side)[0])])
+        vals = []
+        for v in B4.VIEWS:
+            if v != side:
+                m = screen_moves(pt(gf[-1]), pt(B4.frames('getup', v)[0]))
+                vals.append(f'{v}: head {m["head"]:.1f}')
+        out(None, f'getup {r}: rise 4 -> kneel facing another way (the view changes: shown for the eye)', '; '.join(vals))
+    for v in B4.VIEWS:
+        g = B4.frames('getup', v)
+        rest = PR.rig(v)
+        rest.frame({}, 'small')
+        drop = g[0].debug['pelvis'][1] - rest.debug['pelvis'][1] - PR.proj(v, (g[0].pose['root'][0], g[0].pose['root'][1], 0))[1]
+        ratio = (IDLE_HIP - drop) / IDLE_HIP
+        out(KNEEL_HIP[0] - 1e-6 <= ratio <= KNEEL_HIP[1] + 1e-6, f'getup {v}: kneel pelvis {round(100 * KNEEL_HIP[0])}-{round(100 * KNEEL_HIP[1])} % of the idle\'s height',
+            f'{round(100 * ratio)} % (down {drop:.1f} of {IDLE_HIP})')
+        steps(f'getup {v}: kneel -> stand 1 -> stand 2 -> idle within the limits', list(zip(g, g[1:])) + [(g[-1], idle[v])])
+        ret(f'getup {v}', g[-1], idle[v])
+
+    # ---- guard break
+    print('-- guard break (72 sim frames; appendix C: kneel helmet top 4-7 px down, sway 1 px)')
+    gb0 = B4.frames('guard_break', 'south')
+    t_ = sum(f.dur for f in gb0) + sum(f.dur for f in gb0 if f.name.startswith('搖晃'))
+    out(t_ == B4_TIMING['guard_break'], 'guard break: 72 sim frames (the sway plays twice)', f'{t_}')
+    for v in B4.VIEWS:
+        g = B4.frames('guard_break', v)
+        kn = g[2]
+        top = min(y for (x, y), n in kn.trace.items() if n == 'helmet') - _helmet_top(v)
+        out(KNEEL_TOP[0] <= top <= KNEEL_TOP[1], f'guard break {v}: kneel helmet top {KNEEL_TOP[0]}-{KNEEL_TOP[1]} px lower than idle', f'{top} px')
+        guards = [f for f in B1.frames('guard', v) if f.name.startswith('hold')]
+        steps(f'guard break {v}: guard hold 1-4 -> knees give 1', [(h, g[0]) for h in guards])
+        sw = g[3:7]
+        steps(f'guard break {v}: knees give 1 -> 2 -> kneel -> sway, the sway cycle, push up, half stand, idle',
+              [(g[0], g[1]), (g[1], g[2]), (g[2], sw[0])] + [(sw[i], sw[(i + 1) % 4]) for i in range(4)] +
+              [(sw[3], g[7]), (g[7], g[8]), (g[8], idle[v])])
+        ret(f'guard break {v}', g[8], idle[v])
+        # every view sways along the screen's x (front / back: side to side; side views: to and fro)
+        tx = [round(_cen(f, ('torso',))[0] - _cen(kn, ('torso',))[0]) for f in sw]
+        hx = [round(_cen(f, ('helmet',))[0] - _cen(kn, ('helmet',))[0]) for f in sw]
+        out(max(map(abs, tx)) == SWAY_PX and min(tx) == -SWAY_PX and hx == [tx[(i - 1) % 4] for i in range(4)],
+            f'guard break {v}: sway {SWAY_PX} px each way, head a phase late', f'torso {tx}, head {hx}')
+        ends = [_end_centroid(f, 'cape', 'torso')[0] for f in sw]
+        tors = [_cen(f, ('torso',))[0] for f in sw]
+        hs = follows(tors, ends)
+        out(hs is not None and hs >= 1, f'guard break {v}: the cape end follows the body (in the order shown)', f'shift {hs}')
+        blades = [frozenset(f.debug.get('blade') or ()) for f in sw]
+        out(len(set(blades)) == 1 and blades[0], f'guard break {v}: the sword stays planted through the sway', f'{len(set(blades))} blade position(s)')
+        for f in [f for f in B1.frames('guard_walk', v) if f.name in ('fwd 1', 'side 2')]:
+            m = screen_moves(pt(f), pt(g[0]))
+            out(None, f'guard break {v}: guard walk {f.name} -> knees give 1 (reported)', _fmt_moves(m))
+    print('-- outlines (reported): guard break kneel vs heal (both lean on the sword), stagger f1 vs idle')
+    for v in B4.VIEWS:
+        a_ = _sil(B4.frames('guard_break', v)[2])
+        b_ = _sil(next(f for f in B1.frames('heal', v) if f.name == 'hold 1'))
+        c_ = _sil(B4.frames('stagger', v)[0])
+        d_ = _sil(idle[v])
+        out(None, f'{v}: kneel vs heal {round(100 * outline_shift_share(a_, b_))} %, stagger f1 vs idle {round(100 * outline_shift_share(c_, d_))} %', '')
+    print('BATCH 4: ALL PASSED' if not failed else 'BATCH 4: SOME CHECKS FAILED')
+    return failed
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     if '--poses' in args:
@@ -1816,4 +2274,6 @@ if __name__ == '__main__':
         sys.exit(1 if batch2_checks(record='--record-waivers' in args) else 0)
     if '--batch3' in args:
         sys.exit(1 if batch3_checks() else 0)
+    if '--batch4' in args:
+        sys.exit(1 if batch4_checks() else 0)
     sys.exit(main())

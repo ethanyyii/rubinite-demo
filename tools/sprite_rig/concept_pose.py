@@ -278,36 +278,78 @@ def lying_metrics():
                 helmet_h=max(hband) - min(hband) + 1 + 2)
 
 
-def lying_frame(head_left=True, airborne=False, canvas=(56, 56, 28, 53)):
+# the parts of the restored H (head at the left, lying_parts() coordinates), by column: read
+# off the 14x part image (batch 4) - the hand reaching past the helmet, the helmet dome (the
+# plume on it), the body under the cape, the legs to the boots
+LIE_SPLIT = {'arm': 9, 'helmet': 22, 'torso': 36}     # first column past each part
+LIE_PLUME_END = 21                                    # cloth left of this column is the plume
+
+
+def lie_part(x, cloth):
+    if cloth:
+        return 'plume' if x < LIE_PLUME_END else 'cape'
+    for name in ('arm', 'helmet', 'torso'):
+        if x < LIE_SPLIT[name]:
+            return name
+    return 'legs'
+
+
+def lying_frame(head_left=True, airborne=False, canvas=(56, 56, 28, 53), lift=None, labels=None, sword=True, tilt=None):
     """Lying (or launched) pose on the canvas. Head at the left is H as drawn; the other
     side is its mirror (allowed for lying). The sword is drawn apart (N1), on the floor
-    beside the knight; airborne, the body tips head-down and the cloth flies up behind."""
+    beside the knight; airborne, the body tips head-down and the cloth flies up behind.
+
+    Batch 4 (defaults leave batch 0's frames byte-identical): lift(x) -> px gives the cloth's
+    billow per column in place of the airborne one (a landing still has its cloth up; the
+    launch's second frame flutters it), with or without the tilt; labels, a dict, receives
+    the part each canvas pixel came from (lie_part names, 'sword'); sword=False leaves the
+    dropped sword out; tilt, degrees head-down (airborne: 14), tips a body that is not
+    airborne too (the landing: the chest and head down first, the legs still coming down)."""
     import sword as SW
-    from rig import Layer, R, mat_mul, T
+    from rig import Layer, R, mat_mul, T, apply
     body, cloth = lying_parts()
     allpx = dict(body)
     allpx.update(cloth)
+    lab = {k: lie_part(k[0], k in cloth) for k in allpx}
     Wd = max(x for x, _ in allpx) + 1
     Hd = max(y for _, y in allpx) + 1
-    if airborne:
+    k_of = lift
+    if k_of is None and airborne:
+        k_of = lambda x: int(round(1 + 3 * x / max(Wd - 1, 1)))
+    if k_of is not None:
         # the cloth billows upward, more toward its free end (the right: the legs' side);
         # each column is stretched up rather than moved, so nothing opens behind it
         allpx = dict(body)
+        lab = {k: lie_part(k[0], False) for k in body}
         for x in {x for x, _ in cloth}:
             col = sorted(y for (cx, y) in cloth if cx == x)
-            k = int(round(1 + 3 * x / max(Wd - 1, 1)))
+            k = k_of(x)
             top = col[0]
+            cl = lie_part(x, True)
             for y in col:
                 allpx[(x, y - k)] = cloth[(x, y)]
+                lab[(x, y - k)] = cl
             for y in range(top - k + 1, top):
+                if (x, y) not in allpx:
+                    lab[(x, y)] = cl
                 allpx.setdefault((x, y), cloth[(x, top)])
             for y in col:
+                if (x, y) not in allpx:
+                    lab[(x, y)] = cl
                 allpx.setdefault((x, y), cloth[(x, y)])
+    if tilt is None and airborne:
+        tilt = 14
+    if tilt:
         lay = Layer('lie', allpx, (Wd + 8, Hd + 8))
         cx, cy = Wd / 2, Hd / 2
-        allpx = lay.render(R(-14, cx, cy))
+        m = R(-tilt, cx, cy)
+        allpx = lay.render(m)
+        if labels is not None:
+            fwd = [(apply(m, x + 0.5, y + 0.5), n) for (x, y), n in lab.items()]
+            lab = {q: min(fwd, key=lambda f: (f[0][0] - q[0] - 0.5) ** 2 + (f[0][1] - q[1] - 0.5) ** 2)[1] for q in allpx}
     if not head_left:
         allpx = {(Wd - 1 - x, y): c for (x, y), c in allpx.items()}
+        lab = {(Wd - 1 - x, y): n for (x, y), n in lab.items()}
     # small pockets the restoration leaves (a loop of the plume narrower than the paper-
     # pocket rule) close up like any seam
     from rig import close_holes
@@ -320,14 +362,24 @@ def lying_frame(head_left=True, airborne=False, canvas=(56, 56, 28, 53)):
     dx = int(round(ax - (min(xs) + max(xs)) / 2))
     dy = gy - max(ys)
     out = {(x + dx, y + dy): c for (x, y), c in allpx.items()}
-    if not airborne:
+    if labels is not None:
+        for (x, y) in allpx:
+            n = lab.get((x, y))
+            if n is None:
+                # a seam the clean-up closed: the part of the nearest labelled pixel
+                n = min(((a - x) ** 2 + (b - y) ** 2, lab[(a, b)]) for (a, b) in lab)[1]
+            labels[(x + dx, y + dy)] = n
+    if not airborne and sword:
         # the dropped sword lies on the floor at the knight's side, hilt by the hand, blade
         # toward the head; drawn over the body's lower edge (it lies nearer the camera)
         sgn = 1 if head_left else -1
         hand = (ax + sgn * 3, gy - 1.5)
         spx, _ = SW.sword_pixels(hand, (-sgn, 0.0), 1.0, 1)
         sink = max(y for _, y in spx) - gy
-        out.update({(x, y - max(sink, 0)): c for (x, y), c in spx.items()})
+        spx = {(x, y - max(sink, 0)): c for (x, y), c in spx.items()}
+        out.update(spx)
+        if labels is not None:
+            labels.update({k: 'sword' for k in spx})
     return out
 
 

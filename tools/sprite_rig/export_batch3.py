@@ -344,8 +344,9 @@ def scene_slow(action, base, speed):
         fwd, left = B3.FWD_SCREEN[v], LEFT_SCREEN[v]
         sp = speed / 60
         t.play(base[0], [base[1]], durs=[12])
-        t.play(action, cyc('fwd', 8, 2), fwd, sp)
-        t.play(action, cyc('back', 8, 2), (-fwd[0], -fwd[1]), sp)
+        nf = len([f for f in src_frames(action, v) if f.name.startswith('fwd ')])
+        t.play(action, cyc('fwd', nf, 2), fwd, sp)
+        t.play(action, cyc('back', nf, 2), (-fwd[0], -fwd[1]), sp)
         t.play(action, cyc('side', 4, 3), left, sp)
         t.play(action, cyc('rside', 4, 3), (-left[0], -left[1]), sp)
         t.play(base[0], [base[1]], durs=[12])
@@ -431,7 +432,7 @@ SCENES = [
     ('run', '奔跑：起跑 → 循環 → 放開搖桿（繼續播到能停的那張）→ 停步 1–3 → 待機（160px/s，每張 2 模擬幀）', scene_run),
     ('walk_locked', '鎖定走路 85px/s：前進（走路）、後退、往左、往右側移，每張 2 模擬幀', scene_walk_locked),
     ('guard_walk', '格擋移動 50px/s：前進、後退、往左、往右（每張 2 模擬幀）', scene_slow('guard_walk', ('guard', 'hold 1'), 50.0)),
-    ('charge_walk', '蓄力移動 40px/s：前進、後退、往左、往右（每張 2／2／2／3 模擬幀）', scene_slow('charge_walk', ('charge', 'hold 1'), 40.0)),
+    ('charge_walk', '蓄力移動 40px/s：前進、後退（8 張一輪、每張 3 模擬幀：0.4 秒，兩腳交替）、往左、往右（4 張、每張 3 模擬幀）', scene_slow('charge_walk', ('charge', 'hold 1'), 40.0)),
     ('heal_walk', '治療移動 30px/s：前進、後退、往左、往右（每張 3 模擬幀）', scene_slow('heal_walk', ('heal', 'hold 1'), 30.0)),
     ('charge_thrust', '蓄力 → 蓄滿放開 → 突刺（0–11 每幀 6px）→ 收招 → 待機', scene_charge_thrust),
     ('charge_cancel', '蓄力沒蓄滿就放開 → 收勢 → 待機', scene_charge_cancel),

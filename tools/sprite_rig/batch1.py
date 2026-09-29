@@ -59,7 +59,7 @@ def resolve(pose, view):
     """The pose as this view draws it: per-view overrides (lean_view, arms_view ...) applied
     and dropped, so later edits are not overridden again by the rig."""
     out = {k: v for k, v in pose.items() if not k.endswith('_view')}
-    for k in ('lean', 'roll', 'head', 'head_tilt', 'arms'):
+    for k in ('lean', 'roll', 'head', 'head_tilt', 'arms', 'feet'):
         if view in pose.get(k + '_view', {}):
             out[k] = pose[k + '_view'][view]
     if 'sword' in pose:
@@ -364,14 +364,24 @@ def lerp_pose(a, b, t, view):
         sa, sb = a['arms'][s_], b['arms'][s_]
         spec = {'at': _lerp(ca[s_], cb[s_], t),
                 'elbow': _lerp(sa.get('elbow', (0, 0, -1)), sb.get('elbow', (0, 0, -1)), t)}
-        for k in ('depth_fore', 'depth_fist', 'depth_upper'):
+        for k in ('depth_fore', 'depth_fist', 'depth_upper', 'over_cape'):
             if near['arms'][s_].get(k) is not None:
                 spec[k] = near['arms'][s_][k]
         p['arms'][s_] = spec
     da, db = PR.vnorm(a['sword']['dir']), PR.vnorm(b['sword']['dir'])
     sw = {'hand': 'R', 'dir': PR.vnorm(_lerp(da, db, t)),
           'grip_back': a['sword'].get('grip_back', 2.0) + (b['sword'].get('grip_back', 2.0) - a['sword'].get('grip_back', 2.0)) * t}
+    if 'hilt_depth' in near['sword']:
+        sw['hilt_depth'] = near['sword']['hilt_depth']      # the hilt shows past the fist from behind
     p['sword'] = sw
+    for k in ('legs3d', 'floor3d'):
+        if a.get(k) or b.get(k):
+            p[k] = True             # pose_rig: front / back knees by the 3D reach; the floor at the blade's depth
+    # the charge's second fix (2026-09-28): soft side knees and the feet foreshortened like the body,
+    # from whichever end has them (the legs are drawn one way through the whole in-between)
+    for k in ('soft_knee', 'kd_feet', 'foot_below', 'fb_leg_min', 'body_hides_far'):
+        if k in a or k in b:
+            p[k] = b[k] if k in b else a[k]
     return p
 
 

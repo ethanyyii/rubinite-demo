@@ -165,8 +165,87 @@ def run_stop_from(view):
 # | head | follows the body | a phase late | leads (looks up first) |
 # | cape, plume | settle behind | ends a phase late | settle |
 CHARGE_HOLD = 3                       # sim frames a phase (decision 3: one cycle 12 frames)
-CHARGE_WALK_HOLD = (2, 2, 2, 3)       # decision 1: 40 px/s, the planted foot moves 1.5 px a frame
 CHARGE_WALK_SWAY = 0.5                # the low stance flares the cape already: 0.8 swung it past its detail count
+# 2026-09-28 fix (the user: walking, the east feet stuck together; the west legs a "worm"): the
+# charge's feet are 12 px apart, and the slow legs' step (each foot +-3 px, the feet in turn) swung
+# that between 6 px (feet together) and 18 (legs stretched past their length). The step length
+# comes from the speed and the cadence, so forward / backward the charge walks its own shorter,
+# quicker step: six frames of 2 sim frames, the planted foot back 1.33 px a frame (40 px/s: no
+# slide), each foot +-2 px, the feet 8-16 px apart. Sidesteps keep the slow legs'.
+# Second fix (2026-09-28): the hold's stance is 9 px now (legs within reach, see poses.CHARGE).
+# Then the user: the feet move too fast - six frames of 2 sim frames is a 0.2 s cycle, quicker than
+# the plain walk's 0.27 s at 100 px/s, for a body moving at 40: a shuffle. Now the charge walks like
+# a walk, slowly: eight frames of 3 sim frames (0.4 s, the heal walk's cadence), the planted foot
+# back 2 px a frame (40 px/s: no slide), so each foot travels 8 px a cycle and the feet pass under
+# the body in turn (a staggered stance cannot keep the front foot in front at this cadence: the feet
+# would have to open to 25 px). Each foot swings about a place 4 px in from its hold place, so the
+# contact frame (fwd 1) is the hold's own stance: starting and stopping never jump the feet, and no
+# foot ever reaches further from the hip than in the hold (the legs keep their shape).
+CW_N = 8
+CW_HOLD = 3
+CW_FOOT = (4.0, 2.0, 0.0, -2.0, -4.0, -2.0, 0.0, 2.0)   # a foot from its walking place, px (planted 0-4)
+CW_LIFT = (0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.5, 1.0)      # off the floor while it swings (5-7)
+CW_IN = 4.0                                             # walking place: px in from the hold's place
+# walking, both knees nearly straight: the hold's bent front knee (poses._CHARGE_KNEES) rose level
+# with the hip when that foot reached ahead (the table shape again, 2026-09-28 second fix)
+CW_KNEES = {'L': 1.03, 'R': 1.03}
+CW_BOB = (0, 1, 0, 0, 0, 1, 0, 0)                      # the pelvis 1 px down as each foot takes the weight
+# sidesteps: four frames of 3 sim frames (0.2 s, the heal's sidestep; before, 2-3 sim frames: 0.15 s).
+# The body crosses 8 px a cycle, so each foot steps 8 px: a slower step would open the feet past
+# 10 px each side of their place (from the front the legs, ~4 px tall, would lie flat). Each foot
+# plants for two frames (2 px a frame toward the trailing side, as the body moves: no slide) and
+# swings for two, 1 px up: the feet 4 px nearer / further apart than in the hold, never crossing.
+CW_SIDE_HOLD = 3
+CW_SIDE_FB = [(-2, 0, 2, 0), (0, 1, 0, 0), (2, 0, -2, 0), (0, 0, 0, 1)]   # (L lateral, L lift, R lateral, R lift)
+CW_SIDE_SIDE = [(0, 0), (1, 0), (0, 0), (0, 1)]                          # side views: (near lift, far lift)
+
+
+def charge_walk_pose(view, i, rev=False):
+    """Frame i of the charge's own forward step (rev: backward, made on its own with the lags
+    recomputed, batch 3 decision 8). The upper body is the hold's, riding the pelvis rigidly."""
+    lag = -1 if rev else 1
+    i = (-i) % CW_N if rev else i
+    upper = _charge(view)
+    st = upper['feet']
+    v = PR.VIEWS[view]
+    feet = {}
+    for s_, k in (('L', i), ('R', (i + CW_N // 2) % CW_N)):     # the left foot leads in the hold
+        f0, l0, lift0, state = st[s_]
+        lift = CW_LIFT[k]
+        inward = -CW_IN if s_ == 'L' else CW_IN
+        feet[s_] = (f0 + inward + CW_FOOT[k], l0, lift0 + lift, 'swing' if lift and v['kind'] == 'side' else state)
+    bob, prev = CW_BOB[i], CW_BOB[(i - lag) % CW_N]
+    phi = 2 * math.pi * i / CW_N
+    p = dict(upper)
+    p['feet'] = feet
+    p['soft_knee'] = CW_KNEES
+    p['root'] = B1._add(p.get('root', (0, 0, 0)), (0, 0, -bob))
+    p['head'] = B1._add(p.get('head', (0, 0, 0)), (0, 0, bob - prev))
+    sw = CHARGE_WALK_SWAY
+    if view in ('east', 'west'):
+        p['cape'] = B1._add(p.get('cape', (0, 0, 0)), (-sw * math.sin(2 * phi - lag * 1.2), 0, 0))
+        p['plume'] = B1._add(p.get('plume', (0, 0, 0)), (0, 0, sw * math.sin(2 * phi - lag * 2.0)))
+    else:
+        p['cape'] = B1._add(p.get('cape', (0, 0, 0)), (0, sw * math.sin(phi - lag * 1.0), 0))
+        p['cape_lowered_add'] = p.get('cape_lowered_add', 0.0) + (prev - bob)
+        p['plume'] = B1._add(p.get('plume', (0, 0, 0)), (0, sw * math.sin(phi - lag * 1.6), 0))
+    return p
+
+
+def charge_side_pose(view, i, rev=False):
+    """Sidestep frame i (rev: the other way, made on its own): the slow legs' step, wider and slower
+    (CW_SIDE_*), on straight knees."""
+    p = B1.walk_pose(_charge(view), view, 'side', i, rev=rev, sway=CHARGE_WALK_SWAY,
+                     tables=(CW_SIDE_FB, CW_SIDE_SIDE))
+    return dict(p, soft_knee=CW_KNEES)
+
+
+def charge_walk():
+    side = [(f'side {i + 1}', CW_SIDE_HOLD, (lambda v, i=i: charge_side_pose(v, i))) for i in range(B1.N_SIDE)]
+    rside = [(f'rside {i + 1}', CW_SIDE_HOLD, (lambda v, i=i: charge_side_pose(v, i, rev=True))) for i in range(B1.N_SIDE)]
+    fwd = [(f'fwd {i + 1}', CW_HOLD, (lambda v, i=i: charge_walk_pose(v, i))) for i in range(CW_N)]
+    back = [(f'back {i + 1}', CW_HOLD, (lambda v, i=i: charge_walk_pose(v, i, rev=True))) for i in range(CW_N)]
+    return fwd + side + back + rside
 
 
 def _charge(view):
@@ -182,7 +261,14 @@ def charge_in(view, t, th, tl=None):
     p['head'] = B1._lerp((0, 0, 0), ch.get('head', (0, 0, 0)), th)
     if tl is not None:
         p['arms'] = dict(p['arms'], L=B1.lerp_pose(rest, ch, tl, view)['arms']['L'])
-    return p
+    return _readable(view, p)
+
+
+def _readable(view, p):
+    """In and out may turn the blade a little to keep it >= 3:1 (batch 2's readable()): the hold
+    and its walk may not (their upper body stays pixel for pixel)."""
+    import batch2 as B2
+    return B2.readable(view, p)
 
 
 def charge_out(view, t, th):
@@ -191,11 +277,13 @@ def charge_out(view, t, th):
     rest, ch = B1.resolve(B1.REST, view), _charge(view)
     p = B1.lerp_pose(ch, rest, t, view)
     p['head'] = B1._lerp(ch.get('head', (0, 0, 0)), (0, 0, 0), th)
-    return p
+    return _readable(view, p)
 
 
 CHARGE_IN_T = ((0.35, 0.25, 0.7), (0.7, 0.55, 0.9))   # (body, head, off hand): two frames of 2 (the front foot steps 10 px)
-CHARGE_OUT_T = ((0.35, 0.45), (0.7, 0.8))
+# 2026-09-28 fix (the charge leans 16 deg over its back foot now): at the body's 0.35 the back view's
+# head moved 4.4 px out of the hold; searched again
+CHARGE_OUT_T = ((0.3, 0.4), (0.65, 0.75))
 
 
 # ------------------------------------------------------------------ thrust and execution (decision 5)
@@ -211,7 +299,8 @@ CHARGE_OUT_T = ((0.35, 0.45), (0.7, 0.8))
 # | off hand | swings back | back for balance | still | comes forward | at the side |
 # | head | a frame behind the body | catches up | 1 px on, then back (the stop) | a frame late | a frame late |
 # | cape, plume | still behind the charge | streaming back | thrown forward, then settling | settle | settle |
-THRUST_F1_T = (0.5, 0.35)             # (body, head): charge hold -> f1 -> f2, decision 5's 8 px
+THRUST_F1_T = (0.5, 0.5)              # (body, head): charge hold -> f1 -> f2, decision 5's 8 px (searched again
+                                      # for the 2026-09-28 charge: 7.9 px the larger step)
 # the execution's own two starts from the rest stance: (body, head, sword). The feet travel
 # 10 px to the lunge, so the body takes even thirds; the sword swings ahead of it in the first
 # frame, where an attack's sword is free (batch 2 decision 3): the west library sword hangs
@@ -394,7 +483,7 @@ ACTIONS = {
     'charge': [(f'in {i + 1}', 2, (lambda v, i=i: charge_in(v, *CHARGE_IN_T[i]))) for i in range(2)] +
               [(f'hold {i + 1}', CHARGE_HOLD, (lambda v, i=i: B1.breathe(_charge(v), v, i))) for i in range(4)] +
               [(f'out {i + 1}', 2, (lambda v, i=i: charge_out(v, *CHARGE_OUT_T[i]))) for i in range(2)],
-    'charge_walk': B1.slow_walk(_charge, CHARGE_WALK_HOLD, sway=CHARGE_WALK_SWAY),
+    'charge_walk': charge_walk(),
     'dash': [('衝刺 1', 2, lambda v: dodge_f1(v, 'dash')), ('衝刺 2', 9, lambda v: _key('dash', v))] +
             [(f'煞停 {i + 1}', d, (lambda v, i=i: dodge_between(v, STOP_T[i]))) for i, d in enumerate((2, 2, 3))],
     'backstep': [('後跳 1', 2, lambda v: dodge_f1(v, 'backstep')), ('後跳 2', 9, lambda v: _key('backstep', v))] +
@@ -413,7 +502,7 @@ CANVAS = {'run': 'small', 'charge': 'large', 'charge_walk': 'large', 'thrust': '
           'dash': 'small', 'backstep': 'small', 'walk_locked': 'small'}
 TITLES = {'run': '奔跑（循環 1–8，起跑 1–2，停步 1A／1B、2、3）',
           'charge': '蓄力（進入、按住 1–4、沒蓄滿放開的收勢 1–2）',
-          'charge_walk': '蓄力移動（前進 1–8、往左側移 1–4、後退 1–8、往右側移 1–4）',
+          'charge_walk': '蓄力移動（前進 1–6、往左側移 1–4、後退 1–6、往右側移 1–4）',
           'thrust': '突刺（放開蓄滿的蓄力）',
           'dash': '閃身：衝刺 1、2，煞停 1–3',
           'walk_locked': '鎖定走路（後退 1–8、往左側移 1–4、往右側移 1–4；前進用 knight_walk.png）',
