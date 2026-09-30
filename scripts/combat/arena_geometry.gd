@@ -1,22 +1,23 @@
 class_name ArenaGeometry
 extends RefCounted
-## 競技場的碰撞形狀（arena.md §2）：720×400 的橢圓戰鬥區，中心在原點，邊緣有幾根柱子。
+## 競技場的碰撞形狀（arena.md §2）：1080×600 的橢圓戰鬥區，中心在原點，邊緣有幾根柱子。
+## 2026-09-30 使用者：Boss 放大到 160、鏡頭拉遠（畫面 960×540），場地放大 1.5 倍（原 720×400）。
 ## 角色都是腳底的圓；柱子用腳底的圓當碰撞，畫面上往上延伸並參與 Y 排序。
 
-const HALF_SIZE := Vector2(360.0, 200.0)
+const HALF_SIZE := Vector2(540.0, 300.0)
 
 ## 柱子：位置、碰撞半徑、畫面高度
 const PILLARS := [
-	{"pos": Vector2(-236.0, 104.0), "radius": 11.0, "height": 74.0},
-	{"pos": Vector2(236.0, 104.0), "radius": 11.0, "height": 58.0},
-	{"pos": Vector2(-262.0, -96.0), "radius": 11.0, "height": 70.0},
-	{"pos": Vector2(262.0, -96.0), "radius": 11.0, "height": 80.0},
+	{"pos": Vector2(-354.0, 156.0), "radius": 16.0, "height": 111.0},
+	{"pos": Vector2(354.0, 156.0), "radius": 16.0, "height": 87.0},
+	{"pos": Vector2(-393.0, -144.0), "radius": 16.0, "height": 105.0},
+	{"pos": Vector2(393.0, -144.0), "radius": 16.0, "height": 120.0},
 ]
 ## 柱子的畫面寬度（佔位圖形）
-const PILLAR_WIDTH := 22.0
+const PILLAR_WIDTH := 33.0
 
-const PLAYER_SPAWN := Vector2(0.0, 110.0)
-const BOSS_SPAWN := Vector2(0.0, -40.0)
+const PLAYER_SPAWN := Vector2(0.0, 165.0)
+const BOSS_SPAWN := Vector2(0.0, -60.0)
 
 
 ## 把半徑 r 的圓推回場地內、推出柱子之外。

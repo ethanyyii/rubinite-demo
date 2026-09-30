@@ -33,7 +33,7 @@
 ## 環境
 
 - Godot 4.7：`/Applications/Godot.app/Contents/MacOS/Godot`（以下簡寫 `godot`）
-- 內部解析度 640×360，整數倍放大到 1920×1080，材質取樣為 nearest。
+- 內部解析度 960×540（2026-09-30 鏡頭拉遠，原 640×360），整數倍放大到 1920×1080，材質取樣為 nearest。
 - 無介面測試：`godot --headless --path . -s res://tests/unit/run_tests.gd`（全部通過時結束碼為 0）
 - 新增 `class_name` 之後要先跑 `godot --headless --path . --import`，否則無介面模式找不到類別。
 - MCP（設定在 `.mcp.json`，含 token，**不可 commit**）：

@@ -13,6 +13,8 @@ const DebugWorldView := preload("res://scripts/view/debug_world_view.gd")
 const DebugOverlay := preload("res://scripts/view/debug_overlay.gd")
 const FxView := preload("res://scripts/view/fx_view.gd")
 const HitboxPreview := preload("res://scripts/view/hitbox_preview_view.gd")
+## Boss 身上的特效位置原本照 120px 的 Boss 寫；Boss 放大到 160（2026-09-30）後乘上這個倍率
+const BOSS_K := VeltharisData.HEIGHT / 120.0
 const DebugDriver := preload("res://scripts/view/debug_driver.gd")
 const SfxPlayer := preload("res://scripts/audio/sfx_player.gd")
 const ScreenFlash := preload("res://scripts/view/screen_flash.gd")
@@ -196,8 +198,8 @@ func end_elapsed() -> int:
 ## 勝利：Boss 的執魂（紅色餘燼）流進主角體內
 func _start_victory() -> void:
 	sfx.play(&"execution", -6.0, 0.7)
-	fx.add(&"ember_stream", {"from": sim.boss.pos + Vector2(0, -60)}, VICTORY_ABSORB_TIME)
-	fx.sparks(sim.boss.pos + Vector2(0, -50), Color(0.6, 0.58, 0.55), 40, 60.0, 1.6, Vector2.UP, 0.8)
+	fx.add(&"ember_stream", {"from": sim.boss.pos + Vector2(0, -60) * BOSS_K}, VICTORY_ABSORB_TIME)
+	fx.sparks(sim.boss.pos + Vector2(0, -50) * BOSS_K, Color(0.6, 0.58, 0.55), 40, 60.0, 1.6, Vector2.UP, 0.8)
 
 
 ## 事件 → 特效、音效、震動（combat-design §6、§12）
@@ -251,13 +253,13 @@ func _dispatch(e: Dictionary) -> void:
 		&"danger":
 			sfx.play(&"danger")
 		&"boss_stagger":
-			fx.sparks(e["pos"] + Vector2(0, -60), Color(1.0, 0.6, 0.3), 8, 80.0, 0.25)
+			fx.sparks(e["pos"] + Vector2(0, -60) * BOSS_K, Color(1.0, 0.6, 0.3), 8, 80.0, 0.25)
 		&"boss_transition":
 			# 階段轉換：單膝跪地後起身，火焰更猛烈（boss §5）
 			sfx.play(&"boss_break", 0.0, 0.8)
-			fx.add(&"flash_ring", {"pos": e["pos"] + Vector2(0, -50), "r0": 20.0, "r1": 110.0, "color": Palette.BOSS_EMBER}, 0.6)
+			fx.add(&"flash_ring", {"pos": e["pos"] + Vector2(0, -50) * BOSS_K, "r0": 20.0 * BOSS_K, "r1": 110.0 * BOSS_K, "color": Palette.BOSS_EMBER}, 0.6)
 		&"boss_phase2":
-			fx.sparks(e["pos"] + Vector2(0, -70), Palette.BOSS_EMBER, 30, 140.0, 0.7)
+			fx.sparks(e["pos"] + Vector2(0, -70) * BOSS_K, Palette.BOSS_EMBER, 30, 140.0, 0.7)
 			camera.add_shake(4.0, 0.3)
 		&"boss_dead":
 			camera.add_shake(5.0, 0.4)
@@ -266,7 +268,7 @@ func _dispatch(e: Dictionary) -> void:
 		&"boss_break":
 			# 失衡：紅火暗下、火星散落（§12）
 			sfx.play(&"boss_break")
-			fx.sparks(e["pos"] + Vector2(0, -60), Palette.BOSS_EMBER, 22, 110.0, 0.5)
+			fx.sparks(e["pos"] + Vector2(0, -60) * BOSS_K, Palette.BOSS_EMBER, 22, 110.0, 0.5)
 		&"player_execute":
 			sfx.play(&"swing_heavy", 0.0, 0.8)
 		&"execution_hit":

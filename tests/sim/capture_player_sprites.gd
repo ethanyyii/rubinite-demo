@@ -6,7 +6,7 @@ extends SceneTree
 ## 之後用 tools/sprite_rig/ingame_gifs.py 把小圖接成 GIF 和總覽圖。Boss 切成手動（不出招）；受擊由腳本直接結算。
 
 const DebugDriver := preload("res://scripts/view/debug_driver.gd")
-## 以主角腳底為準的截圖範圍（遊戲的 640×360 畫面座標）
+## 以主角腳底為準的截圖範圍（遊戲畫面座標；2026-09-30 起畫面是 960×540）
 const CROP := Vector2i(128, 96)
 const FEET_AT := Vector2i(64, 76)
 

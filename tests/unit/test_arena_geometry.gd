@@ -2,17 +2,18 @@ extends TestCase
 ## 場地橢圓與柱子碰撞（arena.md §2）。
 
 
-func test_ellipse_size_is_720_by_400() -> void:
-	assert_eq(ArenaGeometry.HALF_SIZE, Vector2(360, 200))
+## arena.md §2：1080×600（2026-09-30 使用者：鏡頭拉遠、場地放大 1.5 倍，原 720×400）
+func test_ellipse_size_is_1080_by_600() -> void:
+	assert_eq(ArenaGeometry.HALF_SIZE, Vector2(540, 300))
 
 
 func test_points_inside_are_unchanged() -> void:
-	for p in [Vector2.ZERO, Vector2(100, 50), Vector2(-300, 0), Vector2(0, -180)]:
+	for p in [Vector2.ZERO, Vector2(150, 75), Vector2(-450, 0), Vector2(0, -270)]:
 		assert_eq(ArenaGeometry.clamp_inside(p, 8.0), p)
 
 
 func test_outside_points_are_pulled_onto_boundary() -> void:
-	for p in [Vector2(500, 0), Vector2(0, 400), Vector2(-400, -300), Vector2(360, 200)]:
+	for p in [Vector2(750, 0), Vector2(0, 600), Vector2(-600, -450), Vector2(540, 300)]:
 		var q := ArenaGeometry.clamp_inside(p, 8.0)
 		assert_true(ArenaGeometry.is_inside(q, 8.0), "%s → %s" % [p, q])
 		assert_false(ArenaGeometry.is_inside(q, 9.0), "%s 應在邊界上" % q)

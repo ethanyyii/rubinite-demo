@@ -6,18 +6,21 @@ extends Camera2D
 const FOLLOW := 0.6
 ## 焦點從玩家往 Boss 偏移的比例
 const LEAN_TO_BOSS := 0.35
-## 角色圖形往上延伸（Boss 高 120），焦點往上提一點
-const HEIGHT_OFFSET := -28.0
-## 鏡頭中心的活動範圍（畫面 640×360，場地與外圍約 800×490）。
-## 上方多留一些：Boss 站在北邊緣時頭頂在 y ≈ -294。
-const LIMIT_MIN := Vector2(-80.0, -120.0)
-const LIMIT_MAX := Vector2(80.0, 70.0)
+## 角色圖形往上延伸（Boss 高 160），焦點往上提一點
+const HEIGHT_OFFSET := -37.0
+## 鏡頭中心的活動範圍（畫面 960×540，場地 1080×600、含外圍約 1200×740；2026-09-30 鏡頭拉遠、場地放大 1.5 倍）。
+## 上方多留一些：Boss 站在北邊緣（y = -265）時王冠尖在 y ≈ -430，鏡頭中心要能到 -430 + 270 = -160 以上。
+const LIMIT_MIN := Vector2(-120.0, -170.0)
+const LIMIT_MAX := Vector2(120.0, 105.0)
 const SMOOTH := 8.0
-## 玩家一定要完整留在畫面安全區內：腳底在 Boss 名稱與血條（畫面下緣約 45px）之上，頭頂不出畫面
-const HALF_VIEW := Vector2(320.0, 180.0)
-const SAFE_BOTTOM := 50.0
+## 玩家一定要完整留在畫面安全區內：腳底在 Boss 名稱與血條（畫面下緣約 68px）之上，頭頂不出畫面
+const HALF_VIEW := Vector2(480.0, 270.0)
+## 下緣留給 Boss 名稱與血條（HUD 照 1.5 倍排，約 70px）
+const SAFE_BOTTOM := 75.0
 const SAFE_TOP := 56.0
 const SAFE_SIDE := 24.0
+## Boss 王冠上方要留的空間（王冠的尖刺比身高再高幾 px）
+const BOSS_TOP_MARGIN := 8.0
 
 var arena: CombatArena
 var _shake := 0.0
@@ -52,10 +55,13 @@ func _target() -> Vector2:
 	return target_for(sim.player.pos, sim.boss.pos)
 
 
-## 鏡頭中心：先依玩家與 Boss 取焦點並限制在場地範圍內，最後保證玩家在安全區內（玩家優先）。
+## 鏡頭中心：先依玩家與 Boss 取焦點並限制在場地範圍內；Boss 的頭頂盡量留在畫面內（2026-09-30：Boss 放大到
+## 160 後，站在北邊時王冠會被切掉）；最後保證玩家在安全區內（玩家優先，兩者距離太遠時 Boss 出畫面，HUD 在上緣標方向）。
 static func target_for(player_pos: Vector2, boss_pos: Vector2) -> Vector2:
 	var focus := player_pos.lerp(boss_pos, LEAN_TO_BOSS)
 	var t := (focus * FOLLOW + Vector2(0, HEIGHT_OFFSET)).clamp(LIMIT_MIN, LIMIT_MAX)
+	var crown := boss_pos.y - VeltharisData.HEIGHT - BOSS_TOP_MARGIN
+	t.y = maxf(minf(t.y, crown + HALF_VIEW.y), LIMIT_MIN.y)
 	return clamp_safe(t, player_pos)
 
 

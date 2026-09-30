@@ -26,7 +26,7 @@ extends Resource
 @export var length := 0.0
 @export var width := 0.0
 @export var thickness := 0.0
-## 判定期間 Boss 前進的距離（裁決突刺 120px）
+## 判定期間 Boss 前進的距離（裁決突刺 LUNGE_DISTANCE，160px）
 @export var lunge_distance := 0.0
 
 @export_group("預兆與方向")

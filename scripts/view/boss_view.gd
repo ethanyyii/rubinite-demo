@@ -1,5 +1,5 @@
 extends Node2D
-## Boss 的佔位圖形（plan §4）：紅色大膠囊（腳底圓半徑 26、高 120）、灰色長方形大劍。
+## Boss 的佔位圖形（plan §4）：紅色大膠囊（腳底圓半徑 35、高 160；2026-09-30 放大）、灰色長方形大劍。
 ## 預兆（plan §4、boss §7）：一般起手時劍變亮紅；延遲停住時劍閃爍；危險預兆為全身閃白＋頭頂白色星形。
 ## 只讀取 BossSim 的狀態，不改動它。
 
@@ -8,6 +8,9 @@ const H := VeltharisData.HEIGHT
 const BS := BossSim.State
 const TG := CombatTypes.Telegraph
 const BLADE := 70.0
+## 佔位姿勢的倍率：姿勢（握劍位置、劍長、身體偏移）照 120px 的 Boss 寫，Boss 放大到 160（2026-09-30）後
+## 整組乘上這個倍率，劍揮到最遠也跟著落在新的判定範圍（橫掃 140、下劈 150、突刺 135）
+const K := VeltharisData.HEIGHT / 120.0
 
 var arena: CombatArena
 var _flash_white := 0.0
@@ -43,7 +46,7 @@ func _draw() -> void:
 	var lift := _leap_lift(b)
 	if b.move != null and b.move.airborne_start >= 0.0 and b.state == BS.ATTACK and b.state_elapsed() < b.hit_start_frame(0):
 		_draw_landing_shadow(b)
-	DrawUtil.fill_ellipse(self, Vector2(0, 2), Vector2(R + 8, 10) * (1.0 - 0.5 * clampf(-lift / 70.0, 0.0, 1.0)), Palette.SHADOW, 24)
+	DrawUtil.fill_ellipse(self, Vector2(0, 2), Vector2(R + 8, 12) * (1.0 - 0.5 * clampf(-lift / (70.0 * K), 0.0, 1.0)), Palette.SHADOW, 24)
 	if b.state == BS.EXECUTED:
 		_draw_fallen(side)
 		return
@@ -66,7 +69,7 @@ func _draw() -> void:
 ## 主角在後面被擋住時用它判斷要不要畫剪影（player_view）
 static func body_rect(b: BossSim) -> Rect2:
 	if b.state == BS.EXECUTED:
-		return Rect2(-82, -45, 164, 45)
+		return Rect2(Vector2(-82, -45) * K, Vector2(164, 45) * K)
 	var off: Vector2 = compute_pose(b)["body"]
 	var h := H + off.y
 	return Rect2(off.x - R - 1, -h - 1 + _leap_lift(b), 2 * R + 2, h + 2)
@@ -83,7 +86,7 @@ static func _leap_lift(b: BossSim) -> float:
 	var air_from := Frames.of(b.move.airborne_start)
 	var land := b.hit_start_frame(0)
 	var t := float(b.state_elapsed() - air_from) / float(land - air_from)
-	return -sin(PI * t) * 70.0
+	return -sin(PI * t) * 70.0 * K
 
 
 ## 落點陰影：追蹤玩家，越接近落地越小；縮到最小的瞬間就是落地時機（boss §5.2）
@@ -91,7 +94,7 @@ func _draw_landing_shadow(b: BossSim) -> void:
 	var local := b.landing_target - b.pos
 	var land := b.hit_start_frame(0)
 	var k := clampf(float(b.state_elapsed()) / float(land), 0.0, 1.0)
-	var r := lerpf(64.0, 30.0, k)
+	var r := lerpf(64.0, 30.0, k) * K
 	DrawUtil.fill_ellipse(self, local, Vector2(r, r * 0.45), Color(0, 0, 0, 0.25 + 0.3 * k), 28)
 	DrawUtil.stroke_ellipse(self, local, Vector2(r, r * 0.45), Color(0.8, 0.2, 0.1, 0.5 + 0.4 * k), 1.0, 28)
 
@@ -113,7 +116,7 @@ func _draw_flames(b: BossSim, pose: Dictionary) -> void:
 	if b.state == BS.TRANSITION:
 		for i in 10:
 			var a := t * 4.0 + TAU * i / 10.0
-			var p := Vector2(cos(a) * 30.0, -60.0 + sin(a * 1.3) * 45.0)
+			var p := Vector2(cos(a) * 30.0, -60.0 + sin(a * 1.3) * 45.0) * K
 			var c2 := Palette.BOSS_EMBER
 			c2.a = 0.7
 			draw_rect(Rect2(p.round(), Vector2(2, 3)), c2)
@@ -159,20 +162,22 @@ func _draw_body(b: BossSim, side: float, off: Vector2, tg: int) -> void:
 
 ## 被處決：倒在地上（跪地片段的延伸，demo 簡化為橫躺）
 func _draw_fallen(side: float) -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(K, K))
 	var c := Vector2(0, -20)
 	DrawUtil.fill_capsule_h(self, c + Vector2(0, 1), 58, 25, _body_color(Palette.BOSS_DARK, CombatTypes.Telegraph.NONE))
 	DrawUtil.fill_capsule_h(self, c, 56, 24, _body_color(Palette.BOSS, CombatTypes.Telegraph.NONE))
 	for x: float in [-4.0, 3.0, 10.0]:
 		var cx := -side * 50.0 + x
 		draw_colored_polygon(PackedVector2Array([Vector2(cx, -30), Vector2(cx + 5, -30), Vector2(cx + 2, -38)]), Palette.BOSS_CROWN)
-	_draw_blade(Vector2(side * 30, -8), Vector2(side, 0.15).normalized(), 70.0, Palette.GREATSWORD_DARK, false)
 	var ember := Palette.BOSS_EMBER.darkened(0.5)
 	draw_polyline(PackedVector2Array([c + Vector2(-20, -4), c + Vector2(-5, 2), c + Vector2(10, -3)]), ember, 1.0)
+	draw_set_transform(Vector2.ZERO)
+	_draw_blade(Vector2(side * 30, -8) * K, Vector2(side, 0.15).normalized(), 70.0 * K, Palette.GREATSWORD_DARK, false)
 
 
 ## 危險預兆：頭頂的白色星形圖示（色盲也能辨識的形狀）
 func _draw_danger_star(off: Vector2) -> void:
-	var c := Vector2(off.x, -H - 22 + off.y)
+	var c := Vector2(off.x, -H - 22 * K + off.y)
 	var pulse := 1.0 + 0.2 * sin(Time.get_ticks_msec() * 0.03)
 	DrawUtil.fill_ellipse(self, c, Vector2(15, 15) * pulse, Color(1, 1, 1, 0.25), 20)
 	draw_colored_polygon(DrawUtil.star_points(c, 11.0 * pulse, 4.5 * pulse), Palette.DANGER)
@@ -227,6 +232,9 @@ static func compute_pose(b: BossSim) -> Dictionary:
 			pose["dir"] = clash_dir.lerp(Vector2(-side * 0.4, -1.0).normalized(), k).normalized()
 			pose["body"] = Vector2(-side * 4.0 * k, -6.0 * k)
 			pose["behind"] = k > 0.5
+	pose["hand"] = (pose["hand"] as Vector2) * K
+	pose["body"] = (pose["body"] as Vector2) * K
+	pose["len"] = (pose["len"] as float) * K
 	return pose
 
 
@@ -383,15 +391,15 @@ func _draw_sword(b: BossSim, pose: Dictionary, tg: int) -> void:
 
 
 func _draw_blade(hand: Vector2, dir: Vector2, length: float, color: Color, glow: bool) -> void:
-	var side := dir.orthogonal() * 4.0
+	var side := dir.orthogonal() * 4.0 * K
 	var tip := hand + dir * length
 	if glow:
 		var g := color
 		g.a = 0.35
-		draw_line(hand.round(), tip.round(), g, 12.0)
+		draw_line(hand.round(), tip.round(), g, 12.0 * K)
 	draw_colored_polygon(PackedVector2Array([(hand + side).round(), (tip + side * 0.6).round(),
-		(tip + dir * 6).round(), (tip - side * 0.6).round(), (hand - side).round()]), color)
+		(tip + dir * 6 * K).round(), (tip - side * 0.6).round(), (hand - side).round()]), color)
 	draw_line(hand.round(), (hand + dir * (length - 4)).round(), Palette.GREATSWORD_DARK, 1.0)
 	# 護手與劍柄
-	draw_line((hand + dir.orthogonal() * 9).round(), (hand - dir.orthogonal() * 9).round(), Palette.GREATSWORD_DARK, 3.0)
-	draw_line(hand.round(), (hand - dir * 12).round(), Palette.BOSS_DARK, 3.0)
+	draw_line((hand + dir.orthogonal() * 9 * K).round(), (hand - dir.orthogonal() * 9 * K).round(), Palette.GREATSWORD_DARK, 3.0)
+	draw_line(hand.round(), (hand - dir * 16 * K).round(), Palette.BOSS_DARK, 3.0)

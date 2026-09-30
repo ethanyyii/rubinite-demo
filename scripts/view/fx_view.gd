@@ -210,7 +210,7 @@ func _draw_lock_reticle() -> void:
 	var sim: CombatSim = arena.sim
 	if not sim.player.locked or arena.end_state != &"" or sim.player.state == PlayerSim.State.DEAD:
 		return
-	var c := sim.boss.pos + Vector2(0, -60 + BossView.leap_lift(sim.boss))
+	var c := sim.boss.pos + Vector2(0, -VeltharisData.HEIGHT * 0.5 + BossView.leap_lift(sim.boss))
 	var pulse := 1.0 + 0.15 * sin(Time.get_ticks_msec() * 0.008)
 	var s := 7.0 * pulse
 	var col := Color(1, 1, 1, 0.9)

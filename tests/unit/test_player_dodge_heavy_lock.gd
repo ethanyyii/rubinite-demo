@@ -200,41 +200,41 @@ func test_heavy_thrust_cannot_be_cancelled() -> void:
 
 # --- 鎖定 -----------------------------------------------------------------------
 
-func test_lock_acquire_range_320() -> void:
-	sim.boss.pos = Vector2(0, -150)
-	sim.player.pos = Vector2(0, -150 + 319)
+## 鎖定距離 480、超過 630 解除（2026-09-30 畫面拉遠、場地放大 1.5 倍，原 320、420；tuning-log）
+func test_lock_acquire_range_480() -> void:
+	sim.boss.pos = Vector2(-300, 0)
+	sim.player.pos = Vector2(-300 + 479, 0)
 	press(&"lock")
-	assert_true(player().locked, "319px：鎖得到")
+	assert_true(player().locked, "479px：鎖得到")
 	press(&"lock")
 	assert_false(player().locked, "再按一次解除")
-	sim.player.pos = Vector2(0, -150 + 321)
-	sim.player.pos = ArenaGeometry.clamp_inside(sim.player.pos, 8.0)
-	var d := sim.player.pos.distance_to(sim.boss.pos)
+	sim.player.pos = Vector2(-300 + 481, 0)
 	press(&"lock")
-	assert_eq(player().locked, d <= 320.0, "距離 %.1f" % d)
+	assert_false(player().locked, "481px：鎖不到")
 
 
-func test_lock_acquire_range_320_horizontal() -> void:
-	sim.boss.pos = Vector2(-200, 0)
-	sim.player.pos = Vector2(121, 0)
+func test_lock_acquire_range_480_diagonal() -> void:
+	sim.boss.pos = Vector2(-300, -150)
+	var dir := Vector2(1, 0.5).normalized()
+	sim.player.pos = sim.boss.pos + dir * 481.0
 	press(&"lock")
-	assert_false(player().locked, "321px：鎖不到")
-	sim.player.pos = Vector2(119, 0)
+	assert_false(player().locked, "481px：鎖不到")
+	sim.player.pos = sim.boss.pos + dir * 479.0
 	press(&"lock")
-	assert_true(player().locked, "319px：鎖得到")
+	assert_true(player().locked, "479px：鎖得到")
 
 
-func test_lock_breaks_beyond_420() -> void:
-	sim.boss.pos = Vector2(-330, 0)
-	sim.player.pos = Vector2(-20, 0)
+func test_lock_breaks_beyond_630() -> void:
+	sim.boss.pos = Vector2(-500, 0)
+	sim.player.pos = Vector2(-30, 0)
 	press(&"lock")
 	assert_true(player().locked)
 	move = Vector2.RIGHT
-	while player().locked and sim.player.pos.x < 340:
+	while player().locked and sim.player.pos.x < 520:
 		advance(1)
 	var d := sim.player.pos.distance_to(sim.boss.pos)
-	assert_false(player().locked, "超過 420px 解除")
-	assert_between(d, 420.0, 422.0, "在剛超過 420px 時解除（%.2f）" % d)
+	assert_false(player().locked, "超過 630px 解除")
+	assert_between(d, 630.0, 632.0, "在剛超過 630px 時解除（%.2f）" % d)
 
 
 func test_locked_facing_and_speed() -> void:

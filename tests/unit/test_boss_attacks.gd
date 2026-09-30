@@ -163,8 +163,10 @@ func assert_ne_telegraph(t: int, msg: String) -> void:
 	assert_true(boss().telegraph() != t, msg)
 
 
-func test_ring_hits_only_when_passing_and_not_beyond_140() -> void:
-	for case in [[60.0, true], [139.0, true], [160.0, false]]:
+## §4.6 環擴張到 RING_RADIUS（185，2026-09-30 隨 Boss 放大，原 140）；再遠（加上主角受擊圓半徑 8 之外）打不到
+func test_ring_hits_only_when_passing_and_not_beyond_its_radius() -> void:
+	var r := VeltharisData.RING_RADIUS
+	for case in [[60.0, true], [r - 1.0, true], [r + 20.0, false]]:
 		sim = CombatSim.new(1)
 		sim.boss.pos = Vector2(0, -40)
 		sim.player.pos = sim.boss.pos + Vector2(case[0], 0)
@@ -188,7 +190,8 @@ func test_ring_can_be_dodged() -> void:
 	assert_eq(player().hp, PlayerData.MAX_HP, "閃身無敵躲過衝擊環")
 
 
-func test_thrust_lunges_120px() -> void:
+## §4.4 突進 LUNGE_DISTANCE（160，2026-09-30 隨 Boss 放大，原 120）
+func test_thrust_lunges_full_distance() -> void:
 	sim.player.pos = Vector2(300, 150)  # 遠離突刺路徑
 	sim.boss.pos = Vector2(-150, 0)
 	_start(&"judgment_thrust")
@@ -196,7 +199,7 @@ func test_thrust_lunges_120px() -> void:
 	var x0 := boss().pos.x
 	var dir := (sim.player.pos - sim.boss.pos).normalized()
 	_to_move_frame(Frames.of(0.6) + Frames.of(0.2))
-	assert_near(boss().pos.distance_to(Vector2(x0, 0)), 120.0, 0.5, "突進 120px")
+	assert_near(boss().pos.distance_to(Vector2(x0, 0)), VeltharisData.LUNGE_DISTANCE, 0.5, "突進 %.0fpx" % VeltharisData.LUNGE_DISTANCE)
 	assert_true(dir.is_finite())
 
 
@@ -268,7 +271,7 @@ func test_thrust_lunges_along_locked_direction() -> void:
 	sim.player.pos = Vector2(-150, 150)  # 鎖定後玩家移開，突刺方向不變
 	_to_move_frame(Frames.of(0.6) + Frames.of(0.2))
 	var moved := boss().pos - p0
-	assert_near(moved.length(), 120.0, 0.5)
+	assert_near(moved.length(), VeltharisData.LUNGE_DISTANCE, 0.5)
 	assert_near(moved.normalized().angle_to(dir), 0.0, 0.01, "沿鎖定的方向突進")
 
 

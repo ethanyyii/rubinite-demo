@@ -25,10 +25,11 @@ func _draw() -> void:
 		flags.append("F4 無敵")
 	if not arena.attack_preview:
 		flags.append("F6 判定預覽關")
-	var y := 12.0
+	# 畫面 960×540（2026-09-30 鏡頭拉遠）：位置與字級照原本的 1.5 倍
+	var y := 18.0
 	for f in flags:
-		_text(font, Vector2(size.x - 8, y), f, HORIZONTAL_ALIGNMENT_RIGHT)
-		y += 11.0
+		_text(font, Vector2(size.x - 12, y), f, HORIZONTAL_ALIGNMENT_RIGHT)
+		y += 16.0
 	if not arena.debug_info:
 		return
 	var sim: CombatSim = arena.sim
@@ -41,17 +42,17 @@ func _draw() -> void:
 		"Boss %s (%d)  HP %d  韌性 %.1f  階段 %d" % [b.state_name(), b.state_elapsed(), b.hp, b.toughness, b.phase],
 	]
 	lines.append_array(arena.extra_debug_lines())
-	var ly := 44.0
+	var ly := 66.0
 	for line in lines:
-		_text(font, Vector2(10, ly), line, HORIZONTAL_ALIGNMENT_LEFT)
-		ly += 10.0
+		_text(font, Vector2(15, ly), line, HORIZONTAL_ALIGNMENT_LEFT)
+		ly += 15.0
 
 
 func _text(font: Font, at: Vector2, text: String, align: HorizontalAlignment) -> void:
 	var w := -1.0
 	var pos := at
 	if align == HORIZONTAL_ALIGNMENT_RIGHT:
-		w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 		pos.x -= w
-	draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, 3, Color(0, 0, 0, 0.9))
-	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 0.7))
+	draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.9))
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 0.7))

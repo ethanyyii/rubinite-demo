@@ -24,7 +24,7 @@ func _draw() -> void:
 	draw_arc(p.pos, PlayerData.HURT_RADIUS, 0, TAU, 24, Color(0.3, 1, 0.4, 0.9), 1.0)
 	draw_arc(b.pos, VeltharisData.HURT_RADIUS, 0, TAU, 32, Color(0.3, 1, 0.4, 0.9), 1.0)
 	draw_line(p.pos, p.pos + p.facing * 14, Color(0.3, 1, 0.4), 1.0)
-	draw_line(b.pos, b.pos + b.facing * 34, Color(0.3, 1, 0.4), 1.0)
+	draw_line(b.pos, b.pos + b.facing * (VeltharisData.HURT_RADIUS + 14.0), Color(0.3, 1, 0.4), 1.0)
 	# 主角正在生效的攻擊判定（外框）
 	var hb := p.attack_hitbox()
 	if not hb.is_empty():
@@ -38,9 +38,9 @@ func _draw() -> void:
 	draw_polyline(pts, Color(0.9, 0.9, 0.3, 0.6), 1.0)
 	# 狀態名稱與數值
 	_label(font, p.pos + Vector2(-30, -54), "%s  架勢 %d" % [p.state_name(), roundi(p.posture)])
-	_label(font, b.pos + Vector2(32, -40), "%s  韌性 %d" % [b.state_name(), roundi(b.toughness)])
+	_label(font, b.pos + Vector2(VeltharisData.HURT_RADIUS + 8.0, -VeltharisData.HEIGHT / 3.0), "%s  韌性 %d" % [b.state_name(), roundi(b.toughness)])
 
 
 func _label(font: Font, at: Vector2, text: String) -> void:
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, 3, Color(0, 0, 0, 0.9))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 0.6))
+	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.9))
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 0.6))

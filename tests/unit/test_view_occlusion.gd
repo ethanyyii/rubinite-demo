@@ -55,24 +55,44 @@ func test_views_are_positioned_at_feet() -> void:
 	assert_eq(arena.player_view.position, Vector2(12, 34), "腳底位置取整（Y 排序依腳底）")
 
 
-func test_camera_keeps_player_inside_safe_area_everywhere() -> void:
+func test_camera_view_matches_project_and_hud() -> void:
+	# 鏡頭的畫面大小要等於專案的內部解析度，下緣安全區要蓋得住 HUD 的 Boss 名稱與血條（審查指出只拿鏡頭自己的
+	# 常數去測，常數本身錯了測不出來）
 	var Cam: GDScript = load("res://scripts/view/combat_camera.gd")
-	for px in range(-350, 351, 50):
-		for py in range(-190, 191, 38):
+	var Hud: GDScript = load("res://scripts/view/hud.gd")
+	var view := Vector2(ProjectSettings.get_setting("display/window/size/viewport_width"),
+		ProjectSettings.get_setting("display/window/size/viewport_height"))
+	assert_eq(Cam.HALF_VIEW * 2.0, view, "鏡頭的畫面 = 內部解析度")
+	assert_eq(view, Vector2(960, 540), "arena.md §2：960×540")
+	assert_true(Cam.SAFE_BOTTOM >= Hud.BOSS_AREA, "下緣安全區 %.0f 蓋得住 Boss 血條區 %.0f" % [Cam.SAFE_BOTTOM, Hud.BOSS_AREA])
+
+
+func test_camera_keeps_player_inside_safe_area_everywhere() -> void:
+	# 畫面 960×540、場地 1080×600（2026-09-30 鏡頭拉遠、場地放大 1.5 倍）：邊界照鏡頭的常數
+	var Cam: GDScript = load("res://scripts/view/combat_camera.gd")
+	var half: Vector2 = Cam.HALF_VIEW
+	var bottom: float = half.y * 2.0 - Cam.SAFE_BOTTOM
+	var side: float = Cam.SAFE_SIDE
+	for px in range(-525, 526, 75):
+		for py in range(-285, 286, 57):
 			var p := ArenaGeometry.clamp_inside(Vector2(px, py), 8.0)
-			for b in [Vector2(0, -40), Vector2(0, 170), Vector2(-330, 0), Vector2(300, -120)]:
+			for b in [Vector2(0, -60), Vector2(0, 255), Vector2(-495, 0), Vector2(450, -180)]:
 				var c: Vector2 = Cam.target_for(p, b)
-				var screen := p - c + Vector2(320, 180)
-				assert_true(screen.y <= 360 - 50 + 0.01, "玩家 %s 腳底在 Boss 血條之上（%s）" % [p, screen])
+				var screen := p - c + half
+				assert_true(screen.y <= bottom + 0.01, "玩家 %s 腳底在 Boss 血條之上（%s）" % [p, screen])
 				assert_true(screen.y - PlayerData.HEIGHT >= 0.0, "玩家 %s 頭頂在畫面內" % p)
-				assert_true(screen.x >= 24 - 0.01 and screen.x <= 640 - 24 + 0.01, "玩家 %s 左右在畫面內" % p)
+				assert_true(screen.x >= side - 0.01 and screen.x <= half.x * 2.0 - side + 0.01, "玩家 %s 左右在畫面內" % p)
 
 
 func test_smoothed_camera_keeps_player_in_safe_area_while_running() -> void:
 	# 審查 M1-4：鏡頭平滑落後時玩家也不能被 Boss 血條蓋住
+	var Cam: GDScript = load("res://scripts/view/combat_camera.gd")
+	var half: Vector2 = Cam.HALF_VIEW
+	var bottom: float = half.y * 2.0 - Cam.SAFE_BOTTOM
+	var side: float = Cam.SAFE_SIDE
 	var sim := arena.sim
-	sim.boss.pos = Vector2(0, -170)
-	sim.player.pos = Vector2(0, -120)
+	sim.boss.pos = Vector2(0, -255)
+	sim.player.pos = Vector2(0, -180)
 	arena.camera.snap()
 	var cam: Camera2D = arena.camera
 	for dir in [Vector2.DOWN, Vector2.UP, Vector2.LEFT, Vector2.RIGHT]:
@@ -82,8 +102,22 @@ func test_smoothed_camera_keeps_player_in_safe_area_while_running() -> void:
 			f.run = true
 			sim.step(f)
 			cam._physics_process(1.0 / 60.0)
-			var screen: Vector2 = sim.player.pos - cam.get("_center") + Vector2(320, 180)
-			assert_true(screen.y <= 360 - 50 + 0.01 and screen.y - PlayerData.HEIGHT >= -0.01, "往 %s 第 %d 幀：%s" % [dir, i, screen])
-			assert_true(screen.x >= 24 - 0.01 and screen.x <= 616.01, "往 %s 第 %d 幀：%s" % [dir, i, screen])
-			if not (screen.y <= 310.01):
+			var screen: Vector2 = sim.player.pos - cam.get("_center") + half
+			assert_true(screen.y <= bottom + 0.01 and screen.y - PlayerData.HEIGHT >= -0.01, "往 %s 第 %d 幀：%s" % [dir, i, screen])
+			assert_true(screen.x >= side - 0.01 and screen.x <= half.x * 2.0 - side + 0.01, "往 %s 第 %d 幀：%s" % [dir, i, screen])
+			if not (screen.y <= bottom + 0.01):
 				return
+
+
+func test_camera_keeps_boss_crown_on_screen_when_both_fit() -> void:
+	# 2026-09-30：Boss 放大到 160 後站在北邊時王冠被切掉。兩者上下距離放得下時（主角在 Boss 下方，
+	# Boss 頭頂到主角腳底 + 下緣安全區 ≤ 畫面高），王冠要在畫面內
+	var Cam: GDScript = load("res://scripts/view/combat_camera.gd")
+	var half: Vector2 = Cam.HALF_VIEW
+	for bx in [-300.0, 0.0, 300.0]:
+		var b := ArenaGeometry.clamp_inside(Vector2(bx, -400), VeltharisData.HURT_RADIUS)
+		for dy in [60.0, 150.0, 250.0]:
+			var p := ArenaGeometry.clamp_inside(b + Vector2(0, dy), 8.0)
+			var c: Vector2 = Cam.target_for(p, b)
+			var crown_screen := b.y - VeltharisData.HEIGHT - p.y + p.y - c.y + half.y
+			assert_true(crown_screen >= 0.0, "Boss %s、玩家 %s：王冠在畫面內（%.1f）" % [b, p, crown_screen])

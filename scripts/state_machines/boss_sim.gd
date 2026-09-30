@@ -70,7 +70,7 @@ var last_action := &""
 var _takeoff_pos := Vector2.ZERO
 var landing_target := Vector2.ZERO
 ## 落點落在玩家前方這個距離（從起跳方向算），讓 Boss 落在玩家面前而不是頭上
-const LEAP_LAND_OFFSET := 40.0
+const LEAP_LAND_OFFSET := 53.0  # 原 40；Boss 放大 4/3（2026-09-30，tuning-log）
 
 
 func _init(owner_sim: CombatSim) -> void:
@@ -184,7 +184,7 @@ func _check_phase_transition() -> void:
 	_punish_at = -1
 	toughness = VeltharisData.MAX_TOUGHNESS
 	enter_state(State.TRANSITION)
-	sim.feedback(&"boss_break", pos + Vector2(0, -40))
+	sim.feedback(&"boss_break", pos + Vector2(0, -VeltharisData.HEIGHT / 3.0))
 	sim.emit(&"boss_transition", {"pos": pos})
 
 
@@ -315,7 +315,7 @@ func _start_walk(mode_name: StringName, speed: float, frames: int, stop_distance
 
 ## 走路：一律面向玩家。
 ## - 逼近（AI 選到的動作）：走到停下距離或時間到就決定下一招。
-## - 喘息：一定走滿時間（§6.2 規則 5）；逼近到停下距離後改成側移。玩家倒地時不靠近：110px 內後退、否則側移（規則 6）。
+## - 喘息：一定走滿時間（§6.2 規則 5）；逼近到停下距離後改成側移。玩家倒地時不靠近：近距離（NEAR_RANGE）內後退、否則側移（規則 6）。
 func _tick_walk() -> void:
 	_face_player()
 	var to := sim.player.pos - pos
@@ -358,7 +358,7 @@ func on_player_posture_break() -> void:
 	_schedule_punish(&"judgment_thrust")
 
 
-## 玩家在 260px 內治療（§6.2 規則 2）：70% 機率立刻懲罰（一階段裁決突刺、二階段墜王之躍）。
+## 玩家在 HEAL_PUNISH_RANGE 內治療（§6.2 規則 2）：70% 機率立刻懲罰（一階段裁決突刺、二階段墜王之躍）。
 ## 只在 Boss 空檔（待機、走路、收招）時中斷；正在起手或判定就讓這一招打完。
 func on_player_heal() -> void:
 	if mode != Mode.AI or pos.distance_to(sim.player.pos) > VeltharisData.HEAL_PUNISH_RANGE:
@@ -606,7 +606,7 @@ func _enter_break() -> void:
 	move = null
 	_punish_at = -1
 	enter_state(State.BROKEN)
-	sim.feedback(&"boss_break", pos + Vector2(0, -40))
+	sim.feedback(&"boss_break", pos + Vector2(0, -VeltharisData.HEIGHT / 3.0))
 	sim.emit(&"boss_break", {"pos": pos})
 
 
@@ -661,7 +661,7 @@ func begin_execution() -> void:
 func receive_execution() -> void:
 	var dmg := roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO)
 	hp = maxi(hp - dmg, 0)
-	sim.feedback(&"execution", pos + Vector2(0, -40))
+	sim.feedback(&"execution", pos + Vector2(0, -VeltharisData.HEIGHT / 3.0))
 	sim.emit(&"execution_hit", {"pos": pos, "damage": dmg})
 	if hp <= 0:
 		_die()

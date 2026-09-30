@@ -7,13 +7,35 @@ const AT := CombatTypes.AttackType
 const FX := CombatTypes.HitEffect
 const SH := CombatTypes.Shape
 
-# boss-veltharis §2
+# boss-veltharis §2。體型、距離（2026-09-30 使用者決定，tuning-log）：Boss 放大到 160px（主角 4 倍）、
+# 大劍加長（劍首到下巴、握在握柄上段），攻擊範圍照劍實際揮到的距離放大；場地放大 1.5 倍（arena.md）
 const MAX_HP := 1560  # tuning-log：文件 1200
-const HURT_RADIUS := 26.0
-const HEIGHT := 120.0
+const HURT_RADIUS := 35.0
+const HEIGHT := 160.0
+## 移動速度維持原值：主角的速度沒變，Boss 跟著放大會追得上奔跑（160），喘息時跑不出治療懲罰範圍（審查指出）；
+## 大隻的 Boss 走得慢也更有份量
 const WALK_SPEED := 60.0
 const FAST_SPEED := 120.0
-const SWORD_REACH := 100.0
+## 突刺的劍長（§4.4）
+const SWORD_REACH := 150.0
+## §4.1、§4.2、§4.5 橫掃、反手橫斬、快斬、上挑的扇形半徑（雙手往前伸直劍尖 149px，加上前傾、踏步）
+const SWEEP_RADIUS := 155.0
+## §4.3 下劈的直線
+const CLEAVE_LENGTH := 165.0
+const CLEAVE_WIDTH := 53.0
+## §4.4 突刺的寬度與突進距離
+const THRUST_WIDTH := 40.0
+const LUNGE_DISTANCE := 160.0
+## §4.6 灰燼衝擊的環
+const RING_RADIUS := 185.0
+const RING_THICKNESS := 21.0
+## §5.1 灰燼迴旋的半徑（手臂伸直、雙手）
+const SPIN_RADIUS := 165.0
+## §5.2 墜王之躍的落地半徑
+const LEAP_RADIUS := 80.0
+## 近距離招式起手時往前踏到離主角多遠停（文件未定）；下劈起手時的快步速度（文件未定）
+const STEP_STOP_DISTANCE := 80.0
+const CLEAVE_STEP_SPEED := 120.0
 
 # combat-design §11.2–11.5
 const MAX_TOUGHNESS := 70.0  # tuning-log：文件 100
@@ -35,11 +57,11 @@ const DAMAGE_SCALE := 1.3  # tuning-log：文件 1.0
 const TRANSITION_TIME := 1.5
 
 # boss-veltharis §6
-const NEAR_RANGE := 110.0
-const MID_RANGE := 220.0
+const NEAR_RANGE := 165.0
+const MID_RANGE := 290.0
 const BREATHER := [Vector2(0.8, 1.4), Vector2(0.4, 0.9)]  # [一階段, 二階段]（最短, 最長）
 const PUNISH_REACTION := 0.1  # boss-veltharis §4.4：AI 反應 0.1 秒
-const HEAL_PUNISH_RANGE := 260.0
+const HEAL_PUNISH_RANGE := 345.0
 const HEAL_PUNISH_CHANCE := 0.7
 const BLOCK_STREAK_FOR_IMPACT := 3
 const MAX_SAME_MOVE_STREAK := 2
@@ -139,71 +161,71 @@ static func _move(id: StringName, display: String, hits: Array[BossHitData], rec
 
 # --- 共用的單擊定義 -----------------------------------------------------------
 
-## §4.1 王權橫掃：起手 0.8 → 判定 0.15；前方 150° 扇形，半徑 100
+## §4.1 王權橫掃：起手 0.8 → 判定 0.15；前方 150° 扇形，半徑 SWEEP_RADIUS
 static func _sweep_hit() -> BossHitData:
 	return _hit({"attack_type": AT.HEAVY, "interval": 0.8, "active": 0.15, "damage": 28,
 		"posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH,
-		"shape": SH.SECTOR, "radius": 100.0, "angle_deg": 150.0, "anim": &"C1"})
+		"shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C1"})
 
 
 ## §4.2 雙斬第一擊（判定時間文件未定，取 0.1 秒；範圍沿用橫斬的扇形）
 static func _twin_first() -> BossHitData:
 	return _hit({"attack_type": AT.HEAVY, "interval": 0.8, "active": 0.1, "damage": 26,
 		"posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS, "bounce_time": 0.0, "hit_effect": FX.KNOCKDOWN,
-		"shape": SH.SECTOR, "radius": 100.0, "angle_deg": 150.0, "anim": &"C1"})
+		"shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C1"})
 
 
 ## §4.2 雙斬第二擊：第一擊之後 0.9 秒
 static func _twin_second(is_last: bool) -> BossHitData:
 	return _hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.1, "damage": 28,
 		"posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2 if is_last else 0.0,
-		"hit_effect": FX.LAUNCH, "shape": SH.SECTOR, "radius": 100.0, "angle_deg": 150.0, "anim": &"C2"})
+		"hit_effect": FX.LAUNCH, "shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C2"})
 
 
-## §4.3 墜誓下劈：起手 1.0 → 判定 0.1；前方直線 110px、寬 40px。
+## §4.3 墜誓下劈：起手 1.0 → 判定 0.1；前方直線 CLEAVE_LENGTH、寬 CLEAVE_WIDTH。
 ## 延遲版：舉到最高點（0.8 秒）停住 0.6 秒，總起手 1.6 秒。
 static func _cleave_hit(interval: float, delayed: bool) -> BossHitData:
 	return _hit({"attack_type": AT.HEAVY, "interval": interval + (0.6 if delayed else 0.0), "active": 0.1,
 		"damage": 32, "posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2,
-		"hit_effect": FX.KNOCKDOWN, "shape": SH.RECT, "length": 110.0, "width": 40.0,
+		"hit_effect": FX.KNOCKDOWN, "shape": SH.RECT, "length": CLEAVE_LENGTH, "width": CLEAVE_WIDTH,
 		"delay_hold": 0.6 if delayed else 0.0, "hold_start": 0.8 if delayed else 0.0, "anim": &"C3"})
 
 
-## §4.6 灰燼衝擊：總起手 1.1 秒（最後 0.6 秒危險預兆）；環 0.2 秒內擴張到 140px，厚 16px
+## §4.6 灰燼衝擊：總起手 1.1 秒（最後 0.6 秒危險預兆）；環 0.2 秒內擴張到 RING_RADIUS，厚 RING_THICKNESS
 static func _impact_ring(interval: float) -> BossHitData:
 	return _hit({"attack_type": AT.UNBLOCKABLE, "interval": interval, "active": 0.2, "damage": 35,
 		"posture_damage": 0, "toughness_damage": 0, "bounce_time": 0.0, "hit_effect": FX.LAUNCH,
-		"shape": SH.RING, "radius": 140.0, "thickness": 16.0, "danger_time": 0.6, "anim": &"C3"})
+		"shape": SH.RING, "radius": RING_RADIUS, "thickness": RING_THICKNESS, "danger_time": 0.6, "anim": &"C3"})
 
 
 ## §4.5 快斬連段的輕擊（判定時間文件未定，取 0.1 秒）
 static func _quick_light(interval: float, anim: StringName, is_last: bool) -> BossHitData:
 	return _hit({"attack_type": AT.LIGHT, "interval": interval, "active": 0.1, "damage": 15,
 		"posture_damage": 20, "toughness_damage": PARRY_TOUGHNESS if is_last else PARRY_TOUGHNESS_LIGHT_MID, "bounce_time": 0.8 if is_last else 0.0,
-		"hit_effect": FX.STAGGER, "shape": SH.SECTOR, "radius": 100.0, "angle_deg": 150.0, "anim": anim})
+		"hit_effect": FX.STAGGER, "shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": anim})
 
 
 static func _build(phase: int) -> Dictionary:
 	var rec := 1.0 if phase == 1 else PHASE2_RECOVERY_SCALE
 	var out := {}
-	var near_step := {"startup_advance_speed": WALK_SPEED, "advance_stop_distance": 60.0}
+	var near_step := {"startup_advance_speed": WALK_SPEED, "advance_stop_distance": STEP_STOP_DISTANCE}
 
 	# §4.1 王權橫掃（單發重擊）
 	out[&"royal_sweep"] = _move(&"royal_sweep", "王權橫掃", [_sweep_hit()], 0.9 * rec,
 		near_step.merged({"debug_key": 1}))
 
-	# §4.3 墜誓下劈（近到中距離使用：起手期間快步逼近，文件未定速度，取 90px/s）
-	var cleave_step := {"startup_advance_speed": 90.0, "advance_stop_distance": 60.0}
+	# §4.3 墜誓下劈（近到中距離使用：起手期間快步逼近，文件未定速度，取 CLEAVE_STEP_SPEED）
+	var cleave_step := {"startup_advance_speed": CLEAVE_STEP_SPEED, "advance_stop_distance": STEP_STOP_DISTANCE}
 	out[&"oath_cleave"] = _move(&"oath_cleave", "墜誓下劈", [_cleave_hit(1.0, false)], 1.2 * rec,
 		cleave_step.merged({"debug_key": 3}))
 	out[&"oath_cleave_delayed"] = _move(&"oath_cleave_delayed", "墜誓下劈（延遲）", [_cleave_hit(1.0, true)], 1.2 * rec,
 		cleave_step.merged({"debug_key": 4}))
 
-	# §4.4 裁決突刺（懲罰技）：起手 0.6 → 突進 120px / 0.2 秒，整段判定 → 收招 0.8
+	# §4.4 裁決突刺（懲罰技）：起手 0.6 → 突進 LUNGE_DISTANCE / 0.2 秒，整段判定 → 收招 0.8
 	out[&"judgment_thrust"] = _move(&"judgment_thrust", "裁決突刺", [_hit({"attack_type": AT.HEAVY,
 		"interval": 0.6, "active": 0.2, "damage": 26, "posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS,
 		"bounce_time": 1.2, "hit_effect": FX.KNOCKDOWN, "shape": SH.THRUST, "length": SWORD_REACH,
-		"width": 30.0, "lunge_distance": 120.0, "anim": &"C4"})], 0.8 * rec, {"is_punish": true, "debug_key": 5})
+		"width": THRUST_WIDTH, "lunge_distance": LUNGE_DISTANCE, "anim": &"C4"})], 0.8 * rec, {"is_punish": true, "debug_key": 5})
 
 	# §4.5 快斬連段：三連 60%、二連 40%。間隔 0.4 / 0.6 / 0.8，收招 0.9
 	out[&"quick_combo_3"] = _move(&"quick_combo_3", "快斬連段（三連）", [
@@ -211,7 +233,7 @@ static func _build(phase: int) -> Dictionary:
 		_quick_light(0.6, &"C1", false),
 		_hit({"attack_type": AT.HEAVY, "interval": 0.8, "active": 0.1, "damage": 26, "posture_damage": 35,
 			"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.SECTOR,
-			"radius": 100.0, "angle_deg": 120.0, "anim": &"C5"}),
+			"radius": SWEEP_RADIUS, "angle_deg": 120.0, "anim": &"C5"}),
 	], 0.9 * rec, near_step.merged({"debug_key": 6}))
 	out[&"quick_combo_2"] = _move(&"quick_combo_2", "快斬連段（二連）", [
 		_quick_light(0.4, &"C2", false),
@@ -238,14 +260,14 @@ static func _build(phase: int) -> Dictionary:
 		out[&"ash_spin"] = _move(&"ash_spin", "灰燼迴旋", [
 			_hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.1, "damage": 24, "posture_damage": 35,
 				"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 0.0, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE,
-				"radius": 100.0, "anim": &"C6"}),
+				"radius": SPIN_RADIUS, "anim": &"C6"}),
 			_hit({"attack_type": AT.HEAVY, "interval": 0.7, "active": 0.1, "damage": 24, "posture_damage": 35,
 				"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE,
-				"radius": 100.0, "anim": &"C6"}),
+				"radius": SPIN_RADIUS, "anim": &"C6"}),
 		], 1.2, near_step.merged({"debug_key": 9}))
-		# §5.2 墜王之躍：起手 0.7 → 騰空 0.8（落地前 0.3 秒鎖定落點）→ 落地半徑 60 → 收招 1.0
+		# §5.2 墜王之躍：起手 0.7 → 騰空 0.8（落地前 0.3 秒鎖定落點）→ 落地半徑 LEAP_RADIUS → 收招 1.0
 		out[&"kings_leap"] = _move(&"kings_leap", "墜王之躍", [_hit({"attack_type": AT.HEAVY,
 			"interval": 1.5, "active": 0.1, "damage": 30, "posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS,
-			"bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE, "radius": 60.0,
+			"bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE, "radius": LEAP_RADIUS,
 			"lock_before": 0.3, "anim": &"C7"})], 1.0, {"airborne_start": 0.7, "debug_key": 10})
 	return out

@@ -66,8 +66,9 @@ const THRUST_REACH := 40.0
 const THRUST_WIDTH := 16.0
 
 # §9 鎖定
-const LOCK_ACQUIRE_RANGE := 320.0
-const LOCK_BREAK_RANGE := 420.0
+## 2026-09-30 畫面拉遠到 960×540、場地放大 1.5 倍：鎖定距離 ×1.5（原 320、420），畫面上看得到的 Boss 鎖得到
+const LOCK_ACQUIRE_RANGE := 480.0
+const LOCK_BREAK_RANGE := 630.0
 const AIM_ASSIST_ARC_DEG := 60.0
 const AIM_ASSIST_RANGE := 80.0
 

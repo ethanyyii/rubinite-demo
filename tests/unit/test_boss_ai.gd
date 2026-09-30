@@ -111,7 +111,7 @@ func test_same_move_not_more_than_twice_in_a_row() -> void:
 		assert_false(groups[i] == groups[i - 1] and groups[i] == groups[i - 2], "第 %d 招 %s 連續第 3 次" % [i, groups[i]])
 
 
-## 規則 2：玩家在 260px 內治療時，70% 機率立刻懲罰（一階段裁決突刺）
+## 規則 2：玩家在 HEAL_PUNISH_RANGE（345，原 260）內治療時，70% 機率立刻懲罰（一階段裁決突刺）
 func test_heal_punish_rate_about_70_percent() -> void:
 	var trials := 120
 	var punished := 0
@@ -137,14 +137,16 @@ func test_heal_beyond_260_not_punished() -> void:
 	for t in 30:
 		sim = CombatSim.new(2000 + t)
 		sim.boss.set_ai()
-		sim.boss.pos = Vector2(-150, -100)
-		sim.player.pos = Vector2(150, 100)  # 約 360px
+		# 治療懲罰範圍外 60px（範圍 2026-09-30 起 345，原 260）
+		var d := VeltharisData.HEAL_PUNISH_RANGE + 60.0
+		sim.boss.pos = Vector2(-d * 0.5, -40)
+		sim.player.pos = Vector2(d * 0.5, -40)
 		sim.player.hp = 50
 		sim.boss.start_breather(120)
 		event_log.clear()
 		press(&"heal")
 		advance(8)
-		assert_false(&"judgment_thrust" in _started_moves(), "260px 外治療不會被立刻懲罰")
+		assert_false(&"judgment_thrust" in _started_moves(), "%.0fpx 外治療不會被立刻懲罰" % VeltharisData.HEAL_PUNISH_RANGE)
 
 
 ## §6.1 距離分段：遠距離一階段只會快步逼近
@@ -154,7 +156,7 @@ func test_far_player_is_approached_fast() -> void:
 	sim.boss.decide_now()
 	advance(3)
 	assert_eq(boss().state, BS.WALK)
-	assert_eq(boss().walk_speed, VeltharisData.FAST_SPEED, "超過 220px 快步 120")
+	assert_eq(boss().walk_speed, VeltharisData.FAST_SPEED, "超過中距離（MID_RANGE）快步")
 
 
 ## 規則 5：每套攻擊之後的喘息 0.8–1.4 秒（一階段）：一招結束到下一招開始至少 48 幀

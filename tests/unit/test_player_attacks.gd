@@ -509,8 +509,9 @@ func test_heavy_hit_hitstop_is_6_frames() -> void:
 
 
 func test_aim_assist_range_is_measured_to_enemy_edge() -> void:
-	# 中心距 100（邊緣 74 ≤ 80）：轉向；中心距 110（邊緣 84 > 80）：不轉向
-	for case in [[100.0, true], [110.0, false]]:
+	# 量到敵人受擊圓的邊緣：邊緣 74 ≤ 80 轉向；邊緣 84 > 80 不轉向
+	var r := VeltharisData.HURT_RADIUS
+	for case in [[74.0 + r, true], [84.0 + r, false]]:
 		sim = CombatSim.new(1)
 		sim.boss.pos = Vector2(0, -20)
 		var dir := Vector2(0.3, -1).normalized()

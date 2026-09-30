@@ -130,29 +130,37 @@ func test_phase1_recovery_matches_doc() -> void:
 		assert_near(VeltharisData.move(1, id).recovery, rec[id], 0.0001, "%s 收招" % id)
 
 
+## boss-veltharis §4–§5 的範圍（2026-09-30 使用者：Boss 放大到 160、大劍加長（劍首到下巴、握在上段），範圍照劍
+## 實際揮到的距離放大；舊值 100／110／40／120／140／16／60／100）
 func test_ranges_match_doc() -> void:
-	var sweep := VeltharisData.move(1, &"royal_sweep").hits[0]
-	assert_eq(sweep.shape, CombatTypes.Shape.SECTOR)
-	assert_near(sweep.angle_deg, 150.0)
-	assert_near(sweep.radius, 100.0)
+	for id: StringName in [&"royal_sweep", &"twin_slash", &"quick_combo_2"]:
+		for h: BossHitData in VeltharisData.move(1, id).hits:
+			assert_eq(h.shape, CombatTypes.Shape.SECTOR, "%s" % id)
+			assert_near(h.angle_deg, 150.0)
+			assert_near(h.radius, 155.0, 0.0001, "%s 半徑 155" % id)
+	var upslash := VeltharisData.move(1, &"quick_combo_3").hits[2]
+	assert_near(upslash.radius, 155.0)
+	assert_near(upslash.angle_deg, 120.0)
 	var cleave := VeltharisData.move(1, &"oath_cleave").hits[0]
 	assert_eq(cleave.shape, CombatTypes.Shape.RECT)
-	assert_near(cleave.length, 110.0)
-	assert_near(cleave.width, 40.0)
+	assert_near(cleave.length, 165.0)
+	assert_near(cleave.width, 53.0)
 	var thrust := VeltharisData.move(1, &"judgment_thrust").hits[0]
-	assert_near(thrust.lunge_distance, 120.0)
+	assert_near(thrust.length, 150.0)
+	assert_near(thrust.width, 40.0)
+	assert_near(thrust.lunge_distance, 160.0)
 	var ring := VeltharisData.move(1, &"ash_impact").hits[0]
 	assert_eq(ring.shape, CombatTypes.Shape.RING)
-	assert_near(ring.radius, 140.0)
-	assert_near(ring.thickness, 16.0)
+	assert_near(ring.radius, 185.0)
+	assert_near(ring.thickness, 21.0)
 	assert_near(ring.danger_time, 0.6)
 	var leap := VeltharisData.move(2, &"kings_leap")
 	assert_near(leap.airborne_start, 0.7)
-	assert_near(leap.hits[0].radius, 60.0)
+	assert_near(leap.hits[0].radius, 80.0)
 	assert_near(leap.hits[0].lock_before, 0.3)
 	var spin := VeltharisData.move(2, &"ash_spin").hits[0]
 	assert_eq(spin.shape, CombatTypes.Shape.CIRCLE)
-	assert_near(spin.radius, 100.0)
+	assert_near(spin.radius, 165.0)
 
 
 func test_delayed_cleave_holds_at_top() -> void:
@@ -259,7 +267,8 @@ func test_phase2_new_moves_match_doc() -> void:
 
 func test_boss_constants_match_doc() -> void:
 	assert_eq(VeltharisData.MAX_HP, _tuned("VeltharisData.MAX_HP"))
-	assert_near(VeltharisData.HURT_RADIUS, 26.0)
+	assert_near(VeltharisData.HEIGHT, 160.0)
+	assert_near(VeltharisData.HURT_RADIUS, 35.0)
 	assert_near(VeltharisData.WALK_SPEED, 60.0)
 	assert_near(VeltharisData.FAST_SPEED, 120.0)
 	assert_near(VeltharisData.MAX_TOUGHNESS, _tuned("VeltharisData.MAX_TOUGHNESS"))
@@ -273,12 +282,12 @@ func test_boss_constants_match_doc() -> void:
 	assert_near(VeltharisData.RISE_TIME, 1.0)
 	assert_near(VeltharisData.PHASE2_HP_RATIO, 0.5)
 	assert_near(VeltharisData.TRANSITION_TIME, 1.5)
-	assert_near(VeltharisData.NEAR_RANGE, 110.0)
-	assert_near(VeltharisData.MID_RANGE, 220.0)
+	assert_near(VeltharisData.NEAR_RANGE, 165.0)
+	assert_near(VeltharisData.MID_RANGE, 290.0)
 	assert_eq(VeltharisData.BREATHER[0], Vector2(0.8, 1.4))
 	assert_eq(VeltharisData.BREATHER[1], Vector2(0.4, 0.9))
 	assert_near(VeltharisData.PUNISH_REACTION, 0.1)
-	assert_near(VeltharisData.HEAL_PUNISH_RANGE, 260.0)
+	assert_near(VeltharisData.HEAL_PUNISH_RANGE, 345.0)
 	assert_near(VeltharisData.HEAL_PUNISH_CHANCE, 0.7)
 	assert_eq(VeltharisData.BLOCK_STREAK_FOR_IMPACT, 3)
 	assert_eq(VeltharisData.MAX_SAME_MOVE_STREAK, 2)
@@ -337,8 +346,9 @@ func test_player_constants_match_doc() -> void:
 	assert_near(PlayerData.THRUST_DISTANCE, 72.0)
 	assert_near(PlayerData.THRUST_TIME, 0.2)
 	# §9
-	assert_near(PlayerData.LOCK_ACQUIRE_RANGE, 320.0)
-	assert_near(PlayerData.LOCK_BREAK_RANGE, 420.0)
+	# 2026-09-30 畫面拉遠到 960×540，鎖定距離 ×1.5（半個畫面寬）；tuning-log
+	assert_near(PlayerData.LOCK_ACQUIRE_RANGE, 480.0)
+	assert_near(PlayerData.LOCK_BREAK_RANGE, 630.0)
 	assert_near(PlayerData.AIM_ASSIST_ARC_DEG, 60.0)
 	assert_near(PlayerData.AIM_ASSIST_RANGE, 80.0)
 	# §10

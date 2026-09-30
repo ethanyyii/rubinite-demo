@@ -10,7 +10,7 @@ const AIM := 4
 ## 第 1–3 段需要的安全幀數（取消點 14–15 幀 + 按格擋提前 4 幀 + 餘裕）
 const SAFE_LIGHT := 21
 ## 第 4 段不可取消：需要的安全幀數見 BotController.safe_finisher()（收招結束 + 6；停頓中可以格擋、閃身）
-## 進攻時保持的中心距離（攻擊範圍 40 + Boss 半徑 26 = 66 以內）
+## 進攻時保持的中心距離（攻擊範圍 40 + Boss 半徑 35 = 75 以內；最近 8 + 35 = 43）
 const ATTACK_DIST := 46.0
 
 var stats := {"parry_attempts": 0, "dodges": 0, "executions": 0}
