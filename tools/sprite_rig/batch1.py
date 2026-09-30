@@ -374,7 +374,7 @@ def lerp_pose(a, b, t, view):
     if 'hilt_depth' in near['sword']:
         sw['hilt_depth'] = near['sword']['hilt_depth']      # the hilt shows past the fist from behind
     p['sword'] = sw
-    for k in ('legs3d', 'floor3d'):
+    for k in ('legs3d', 'floor3d', 'blade_tilt'):
         if a.get(k) or b.get(k):
             p[k] = True             # pose_rig: front / back knees by the 3D reach; the floor at the blade's depth
     # the charge's second fix (2026-09-28): soft side knees and the feet foreshortened like the body,

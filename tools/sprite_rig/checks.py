@@ -407,16 +407,27 @@ def boot_centres(r, gy_small):
     return out
 
 
-def pose_rows(name, pose, canvas, view, lying=False):
+def pose_rows(name, pose, canvas, view, lying=False, pre=None):
+    """The technical rows of one pose. pre = (rig-like, pixels): a frame already drawn (combo4's twisted
+    frames join two views, so they cannot be drawn again from one pose); the rig-like gives trace,
+    pieces, pieces_raw, debug and canvas_offset() like a rig, and may give lib_pix(piece) and arm_view
+    (the library each piece and the arms come from)."""
     import pose_rig as PR
-    r = PR.rig(view)
+    r = PR.rig(view) if pre is None else pre[0]
     if lying:
         import concept_pose as CP
         p = CP.lying_frame(head_left=(view == 'east'), airborne=pose['airborne'])
+    elif pre is not None:
+        p = pre[1]
     else:
         p = r.frame(pose, canvas)
     W_, H_, cx, gy = PR.CANVAS[canvas]
     dx, dy = cx - A.CX, gy - A.GROUND
+    if not lying:
+        # a screen_shift (combo4: front / back views) moves the picture and its floor row with it
+        sdx, sdy = r.canvas_offset()
+        gy += sdy - dy
+        dx, dy = sdx, sdy
     idle, neck0 = pose_idle(view)
     rows = []
     rows.append(('colours inside the reference palette', not ({c[:3] for c in p.values()} - PALETTE), ''))
@@ -447,7 +458,9 @@ def pose_rows(name, pose, canvas, view, lying=False):
             n = 'leg (clean-up)'      # a seam the clean-up closed on a boot
         if n.startswith('leg'):
             low_leg = max(low_leg, y)
-        elif n == 'sword' and pose.get('floor3d') and PR.VIEWS[view]['kind'] == 'fb':
+        elif n == 'sword' and ((pose.get('floor3d') and PR.VIEWS[view]['kind'] == 'fb') or pose.get('blade_tilt')):
+            # (combo4) a blade drawn with the camera's tilt in a side view runs down the screen toward the
+            # camera the same way
             low_sword = max(low_sword, y)
         else:
             low_other = max(low_other, y)
@@ -471,16 +484,23 @@ def pose_rows(name, pose, canvas, view, lying=False):
     sp, sp0 = specks(p), specks(idle)
     rows.append(('floating specks', sp <= sp0, f'{sp} (idle {sp0})'))
     # detail kept in every library piece, measured before compositing (decision 3)
-    L = r.base.L
+    lib_pix = getattr(r, 'lib_pix', None)
+    L = r.base.L if lib_pix is None else None
     for n in LIB_PIECES + ('paul_R', 'paul_L'):
         if n not in r.pieces:
             continue
-        lib = n if n in LIB_PIECES else PR.VIEWS[view]['paul'][n[-1]]
-        if not lib or lib not in L:
-            continue
+        if lib_pix is not None:
+            lp = lib_pix(n)
+            if lp is None:
+                continue
+        else:
+            lib = n if n in LIB_PIECES else PR.VIEWS[view]['paul'][n[-1]]
+            if not lib or lib not in L:
+                continue
+            lp = L[lib].pix
         # measured on the piece as drawn; where a lowered body lays the cape on the floor its
         # hem folds over itself there (self-occlusion, reported apart)
-        (b, h), (b0, h0) = counts(r.pieces_raw[n]), counts(L[lib].pix)
+        (b, h), (b0, h0) = counts(r.pieces_raw[n]), counts(lp)
         ok = (b0 == 0 or within_piece(b, b0)) and (h0 == 0 or within_piece(h, h0))
         rows.append((f'detail kept in {n} (before compositing)', ok, f'blue {b}/{b0}, highlights {h}/{h0}'))
         (bf, hf) = counts(r.pieces[n])
@@ -488,14 +508,15 @@ def pose_rows(name, pose, canvas, view, lying=False):
             rows.append((f'INFO {n} folded on the floor', None, f'blue {bf}, highlights {hf} after folding'))
     # new arms (N2) keep the glints of the library arm they are textured from; a far-side
     # arm is drawn darker for depth, like the walk's far arm, so it is only reported
+    av = getattr(r, 'arm_view', view)
     for s_ in ('R', 'L'):
         drawn = [r.pieces[n] for n in ('upper_' + s_, 'fore_' + s_, 'fist_' + s_) if n in r.pieces]
         if not drawn:
             continue
-        an = PR.VIEWS[view]['arm'].get(s_) or next(a for a in PR.VIEWS[view]['arm'].values() if a)
+        an = PR.VIEWS[av]['arm'].get(s_) or next(a for a in PR.VIEWS[av]['arm'].values() if a)
         h = sum(1 for d in drawn for c in d.values() if light(c))
-        h0 = sum(1 for c in L[an].pix.values() if light(c))
-        far = PR.VIEWS[view]['kind'] == 'side' and s_ != PR.VIEWS[view]['near']
+        h0 = sum(1 for c in PR.rig(av).base.L[an].pix.values() if light(c))
+        far = PR.VIEWS[av]['kind'] == 'side' and s_ != PR.VIEWS[av]['near']
         if far:
             rows.append((f'INFO far-side arm {s_} (drawn darker for depth)', None, f'highlights {h} (library arm {h0})'))
         else:
@@ -2276,4 +2297,7 @@ if __name__ == '__main__':
         sys.exit(1 if batch3_checks() else 0)
     if '--batch4' in args:
         sys.exit(1 if batch4_checks() else 0)
+    if '--combo4' in args:
+        from checks_combo4 import combo4_checks
+        sys.exit(1 if combo4_checks() else 0)
     sys.exit(main())

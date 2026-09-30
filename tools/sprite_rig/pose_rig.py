@@ -484,6 +484,7 @@ class PoseRig:
         # head: follows the neck, never stretched
         neck = v['neck']
         neck_w = apply(upper, *neck)
+        self.debug['neck'] = neck_w
         head_off = proj(view, pose.get('head', (0, 0, 0)))
         tilt = pose.get('head_tilt', 0.0)
         if side:
@@ -722,6 +723,15 @@ class PoseRig:
             if hand is not None:
                 d3 = blade3
                 d2 = proj(view, d3)
+                # (2026-09-29, the combo redo) a pose may give the side views' blade the camera's
+                # tilt (blade_tilt): its depth shows on screen at KD, as the front / back views show
+                # theirs, so a blade swung toward / away from the camera reads as down / up the screen
+                # instead of shrinking to a stub. Only the blade: the library draws both shoulders
+                # and both feet on one row, and the hands stay with the arms. Poses without it are
+                # drawn as before
+                tilt = side and pose.get('blade_tilt')
+                if tilt:
+                    d2 = (d2[0], d2[1] + KD * depth(view, (0.0, d3[1], 0.0)))
                 ln = math.hypot(*d2)
                 # the tip never goes below the floor: past the ground row the blade reads as
                 # planted, so it is shortened to touch the floor (animation-review §4.4)
@@ -738,6 +748,9 @@ class PoseRig:
                     hand_c = (fwd, hc[1], 0.0)
                     floor_hilt += kd * max(0.0, depth(view, hand_c))
                     floor_tip += kd * max(0.0, depth(view, vadd(hand_c, vscale(d3, SW.BLADE))))
+                elif tilt:
+                    # the tilted blade: the floor under its tip is nearer the camera by the tip's depth
+                    floor_tip += KD * max(0.0, depth(view, (0.0, d3[1] * SW.BLADE, 0.0)))
                 if ln > 1e-6 and d2[1] > 0:
                     uy = d2[1] / ln
                     room = (floor_tip - 1.5) - (hand[1] + uy * SW.GUARD_AT)
@@ -788,6 +801,7 @@ class PoseRig:
         self.trace = {}
         self.pieces = {}
         self.pieces_raw = {}      # as drawn, before cloth folding on the floor
+        self.depths = {}          # each piece's place in the draw order (combo4's twisted frames merge two views)
         # (2026-09-28, the user: facing west the sword should hide behind the body) the backing is
         # body too: where a moved near arm left it showing, the far arm and a sword behind the body
         # must not show through it. Only for poses with body_hides_far (the charge and the thrust):
@@ -798,6 +812,7 @@ class PoseRig:
             tmp = {}
             fn(tmp)
             self.pieces_raw.setdefault(name, {}).update(tmp)
+            self.depths.setdefault(name, dep)
             if hide_far and name == 'backing':
                 body_under = set(tmp)
             elif hide_far and dep < 0 and name.startswith(('upper_', 'fore_', 'fist_', 'sword')):
@@ -955,7 +970,8 @@ class PoseRig:
 
     def _finish(self, canvas):
         W_, H_, cx, gy = CANVAS[canvas]
-        dx, dy = cx - A.CX, gy - A.GROUND
+        dx, dy = self.canvas_offset()
+        gy += self._shift[1]
         px = {(x + dx, y + dy): c for (x, y), c in self._out.items()}
         drawn = set(px)
         reconnect_specks(px)
@@ -977,11 +993,17 @@ class PoseRig:
         self._chest_hand = {}
         self.debug = {'blade': set()}
         self.canvas = canvas
+        # (2026-09-29, the four-hit combo) a pose may move the whole picture on the canvas by whole
+        # pixels (screen_shift): front / back views show the program's advance that way (combo4.py).
+        # Everything - pixels, trace, pieces, debug through canvas_offset() - moves with it; none
+        # of the earlier poses has it, so they draw as before
+        self._shift = tuple(int(v) for v in pose.get('screen_shift', (0, 0)))
         return self.render(pose, canvas)
 
     def canvas_offset(self):
         _, _, cx, gy = CANVAS[self.canvas]
-        return cx - A.CX, gy - A.GROUND
+        sx, sy = getattr(self, '_shift', (0, 0))
+        return cx - A.CX + sx, gy - A.GROUND + sy
 
 
 _RIGS = {}
