@@ -48,7 +48,13 @@ def standing(height=B.HEIGHT, pal=None):
     fr = idle.frames(FW, FH, AX, AY, height)
     if pal is None:
         pal = B.load_palette()
-    return {k: B.stylize(f.im, pal) for k, f in fr.items()}
+    out = {k: B.stylize(f.im, pal) for k, f in fr.items()}
+    if height == B.HEIGHT:
+        # facing left is its own sprite (user 2026-09-30: the sword is in the right hand, on
+        # the far side when he faces left), built from the facing-right layers (side.py)
+        import rig
+        out['left'] = rig.standing()['left']
+    return out
 
 
 def knight():
@@ -86,7 +92,8 @@ def sheet_directions(boss):
     text(d, (20, 18), f'Boss 站姿四方向：身高 {B.HEIGHT}px（腳底到正面王冠尖），遊戲裡的倍率（3 倍）；框＝提案的畫格 {FW}×{FH}', 26)
     concepts = {'down': concept('front', B.HEIGHT * Z), 'right': concept('right', B.HEIGHT * Z),
                 'up': concept('back', B.HEIGHT * Z), 'left': concept('right', B.HEIGHT * Z, mirror=True)}
-    ccap = {'down': '設計圖正面', 'right': '設計圖朝右', 'up': '設計圖背面（沒畫劍，劍是補的）', 'left': '設計圖朝右（左右翻）'}
+    ccap = {'down': '設計圖正面', 'right': '設計圖朝右', 'up': '設計圖背面（沒畫劍，劍是補的）',
+            'left': '設計圖朝右（左右翻；成品另外畫：右手持劍在遠側）'}
     for i, (k, label) in enumerate(ORDER):
         x0 = 20 + i * col
         # frame box (the proposed grid) and foot anchor

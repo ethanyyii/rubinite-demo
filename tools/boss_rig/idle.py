@@ -7,9 +7,11 @@ the grip (near the pommel, at shoulder height). One 3D pose for all four (animat
   - Right: the concept's facing-right view as drawn (the sword in front of the front foot).
     Front and side both show the blade about equally wide: its flat is turned about 45 deg
     between forward and outward.
-  - Left: facing right mirrored (the sheet's own facing-left view has a shorter sword and a
-    lower fist; the user accepted a mirrored left, 2026-09-30). Mirrored in frames() at the
-    work resolution about the foot anchor.
+  - Left: frames() still returns facing right mirrored (the first proposal; the sheet's own
+    facing-left view has a shorter sword and a lower fist), but it is NOT used any more:
+    user 2026-09-30 - the sword is in the right hand, so facing left the sword arm is on the
+    far side, mostly hidden by the body, and the near (left) hand is empty. The facing-left
+    sprite is built from the facing-right layers in side.py (rig.standing()['left']).
   - Up: the back view with the hanging forearm erased (parts.body: the hand is up on the grip,
     hidden behind the shoulder) and the front view's sword mirrored (its back) standing behind
     the body at the right arm, tip on the ground: the pommel shows above the shoulder, the cape
