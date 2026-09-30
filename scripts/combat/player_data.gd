@@ -51,6 +51,9 @@ const ATTACK_RADIUS := 40.0
 const CANCEL_DELAY := 0.05
 ## 第 1–3 段收招結束後，這段時間內按攻擊仍接下一段（§8.1，2026-09-29 新增；見 tuning-log）
 const COMBO_GRACE := 0.2
+## 連按時相鄰兩段的判定開始至少相隔這麼久：四刀的節奏一樣（§8.1，2026-09-29 第二次修改；見 tuning-log）。
+## 最早接段的幀由它推算（chain_frame），不早於判定結束
+const COMBO_INTERVAL := 0.25
 ## 第 4 段收招之後的停頓：不能出招、不能移動，可以格擋或閃身（§8.1、§8.3，2026-09-29 新增；見 tuning-log）
 const FINISHER_END_LAG := 0.2
 
@@ -96,14 +99,15 @@ static var _light: Array[PlayerAttackData] = []
 static var _heavy: PlayerAttackData
 
 
-## §8.1 輕攻擊四段（依 tuning-log 調整：傷害 15/15/15/25 → 11/11/11/18；削韌 2/2/2/6 → 1.4/1.4/1.4/4.2）
+## §8.1 輕攻擊四段（依 tuning-log 調整：傷害 15/15/15/25 → 11/11/11/18；削韌 2/2/2/6 → 1.4/1.4/1.4/4.2；
+## 第 4 段起手 0.18 → 0.17 → 0.10，2026-09-29 第二、三次修改）
 static func light_attacks() -> Array[PlayerAttackData]:
 	if _light.is_empty():
 		_light = [
 			_atk(&"light_1", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
 			_atk(&"light_2", 0.10, 0.08, 0.25, 11, 1.4, 6.0, true, false, &"light_hit"),
 			_atk(&"light_3", 0.12, 0.08, 0.28, 11, 1.4, 6.0, true, false, &"light_hit"),
-			_atk(&"light_4", 0.18, 0.10, 0.45, 18, 4.2, 14.0, false, true, &"finisher_hit", FINISHER_END_LAG),
+			_atk(&"light_4", 0.10, 0.10, 0.45, 18, 4.2, 14.0, false, true, &"finisher_hit", FINISHER_END_LAG),
 		]
 	return _light
 
@@ -111,6 +115,16 @@ static func light_attacks() -> Array[PlayerAttackData]:
 ## 最後一段（第 4 段）的索引
 static func last_light_stage() -> int:
 	return light_attacks().size() - 1
+
+
+## 第 stage 段（0 起算）最早在第幾幀可以接下一段：讓兩段的判定開始相隔 COMBO_INTERVAL，
+## 但不早於這一段判定結束（§8.1）。最後一段不能接，回傳 -1
+static func chain_frame(stage: int) -> int:
+	if stage >= last_light_stage():
+		return -1
+	var a := light_attacks()[stage]
+	var b := light_attacks()[stage + 1]
+	return maxi(a.active_end_frame(), a.startup_frames() + Frames.of(COMBO_INTERVAL) - b.startup_frames())
 
 
 ## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手；依 tuning-log：傷害 60 → 42、削韌 15 → 10.5）

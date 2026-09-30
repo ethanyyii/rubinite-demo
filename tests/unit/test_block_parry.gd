@@ -289,7 +289,7 @@ func test_cannot_block_during_stage4_or_thrust_or_dodge() -> void:
 	place_near_boss(50.0)
 	press(&"attack")
 	for i in 3:
-		while player().state_elapsed() < player().attack.active_end_frame():
+		while player().state_elapsed() < PlayerData.chain_frame(i):
 			advance(1)
 		press(&"attack")
 	assert_eq(player().combo_index, 3)

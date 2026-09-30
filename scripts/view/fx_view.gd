@@ -99,25 +99,31 @@ func _draw_player_attack() -> void:
 		var st := p.attack.startup_frames()
 		var act_end := p.attack.active_end_frame()
 		var tail := 5
-		if e < st or e >= act_end + tail:
+		# 第 4 段：轉身（起手就開始）時身邊淡淡一圈，畫到轉完為止（PlayerView.FINISHER_TURN_START–END）
+		var finisher := p.combo_index == 3
+		var ring_from := PlayerView.FINISHER_TURN_START if finisher else st
+		var turn_end := PlayerView.FINISHER_TURN_END if finisher else act_end
+		if e < mini(st, ring_from) or e >= maxi(act_end, turn_end) + tail:
 			return
 		var sweep := clampf(float(e - st + 1) / (act_end - st), 0.0, 1.0)
 		var fade := 1.0 - clampf(float(e - act_end + 1) / (tail + 1), 0.0, 1.0)
-		if p.combo_index == 3:
-			# 第 4 段雙手高舉劈地：沿面向的直立弧
-			_draw_chop(p.pos, p.facing, PlayerData.ATTACK_RADIUS, sweep, fade)
+		if p.combo_index == 2:
+			# 第 3 段由下往上挑斬：沿面向的直立弧，從前下方挑到頭頂
+			_draw_chop(p.pos, p.facing, PlayerData.ATTACK_RADIUS, sweep, fade, true)
 		else:
-			# 刀光掃過的方向和劍一樣（player_view.swing_range：第 1 段右 → 左、第 2 段反手、第 3 段迴旋），範圍夾在判定的扇形內
+			# 刀光掃過的方向和劍一樣（player_view.swing_range：第 1 段右 → 左、第 2 段左 → 右、第 4 段轉身中
+			# 右 → 左），範圍夾在判定的扇形內
 			var r: Vector2 = PlayerView.swing_range(p.combo_index)
 			var half := deg_to_rad(PlayerData.ATTACK_ARC_DEG) * 0.5
 			var from := clampf(r.x, -half, half)
 			var to := clampf(r.y, -half, half)
-			if p.combo_index == 2:
-				# 迴旋斬：身邊再淡淡畫一圈（只是轉身的樣子，判定仍是前方的扇形）
+			if finisher:
+				# 回旋斬：轉身期間身邊淡淡畫一圈（只是轉身的樣子，判定仍是前方的扇形）
 				var ring := Palette.SLASH
-				ring.a *= 0.3 * fade
+				ring.a *= 0.3 * (1.0 - clampf(float(e - turn_end + 1) / (tail + 1), 0.0, 1.0))
 				DrawUtil.stroke_ellipse(self, p.pos + Vector2(0, -14), Vector2(PlayerData.ATTACK_RADIUS, PlayerData.ATTACK_RADIUS * 0.55), ring, 2.0, 32)
-			_draw_slash(p.pos, p.facing, from, to, PlayerData.ATTACK_RADIUS, 2.0, sweep, fade)
+			if e >= st and e < act_end + tail:
+				_draw_slash(p.pos, p.facing, from, to, PlayerData.ATTACK_RADIUS, 2.0, sweep, fade)
 	elif p.state == PlayerSim.State.THRUST:
 		var n := Frames.of(PlayerData.THRUST_TIME)
 		if e >= n + 4:
@@ -128,8 +134,8 @@ func _draw_player_attack() -> void:
 		draw_line((base - p.facing * 20).round(), (base + p.facing * PlayerData.THRUST_REACH).round(), c, 3.0)
 
 
-## 第 4 段劈地的刀光：沿面向的直立弧，從頭頂上方劈到前方地面（判定仍是 100° 扇形）
-func _draw_chop(pos: Vector2, dir: Vector2, r: float, sweep: float, fade: float) -> void:
+## 直立弧的刀光（第 3 段挑斬，rising：從前方地面挑到頭頂上方；判定仍是 100° 扇形）
+func _draw_chop(pos: Vector2, dir: Vector2, r: float, sweep: float, fade: float, rising := false) -> void:
 	var shoulder := pos + Vector2(0, -20)
 	var c := Palette.SLASH
 	c.a *= fade
@@ -137,7 +143,8 @@ func _draw_chop(pos: Vector2, dir: Vector2, r: float, sweep: float, fade: float)
 	var inner := PackedVector2Array()
 	var steps := 10
 	for i in steps + 1:
-		var th := lerpf(-0.2, deg_to_rad(125.0), sweep * float(i) / steps)
+		var u := sweep * float(i) / steps
+		var th := lerpf(deg_to_rad(125.0), -0.2, u) if rising else lerpf(-0.2, deg_to_rad(125.0), u)
 		var d := dir * sin(th) + Vector2(0, -cos(th))
 		var o := shoulder + d * r
 		o.y = minf(o.y, pos.y)

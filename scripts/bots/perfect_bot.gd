@@ -9,8 +9,7 @@ extends BotController
 const AIM := 4
 ## 第 1–3 段需要的安全幀數（取消點 14–15 幀 + 按格擋提前 4 幀 + 餘裕）
 const SAFE_LIGHT := 21
-## 第 4 段不可取消，需要整段 44 幀
-const SAFE_FINISHER := 50
+## 第 4 段不可取消：需要的安全幀數見 BotController.safe_finisher()（收招結束 + 6；停頓中可以格擋、閃身）
 ## 進攻時保持的中心距離（攻擊範圍 40 + Boss 半徑 26 = 66 以內）
 const ATTACK_DIST := 46.0
 
@@ -73,7 +72,7 @@ func decide(sim: CombatSim) -> InputFrame:
 	# 進攻：能接就接，依安全幀數決定出不出第 4 段
 	if p.can_start(&"attack"):
 		var next_stage: int = p.next_combo_stage(1)  # 按鍵落在下一幀
-		var need := SAFE_FINISHER if next_stage >= 3 else SAFE_LIGHT
+		var need := BotController.safe_finisher() if next_stage >= 3 else SAFE_LIGHT
 		if safe >= need:
 			f.attack_pressed = true
 	return f

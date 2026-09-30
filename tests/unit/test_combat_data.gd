@@ -171,7 +171,7 @@ func test_hit_start_frames_accumulate_rounded_intervals() -> void:
 func test_player_attack_table_matches_doc() -> void:
 	# combat-design §8.1：[起手, 判定, 收招, 傷害, 削韌, 前進]
 	var table := [[0.10, 0.08, 0.25, 15, 2, 6.0], [0.10, 0.08, 0.25, 15, 2, 6.0],
-		[0.12, 0.08, 0.28, 15, 2, 6.0], [0.18, 0.10, 0.45, 25, 6, 14.0]]
+		[0.12, 0.08, 0.28, 15, 2, 6.0], [0.10, 0.10, 0.45, 25, 6, 14.0]]
 	var attacks := PlayerData.light_attacks()
 	assert_eq(attacks.size(), 4)
 	for i in 4:

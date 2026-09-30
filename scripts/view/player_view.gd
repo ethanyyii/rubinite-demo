@@ -82,7 +82,7 @@ func _body_color(base: Color) -> Color:
 
 
 func _draw_body(p: PlayerSim, offset := Vector2.ZERO, alpha := 1.0, height := H) -> void:
-	# 第 3 段迴旋斬：面甲跟著身體轉一圈
+	# 第 4 段回旋斬（轉身中砍到）：面甲跟著身體轉一圈
 	var f := p.facing.rotated(spin_turn(p))
 	var dark := Palette.PLAYER_DARK
 	var body := _body_color(Palette.PLAYER)
@@ -201,29 +201,46 @@ func _draw_charge_glow(p: PlayerSim) -> void:
 	DrawUtil.stroke_ellipse(self, Vector2(0, -20), Vector2(13, 25) * (0.9 + 0.1 * k), c, 1.0, 32)
 
 
-## 揮砍的起點與終點（相對面向的角度，正值是角色的右手側）：四段各自不同（art-progress「四段輕攻擊」）
-## 第 1 段斜劈（右 → 左）、第 2 段反手（左 → 右）、第 3 段迴旋斬（轉一圈，劍從左掃過目標到右：spin_turn）。
-## 第 4 段雙手高舉劈地另外畫（_draw_chop_sword）
+## 揮砍的起點與終點（相對面向的角度，正值是角色的右手側）：四段各自不同（art-progress「四段輕攻擊：第二版」，
+## 使用者的動作設計）。第 1 段右下 → 左上斜斬（右 → 左，最短最快）、第 2 段左 → 右橫斬（最寬）、
+## 第 4 段回旋斬（轉身中砍到：側身時伸直的劍從右掃過目標，接著轉完一圈，spin_turn）。
+## 第 3 段由下往上挑斬另外畫（_draw_rise_sword）
 static func swing_range(stage: int) -> Vector2:
 	var span := deg_to_rad(PlayerData.ATTACK_ARC_DEG) * 0.55
-	if stage == 1 or stage == 2:
-		return Vector2(-span, span)
+	match stage:
+		0:
+			return Vector2(span * 0.8, -span * 0.8)
+		1:
+			return Vector2(-span * 1.2, span * 1.2)
 	return Vector2(span, -span)
 
 
-## 第 3 段迴旋斬：身體往右轉的角度（弧度，畫面上順時針）。起手轉到 270°（右手側對著目標）時判定開始，
-## 判定結束轉滿一圈，收招面向目標。劍一直在身體的右手側
-static func spin_turn(p: PlayerSim) -> float:
-	if p.state != PlayerSim.State.ATTACK or p.combo_index != 2:
+## 第 4 段轉身的幀（和精靈圖一樣，art-progress「四段輕攻擊：第五版」，2026-09-29 使用者：砍到要在轉身裡面）：
+## 第 1 幀開始往左轉，判定開始（起手結束）時側身 90°，第 15 幀轉回面向目標
+const FINISHER_TURN_START := 1
+const FINISHER_TURN_END := 15
+## 劍：起手拉到右後方（右手側 110°），轉身時伸直在右手側、比身體晚 90°（側身時正好掃過目標），
+## 轉完時晚到 120°（停在右後方低處），之後慢慢收回
+const FINISHER_WIND_DEG := 110.0
+const FINISHER_TRAIL_DEG := 90.0
+const FINISHER_REST_TRAIL_DEG := 120.0
+
+
+## 第 4 段身體往左轉的角度（度，往左為正）：起手結束時 90°（側身），第 FINISHER_TURN_END 幀 360°
+static func _finisher_body_deg(e: int, st: int) -> float:
+	if e <= FINISHER_TURN_START:
 		return 0.0
-	var e := p.state_elapsed()
-	var st := p.attack.startup_frames()
-	var act_end := p.attack.active_end_frame()
-	if e < st:
-		return deg_to_rad(270.0) * float(e) / st
-	if e < act_end:
-		return deg_to_rad(lerpf(270.0, 360.0, float(e - st + 1) / (act_end - st)))
-	return TAU
+	if e <= st:
+		return 90.0 * float(e - FINISHER_TURN_START) / maxf(st - FINISHER_TURN_START, 1)
+	return lerpf(90.0, 360.0, clampf(float(e - st) / maxf(FINISHER_TURN_END - st, 1), 0.0, 1.0))
+
+
+## 第 4 段回旋斬：身體往左轉的角度（弧度；畫面上逆時針是負值）。起手就開始轉，側身時（判定開始）
+## 伸直的劍掃過目標，接著轉完一圈，收招面向目標
+static func spin_turn(p: PlayerSim) -> float:
+	if p.state != PlayerSim.State.ATTACK or p.combo_index != 3:
+		return 0.0
+	return -deg_to_rad(_finisher_body_deg(p.state_elapsed(), p.attack.startup_frames()))
 
 
 ## 劍的方向：依攻擊段數與幀數做出揮砍姿勢
@@ -235,12 +252,20 @@ func _sword_dir(p: PlayerSim) -> Vector2:
 			var a := p.attack
 			var st := a.startup_frames()
 			var act_end := a.active_end_frame()
-			if p.combo_index == 2:
-				# 迴旋斬：劍在右手側跟著身體轉；收招從右手側收回正前方
-				if e < act_end:
-					return f.rotated(PI / 2 + spin_turn(p))
-				var rec2 := float(e - act_end) / maxf(a.total_frames() - act_end, 1)
-				return f.rotated(lerpf(PI / 2, 0.0, clampf(rec2 * 1.5 - 0.5, 0.0, 1.0)))
+			if p.combo_index == 3:
+				# 回旋斬：劍拉到右後方，胸口先轉時劍留在後面，側身時（判定開始）伸直的劍掃過目標，接著比身體
+				# 晚 FINISHER_TRAIL_DEG 跟著轉完一圈，停在右後方低處，之後慢慢收回。劍只在砍到的時候指向目標
+				var body := _finisher_body_deg(e, st)
+				var trail: float
+				if e < st:
+					# 起手：劍留在右後方（身體轉了多少，劍就晚多少），砍到前一幀才甩上來
+					trail = lerpf(FINISHER_WIND_DEG, FINISHER_WIND_DEG + body, 1.0 if e < st - 1 else 0.5)
+				elif e <= FINISHER_TURN_END:
+					trail = lerpf(FINISHER_TRAIL_DEG, FINISHER_REST_TRAIL_DEG, float(e - st) / maxf(FINISHER_TURN_END - st, 1))
+				else:
+					var rec4 := float(e - FINISHER_TURN_END) / maxf(a.total_frames() - FINISHER_TURN_END, 1)
+					return f.rotated(deg_to_rad(lerpf(FINISHER_REST_TRAIL_DEG, 0.0, clampf(rec4 * 1.5 - 0.5, 0.0, 1.0))))
+				return f.rotated(deg_to_rad(trail - body))
 			var r := swing_range(p.combo_index)
 			var ang: float
 			if e < st:
@@ -260,33 +285,32 @@ func _sword_dir(p: PlayerSim) -> Vector2:
 	return f
 
 
-## 第 4 段：雙手高舉劈地。起手把劍高舉過頭（劍尖朝上），判定期間沿面向往前下劈，劍尖停在前方地面；
-## 收招＋停頓一起慢慢收回（劍在地上多停一下）
-func _draw_chop_sword(p: PlayerSim) -> void:
+## 第 3 段：由下往上挑斬。起手沉腰、劍尖壓在前下方，判定期間沿面向的直立面往上挑到頭頂；
+## 收招劍停在頭頂上方一下再收回
+func _draw_rise_sword(p: PlayerSim) -> void:
 	var f := p.facing
 	var a := p.attack
 	var e := p.state_elapsed()
 	var st := a.startup_frames()
 	var act_end := a.active_end_frame()
-	# k：0 = 高舉過頭，1 = 劈到前下方
+	# k：1 = 劍尖壓在前下方，0 = 挑到頭頂
 	var k: float
 	if e < st:
-		k = -0.25 * clampf(float(e) / maxf(st - 2, 1), 0.0, 1.0)
+		k = lerpf(0.7, 1.0, clampf(float(e) / maxf(st - 2, 1), 0.0, 1.0))
 	elif e < act_end:
-		k = lerpf(-0.25, 1.0, float(e - st + 1) / (act_end - st))
+		k = lerpf(1.0, -0.1, float(e - st + 1) / (act_end - st))
 	else:
 		var rec := float(e - act_end) / maxf(a.total_frames() - act_end, 1)
-		k = lerpf(1.0, 0.4, clampf(rec * 1.5 - 0.5, 0.0, 1.0))
-	# 劍在「面向 × 高度」的直立面上轉：角度 0 朝正上方、90° 朝前方、120° 朝前下方
+		k = lerpf(-0.1, 0.5, clampf(rec * 1.5 - 0.5, 0.0, 1.0))
+	# 劍在「面向 × 高度」的直立面上轉：角度 0 朝正上方、90° 朝前方、125° 朝前下方
 	var th := lerpf(0.0, deg_to_rad(125.0), clampf(k, 0.0, 1.0)) + minf(k, 0.0)
-	var hand := (Vector2(0, -34) + f * 3).lerp(Vector2(0, -18) + f * 8, clampf(k, 0.0, 1.0)).round()
+	var hand := (Vector2(0, -36) + f * 3).lerp(Vector2(0, -14) + f * 8, clampf(k, 0.0, 1.0)).round()
 	var blade := f * sin(th) + Vector2(0, -cos(th))
 	var tip := hand + blade * 19.0
 	tip.y = minf(tip.y, 0.0)  # 劍尖不低於地面（腳底那一列）
 	draw_line(hand, tip.round(), Palette.SWORD, 2.0)
-	# 雙手握柄：護手畫粗一點
 	var guard := (hand - blade * 2.0).round()
-	draw_line(guard - blade.orthogonal() * 3, guard + blade.orthogonal() * 3, Palette.PLAYER_DARK, 2.0)
+	draw_line(guard - blade.orthogonal() * 3, guard + blade.orthogonal() * 3, Palette.PLAYER_DARK, 1.0)
 
 
 func _draw_sword(p: PlayerSim) -> void:
@@ -300,10 +324,10 @@ func _draw_sword(p: PlayerSim) -> void:
 		hand = Vector2(roundf(f.x * 8), -16 + roundf(f.y * 4))
 		length = 22.0 if p.state == S.THRUST else 26.0
 	elif p.state == S.ATTACK:
-		if p.combo_index == 3:
-			_draw_chop_sword(p)
+		if p.combo_index == 2:
+			_draw_rise_sword(p)
 			return
-		# 揮砍時手在身體前方（面向上時在頭頂上方，劍不會被身體蓋住）
-		hand = (Vector2(0, -20) + f * 9).round()
+		# 揮砍時手在身體前方（面向上時在頭頂上方，劍不會被身體蓋住）；轉身回旋斬時手跟著身體轉
+		hand = (Vector2(0, -20) + f.rotated(spin_turn(p)) * 9).round()
 	draw_line(hand, (hand + sd * length).round(), Palette.SWORD, 2.0)
 	draw_line(hand - sd.orthogonal() * 3, hand + sd.orthogonal() * 3, Palette.PLAYER_DARK, 1.0)

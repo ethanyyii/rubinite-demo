@@ -6,6 +6,15 @@ extends RefCounted
 ## 方向在命中前 0.2 秒鎖定、之後 Boss 不再移動（突刺與衝擊環例外，都有算進去），
 ## 所以只要在鎖定之後才依預測行動，預測就是準的。
 
+## 出第 4 段前要求的安全幀數 = 第 4 段按下到收招結束（不可取消）+ 這個餘裕。
+## 原本第 4 段 44 幀時寫死 50 = 44 + 6；2026-09-29 第 4 段起手改短之後跟著資料算（見 tuning-log）
+const FINISHER_SAFETY_MARGIN := 6
+
+
+static func safe_finisher() -> int:
+	return PlayerData.light_attacks()[PlayerData.last_light_stage()].recovery_end_frame() + FINISHER_SAFETY_MARGIN
+
+
 ## 玩家不動時，Boss 接下來會碰到玩家的每一擊：[{index, hit, start, overlap, windup}]（都是絕對戰鬥幀）
 static func predict_threats(sim: CombatSim) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

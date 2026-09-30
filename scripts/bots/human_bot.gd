@@ -27,7 +27,6 @@ var cautious := false
 ## 治療前要求的安全幀數 = 治療時間 + 這個餘裕（原本治療 54 幀時寫死 70 = 54 + 16）
 const HEAL_SAFETY_MARGIN := 16
 const SAFE_LIGHT := 21
-const SAFE_FINISHER := 50
 const ATTACK_DIST := 48.0
 
 ## 每一擊的計畫：key → {"at": 動作幀, "fooled": bool}
@@ -145,7 +144,7 @@ func decide(sim: CombatSim) -> InputFrame:
 			return f
 		var need := SAFE_LIGHT
 		if next_stage >= 3:
-			need = SAFE_FINISHER if rng.randf() >= greed_finisher else SAFE_LIGHT + 10
+			need = BotController.safe_finisher() if rng.randf() >= greed_finisher else SAFE_LIGHT + 10
 		if safe >= need:
 			f.attack_pressed = true
 			_chain_used += 1

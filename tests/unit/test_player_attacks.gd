@@ -1,6 +1,8 @@
 extends SimTestCase
 ## M2：combat-design §8 輕攻擊四段、§8.3 取消規則、§3 輸入緩衝、§12 頓幀。
-## 幀數（Frames.of 四捨五入）：第 1、2 段 6/5/15，第 3 段 7/5/17，第 4 段 11/6/27。
+## 幀數（Frames.of 四捨五入）：第 1、2 段 6/5/15，第 3 段 7/5/17，第 4 段 6/6/27（＋停頓 12）。
+## 接段（§8.1，2026-09-29 第二次修改）：連按時相鄰兩段的判定開始相隔 0.25 秒（15 幀），
+## 所以最早接段在第 1 段第 15 幀、第 2 段第 14 幀、第 3 段第 16 幀（2026-09-29 第三次修改：第 4 段起手 6 幀）。
 
 const S := PlayerSim.State
 
@@ -19,7 +21,60 @@ func test_stage_frame_counts() -> void:
 	assert_eq(_stage_frames(0), [6, 5, 15])
 	assert_eq(_stage_frames(1), [6, 5, 15])
 	assert_eq(_stage_frames(2), [7, 5, 17])
-	assert_eq(_stage_frames(3), [11, 6, 27])
+	assert_eq(_stage_frames(3), [6, 6, 27])
+
+
+func test_chain_frames_give_an_even_rhythm() -> void:
+	# §8.1（2026-09-29 第二次修改）：連按時相鄰兩段的判定開始都相隔 COMBO_INTERVAL（15 幀）。
+	# 最早接段的幀 = 這一段起手 + 15 − 下一段起手，但不早於判定結束。
+	var interval := Frames.of(PlayerData.COMBO_INTERVAL)
+	assert_eq(interval, 15)
+	var chain: Array = []
+	for i in 3:
+		chain.append(PlayerData.chain_frame(i))
+	assert_eq(chain, [15, 14, 16])
+	var L := PlayerData.light_attacks()
+	for i in 3:
+		assert_true(chain[i] >= L[i].active_end_frame(), "第 %d 段：判定結束前不能接段" % (i + 1))
+		assert_eq(chain[i] - L[i].startup_frames() + L[i + 1].startup_frames(), interval,
+			"第 %d → %d 段：判定開始相隔 %d 幀" % [i + 1, i + 2, interval])
+	assert_eq(PlayerData.chain_frame(3), -1, "第 4 段之後不能接")
+	for i in 3:
+		assert_true(chain[i] < L[i].total_frames(), "第 %d 段：收招結束前就能接（否則接段寬限會讓節奏提早）" % (i + 1))
+
+
+func test_attack_pressed_before_chain_frame_waits_for_it() -> void:
+	# 第 1 段第 11 幀（判定剛結束）按攻擊：還不能接，緩衝到第 15 幀才出第 2 段；第 14 幀已經可以閃身取消
+	press(&"attack")
+	while player().state_elapsed() < 10:
+		advance(1)
+	press(&"attack")  # elapsed 11
+	assert_eq(player().state_elapsed(), 11)
+	assert_eq(player().combo_index, 0, "判定結束那幀還不能接段")
+	assert_false(player().can_start(&"attack"))
+	while player().state_elapsed() < 14 and player().combo_index == 0:
+		advance(1)
+	assert_eq(player().combo_index, 0, "第 14 幀還在第 1 段")
+	assert_true(player().can_start(&"dodge"), "第 14 幀已經可以閃身取消（判定結束 + 3 幀，§8.3 不變）")
+	advance(1)
+	assert_eq(player().combo_index, 1, "第 15 幀接上第 2 段")
+	assert_eq(player().state_elapsed(), 0)
+
+	# 第 2、3 段：接段幀前 9 幀按的會接上、10 幀前按的被丟掉（§3 緩衝，和第 1 段同一條規則）
+	for stage in [1, 2]:
+		for case in [[9, stage + 1], [10, stage]]:
+			sim = CombatSim.new(1)
+			place_near_boss(50.0)
+			_go_to_stage(stage)
+			var chain := PlayerData.chain_frame(stage)
+			while player().state_elapsed() < chain - int(case[0]) - 1:
+				advance(1)
+			press(&"attack")
+			assert_eq(player().state_elapsed(), chain - int(case[0]))
+			while player().state_elapsed() < chain - 1 and player().combo_index == stage:
+				advance(1)
+			advance(1)
+			assert_eq(player().combo_index, case[1], "第 %d 段：接段幀前 %d 幀按攻擊" % [stage + 1, case[0]])
 
 
 func test_attack_starts_on_press_frame() -> void:
@@ -161,28 +216,28 @@ func test_no_grace_after_fourth_stage() -> void:
 
 
 func test_fourth_stage_end_lag_frames() -> void:
-	# §8.1（2026-09-29）：第 4 段收招之後停頓 0.2 秒（12 幀）。第 4 段共 11 + 6 + 27 + 12 = 56 幀。
+	# §8.1（2026-09-29）：第 4 段收招之後停頓 0.2 秒（12 幀）。第 4 段共 6 + 6 + 27 + 12 = 51 幀。
 	var a: PlayerAttackData = PlayerData.light_attacks()[3]
 	assert_eq(Frames.of(PlayerData.FINISHER_END_LAG), 12)
-	assert_eq(a.recovery_end_frame(), 44)
-	assert_eq(a.total_frames(), 56)
+	assert_eq(a.recovery_end_frame(), 39)
+	assert_eq(a.total_frames(), 51)
 	for i in 3:
 		var b: PlayerAttackData = PlayerData.light_attacks()[i]
 		assert_eq(b.recovery_end_frame(), b.total_frames(), "第 %d 段沒有停頓" % (i + 1))
 	_go_to_stage(3)
-	while player().state_elapsed() < 55:
+	while player().state_elapsed() < 50:
 		advance(1)
-	assert_eq(player().state, S.ATTACK, "第 55 幀仍在停頓")
+	assert_eq(player().state, S.ATTACK, "第 50 幀仍在停頓")
 	advance(1)
-	assert_eq(player().state, S.IDLE, "56 幀後回到待機")
+	assert_eq(player().state, S.IDLE, "51 幀後回到待機")
 
 
 func test_attack_cannot_start_during_end_lag() -> void:
 	_go_to_stage(3)
-	while player().state_elapsed() < 43:
+	while player().state_elapsed() < 38:
 		advance(1)
-	press(&"attack")  # elapsed 44：停頓第 1 幀，離結束 12 幀（超過緩衝 9 幀）
-	assert_eq(player().state_elapsed(), 44)
+	press(&"attack")  # elapsed 39：停頓第 1 幀，離結束 12 幀（超過緩衝 9 幀）
+	assert_eq(player().state_elapsed(), 39)
 	assert_eq(player().state, S.ATTACK)
 	assert_eq(player().combo_index, 3, "停頓中按攻擊不會出招")
 	while player().state == S.ATTACK:
@@ -193,9 +248,9 @@ func test_attack_cannot_start_during_end_lag() -> void:
 
 func test_attack_buffered_in_end_lag_starts_right_after() -> void:
 	_go_to_stage(3)
-	while player().state_elapsed() < 49:
+	while player().state_elapsed() < 44:
 		advance(1)
-	press(&"attack")  # elapsed 50：離結束 6 幀
+	press(&"attack")  # elapsed 45：離結束 6 幀
 	while player().state == S.ATTACK and player().combo_index == 3:
 		advance(1)
 	assert_eq(player().state, S.ATTACK, "停頓最後 0.15 秒內按的攻擊在停頓結束時執行")
@@ -204,8 +259,8 @@ func test_attack_buffered_in_end_lag_starts_right_after() -> void:
 
 
 func test_end_lag_buffer_boundary() -> void:
-	# 第 4 段共 56 幀：第 47 幀按的攻擊（離結束 9 幀）會在第 56 幀出招，第 46 幀按的（10 幀）被丟棄
-	for case in [[46, false], [47, true]]:
+	# 第 4 段共 51 幀：第 42 幀按的攻擊（離結束 9 幀）會在第 51 幀出招，第 41 幀按的（10 幀）被丟棄
+	for case in [[41, false], [42, true]]:
 		sim = CombatSim.new(1)
 		place_near_boss(50.0)
 		_go_to_stage(3)
@@ -220,23 +275,23 @@ func test_end_lag_buffer_boundary() -> void:
 
 func test_no_movement_during_end_lag() -> void:
 	_go_to_stage(3)
-	while player().state_elapsed() < 44:
+	while player().state_elapsed() < 39:
 		advance(1)
 	var p0 := player().pos
 	move = Vector2.RIGHT
-	while player().state_elapsed() < 55:
+	while player().state_elapsed() < 50:
 		advance(1)
 	assert_eq(player().state, S.ATTACK)
-	assert_eq(player().pos, p0, "停頓中（第 44–55 幀）不能移動")
+	assert_eq(player().pos, p0, "停頓中（第 39–50 幀）不能移動")
 
 
 func test_dodge_and_block_allowed_during_end_lag() -> void:
-	# 第 4 段收招（第 17–43 幀）照舊不可取消；停頓（第 44–55 幀）可以閃身或格擋
+	# 第 4 段收招（第 12–38 幀）照舊不可取消；停頓（第 39–50 幀）可以閃身或格擋
 	_go_to_stage(3)
-	while player().state_elapsed() < 42:
+	while player().state_elapsed() < 37:
 		advance(1)
 	sim.player.facing = Vector2.UP
-	press(&"dodge")  # elapsed 43：收招最後一幀
+	press(&"dodge")  # elapsed 38：收招最後一幀
 	assert_eq(player().state, S.ATTACK, "收招中不能閃身")
 	advance(1)
 	assert_eq(player().state, S.DODGE, "停頓第 1 幀執行緩衝的閃身")
@@ -244,7 +299,7 @@ func test_dodge_and_block_allowed_during_end_lag() -> void:
 	sim = CombatSim.new(1)
 	place_near_boss(50.0)
 	_go_to_stage(3)
-	while player().state_elapsed() < 43:
+	while player().state_elapsed() < 38:
 		advance(1)
 	held["block"] = true
 	advance(1)
@@ -252,7 +307,7 @@ func test_dodge_and_block_allowed_during_end_lag() -> void:
 
 
 func test_mashing_gives_four_stages_then_a_pause() -> void:
-	# 每一幀都按攻擊：1→2→3→4 在最早的幀接上，第 4 段之後停頓，再從第 1 段開始
+	# 每一幀都按攻擊：1→2→3→4 在最早的幀接上（判定開始每 15 幀一次），第 4 段之後停頓，再從第 1 段開始
 	sim.boss.set_dummy()
 	sim.boss.pos = Vector2(0, -300)
 	sim.player.pos = Vector2(0, 60)
@@ -269,12 +324,16 @@ func test_mashing_gives_four_stages_then_a_pause() -> void:
 		if i > 0:
 			gaps.append(starts[i][0] - starts[i - 1][0])
 	assert_eq(stages.slice(0, 5), [0, 1, 2, 3, 0], "連按：四段後回到第 1 段")
-	assert_eq(gaps.slice(0, 4), [11, 11, 12, 56], "第 4 段到下一次出招：收招 27 + 停頓 12 + 起手 11 + 判定 6")
+	assert_eq(gaps.slice(0, 4), [15, 14, 16, 51], "第 4 段到下一次出招：起手 6 + 判定 6 + 收招 27 + 停頓 12")
+	var hits: Array = []
+	for i in 4:
+		hits.append(starts[i][0] + PlayerData.light_attacks()[starts[i][1]].startup_frames())
+	assert_eq([hits[1] - hits[0], hits[2] - hits[1], hits[3] - hits[2]], [15, 15, 15], "四刀的判定開始間隔一樣")
 
 
 func test_pressing_in_recovery_chains_immediately() -> void:
 	press(&"attack")
-	advance(12)  # elapsed 12：收招中
+	advance(15)  # elapsed 15：收招中、已經可以接段
 	press(&"attack")
 	assert_eq(player().state, S.ATTACK)
 	assert_eq(player().combo_index, 1, "收招期間按攻擊接第 2 段")
@@ -282,11 +341,10 @@ func test_pressing_in_recovery_chains_immediately() -> void:
 
 
 func test_full_combo_damage_and_toughness() -> void:
-	# 每段在收招第一幀接下一段
+	# 每段在最早可以接段的那幀接下一段
 	press(&"attack")
 	for i in 3:
-		var fr := _stage_frames(i)
-		while player().state_elapsed() < fr[0] + fr[1] - 1:
+		while player().state_elapsed() < PlayerData.chain_frame(i) - 1:
 			advance(1)
 		press(&"attack")
 		assert_eq(player().combo_index, i + 1)
@@ -335,24 +393,27 @@ func test_startup_cannot_be_cancelled() -> void:
 
 
 func test_buffer_limit_is_9_frames() -> void:
-	# 第 1 段收招開始於第 11 幀。第 2 幀按攻擊（9 幀前）會接上；第 1 幀按（10 幀前）不會。
+	# 第 1 段最早在第 15 幀接段。第 6 幀按攻擊（9 幀前）會接上；第 5 幀按（10 幀前）不會。
 	press(&"attack")
-	advance(1)  # elapsed 1
-	press(&"attack")  # elapsed 2
-	while player().state_elapsed() < 10:
+	while player().state_elapsed() < 5:
+		advance(1)
+	press(&"attack")  # elapsed 6
+	while player().state_elapsed() < 14:
 		advance(1)
 	advance(1)
-	assert_eq(player().combo_index, 1, "9 幀前按下的攻擊在收招開始時執行")
+	assert_eq(player().combo_index, 1, "9 幀前按下的攻擊在可以接段時執行")
 	assert_eq(player().state_elapsed(), 0)
 
 	sim = CombatSim.new(1)
 	place_near_boss(50.0)
 	press(&"attack")
-	press(&"attack")  # elapsed 1：距收招開始 10 幀
-	while player().state_elapsed() < 11:
+	while player().state_elapsed() < 4:
+		advance(1)
+	press(&"attack")  # elapsed 5：距可以接段 10 幀
+	while player().state_elapsed() < 15:
 		advance(1)
 	assert_eq(player().combo_index, 0, "10 幀前按下的攻擊被丟棄")
-	assert_eq(player().state_elapsed(), 11)
+	assert_eq(player().state_elapsed(), 15)
 
 
 func test_buffered_attack_after_fourth_stage_starts_new_combo() -> void:
@@ -393,10 +454,10 @@ func test_hitstop_does_not_drop_buffered_input() -> void:
 	advance(6)  # 命中，進入頓幀
 	assert_true(sim.hitstop > 0)
 	tick([&"attack"])  # 頓幀中按下
-	while player().state_elapsed() < 10 and player().combo_index == 0:
+	while player().state_elapsed() < PlayerData.chain_frame(0) - 1 and player().combo_index == 0:
 		advance(1)
 	advance(1)
-	assert_eq(player().combo_index, 1, "頓幀中按的攻擊在收招開始時接上第 2 段")
+	assert_eq(player().combo_index, 1, "頓幀中按的攻擊在可以接段時接上第 2 段")
 
 
 func test_attack_advance_distance() -> void:
@@ -429,8 +490,7 @@ func test_aim_assist_ignores_enemy_outside_cone() -> void:
 func _go_to_stage(stage: int) -> void:
 	press(&"attack")
 	for i in stage:
-		var fr := _stage_frames(i)
-		while player().state_elapsed() < fr[0] + fr[1]:
+		while player().state_elapsed() < PlayerData.chain_frame(i):
 			advance(1)
 		press(&"attack")
 	assert_eq(player().combo_index, stage)

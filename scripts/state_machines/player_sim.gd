@@ -289,8 +289,9 @@ func can_start(action: StringName) -> bool:
 		&"attack":
 			if state == State.IDLE or state == State.BLOCK:
 				return true
-			# 收招期間按攻擊接下一段（第 4 段之後不能再接）
-			return state == State.ATTACK and attack.cancelable and e >= attack.active_end_frame()
+			# 收招期間按攻擊接下一段，最早在 chain_frame（§8.1：四刀的節奏一樣）；第 4 段之後不能再接
+			return state == State.ATTACK and attack.cancelable and combo_index < PlayerData.last_light_stage() \
+				and e >= PlayerData.chain_frame(combo_index)
 		&"heavy":
 			return state == State.IDLE or state == State.BLOCK
 		&"dodge":
