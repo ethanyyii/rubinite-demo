@@ -143,6 +143,7 @@ func _physics_process(_delta: float) -> void:
 		request_retry()
 		return
 	sim.step(input)
+	player_view.sim_stepped()
 	for e in sim.events:
 		_dispatch(e)
 	_update_end_flow()

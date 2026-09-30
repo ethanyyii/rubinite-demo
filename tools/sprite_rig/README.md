@@ -59,6 +59,14 @@ python3 tools/sprite_rig/checks.py --combo4
 ```
 
 ```bash
+python3 tools/sprite_rig/export_frames.py
+```
+
+```bash
+python3 tools/sprite_rig/ingame_preview.py <截圖資料夾> docs/art-preview/player/ingame
+```
+
+```bash
 python3 tools/sprite_rig/inspect_parts.py /tmp/parts.png
 ```
 
@@ -92,6 +100,8 @@ python3 tools/sprite_rig/extract_reference.py
 | `checks.py --batch4` | 第 4 批的自動檢查：每幀技術品質（躺姿用躺姿的那一套）、踉蹌（後仰、離地、頭晚一拍）、倒地（往外倒、摔倒 8px、著地 10px、布料）、擊飛（兩張身體相同）、起身（跪姿骨盆、30 幀）、架勢崩潰（跪姿、搖晃與布料延遲、劍插地）、時間 |
 | `export_combo4.py` | 四段輕攻擊（2026-09-29 第五版：間隔調整、第 4 段轉身中砍到）：精靈圖 `knight_attack{1,2,3,4}.png`（88×72，每段後面接「從站姿」的開頭）；幀序列（標出扭轉／轉身用哪個方向的圖）、剪影對照 `combo4_silhouettes.png`、腿單獨、場景 GIF（連按、上一版的連按、慢節奏、各段）、`combo4_player.html`（60fps）、第 4 段和第四版的對照（`combo4/v4/` 的精靈圖）、設計圖 C1–C4／D2／D3（參考）、頸部以上，寫到 `docs/art-preview/player/combo4/` |
 | `checks.py --combo4` | 四段輕攻擊的自動檢查（`checks_combo4.py`）：每一幀的技術檢查（在畫好的圖上量，扭轉的幀每個零件對照自己那個方向的零件庫）與腿的規則、攻擊站姿、第 3 段的高姿勢、位移（例外表 `EXEMPT`：揮劍、扭轉、轉身，各有上限與理由）、站地的腳、所有接段與進場、時間、身體有轉、四段只看剪影分得開、劍看得到多少 |
+| `export_frames.py` | 遊戲用的幀表：從產生精靈圖的程式讀出每張圖每一欄的名字與停幾個模擬幀（攻擊另有第一幀、是否回站姿、前進量、從站姿的開頭），加上奔跑的停步表，寫成 `scripts/view/knight_sheets.gd`（`KnightSheets`）。**重新輸出任何精靈圖之後都要重跑**（約 40 秒），`tests/unit/test_player_sprites.gd` 會比對圖的大小與戰鬥資料的時間 |
+| `ingame_preview.py 截圖資料夾 輸出資料夾` | 把 `tests/sim/capture_player_sprites.gd`（遊戲裡照腳本操作、每個物理幀截一張）的輸出做成 60fps 的 mp4（要 ffmpeg）與整個畫面的截圖；`--sheet=N` 另外輸出逐幀標註的總覽圖、`--gif` 輸出 GIF |
 | `inspect_parts.py out.png` | 把每個部件的切割範圍用顏色疊在 40px 圖上，用來確認切割 |
 | `compare_sizes.py` | 設計圖（同方法縮小）、舊 50px、新 40px 同比例並排，寫到 `docs/art-preview/player/knight_40px_vs_50px.png` |
 | `downscale.py` | 從 `native/` 重建定案尺寸的零件庫 `native40/`：區域平均縮小、吸附色盤、恢復描邊、清雜點、手工修補 |
@@ -392,6 +402,13 @@ python3 tools/sprite_rig/extract_reference.py
 - **剪影相近的豁免**（2026-09-30，使用者接受）：`checks_combo4.DISTINCT_WAIVED` 記下四組當時的輪廓差，比紀錄更像就重新失敗。
 - **第二版**（2026-09-29，使用者看過後要求調整間隔）：第 1–3 段沿用；第 4 段先轉身才砍的精靈圖存在 `combo4/v2/`。
 - **第三版**（間隔調整、第 4 段先砍再轉身）：精靈圖 `combo4/v3/`，`export_combo4.py` 用它做「連按（上一版）」的對照場景和 `combo4_compare.png`。
+
+### 接進遊戲（2026-09-30）
+
+- 遊戲只讀 `scripts/view/knight_sheets.gd`（`export_frames.py` 產生）和精靈圖本身；選格在 `scripts/view/player_anim.gd`，畫面在 `player_view.gd`。規則與技術決定記在 art-progress「接進遊戲：交件」。
+- 改了某個動作的畫格（張數、順序、每張停幾幀）：重新輸出精靈圖 → 重跑 `export_frames.py` → `tests/check.sh`（幀表和戰鬥資料對不上會失敗）→ 需要時重錄遊戲裡的預覽。
+- 新增一張精靈圖：`export_frames.py` 的 `build()` 加一行，`player_anim.gd` 決定什麼時候播。
+- 遊戲裡錄影：`godot --path . -s res://tests/sim/capture_player_sprites.gd -- --out=<資料夾> [--only=場景名]`（要有畫面，不能 `--headless`）。截圖先留在記憶體、場景結束才存檔：每一步都存檔會拖慢畫面，特效照真實時間計時就會被拉長。Godot 4.7 的 `Engine.time_scale` 只放慢畫面的計時、不放慢物理幀，所以不要用慢動作錄。
 
 ### 程式怎麼串起來
 

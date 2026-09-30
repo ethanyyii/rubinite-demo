@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主角精靈圖：遊戲裡的樣子</title>
+<style>
+  :root { --bg: #1b1d21; --card: #25282e; --text: #e8e6e1; --muted: #a3a09a; --accent: #7fa8f5; --warn: #f0b35a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(27,29,33,.95); border-bottom: 1px solid #333; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  header h1 { font-size: 17px; margin: 0; }
+  .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { background: #333842; color: var(--text); border: 1px solid #4a505c; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .intro { color: var(--muted); max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; }
+  .card.ask { outline: 2px solid var(--warn); }
+  .card h2 { font-size: 15px; margin: 0 0 6px; }
+  .card h2 .tag { font-size: 12px; color: #111; background: var(--warn); border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+  .card h2 .new { background: var(--accent); }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  video, .shot { width: 100%; image-rendering: pixelated; border-radius: 6px; background: #000; display: block; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 16px; }
+  @media (max-width: 460px) { .grid, .shots { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>主角精靈圖：遊戲裡的樣子</h1>
+  <div class="controls">
+    <button data-rate="1" class="on">正常速度</button>
+    <button data-rate="0.5">半速</button>
+    <button data-rate="0.25">1/4 速</button>
+    <button id="pause">全部暫停</button>
+    <button id="back">◀ 一格</button>
+    <button id="step">一格 ▶</button>
+  </div>
+</header>
+<main>
+<p class="intro">這些是在真正的遊戲場景裡錄的（不是另外做的預覽）：照腳本按鍵操作主角，每一格都是遊戲當下畫出來的畫面，60 格／秒，就是遊戲的速度。受擊、彈返時畫面會停一下（頓幀），那是遊戲本來的效果。刀光、火花、閃紅、殘影這些特效還是之前的暫時版本，等特效那一步再做。Boss 也還是暫時的紅色圖形。</p>
+
+<div class="grid">
+  <div class="card"><h2>走路、奔跑</h2><video src="walk_run.mp4" autoplay loop muted playsinline></video>
+    <p>站著呼吸 → 往右走 → 按住奔跑 → 放開（會把這一步踏完再煞停）→ 往下走、往上走。四個方向都是各自畫的。</p></div>
+  <div class="card"><h2>四段輕攻擊：連按（朝右）</h2><video src="combo_mash.mp4" autoplay loop muted playsinline></video>
+    <p>一直按攻擊：四刀接在一起，第四刀在轉身裡砍到；停頓之後又從第一刀開始。</p></div>
+  <div class="card"><h2>四段輕攻擊：連按（朝下）</h2><video src="combo_mash_down.mp4" autoplay loop muted playsinline></video>
+    <p>同上，朝鏡頭的方向。</p></div>
+  <div class="card"><h2>四段輕攻擊：慢慢按</h2><video src="combo_slow.mp4" autoplay loop muted playsinline></video>
+    <p>每一刀收回站姿時才按下一刀。這時下一刀從站姿開始揮，不是從上一刀的收尾接，所以不會跳一下。</p></div>
+  <div class="card"><h2>格擋、完美彈返、舉劍移動</h2><video src="guard.mp4" autoplay loop muted playsinline></video>
+    <p>舉劍 → 被打中擋住（往後一縮）→ 放下再舉起、剛好擋在時間點上（劍被撥開、火花）→ 舉劍往上側移、往後退。</p></div>
+  <div class="card"><h2>蓄力、突刺</h2><video src="charge_thrust.mp4" autoplay loop muted playsinline></video>
+    <p>蓄力 → 邊蓄邊往前走 → 蓄滿（全身閃一下白）放開突刺；第二次沒蓄滿就放開，收回站姿。</p></div>
+  <div class="card"><h2>閃身</h2><video src="dodge.mp4" autoplay loop muted playsinline></video>
+    <p>往前衝刺、煞停 → 沒按方向：原地往後跳 → 往下衝刺。</p></div>
+  <div class="card"><h2>鎖定時閃身、移動</h2><video src="dodge_locked.mp4" autoplay loop muted playsinline></video>
+    <p>鎖定 Boss（在上方）後往右閃：衝出去時朝右，落地轉回面向 Boss；接著面向 Boss 往左側走、往後退。</p></div>
+  <div class="card"><h2>治療</h2><video src="heal.mp4" autoplay loop muted playsinline></video>
+    <p>原地治療，中途往左走：治療的姿勢加上慢步。</p></div>
+  <div class="card"><h2>受擊</h2><video src="hits.mp4" autoplay loop muted playsinline></video>
+    <p>從左邊被打：踉蹌（朝向打他的方向）→ 從右邊被重擊：轉身撲倒、趴著、爬起來 → 從左邊被擊飛：飛起、落地、爬起來。</p></div>
+  <div class="card"><h2>架勢崩潰</h2><video src="posture_break.mp4" autoplay loop muted playsinline></video>
+    <p>格擋時架勢被打空：膝蓋一軟、單膝跪地搖晃，再撐起來。</p></div>
+  <div class="card"><h2>死亡</h2><video src="death.mp4" autoplay loop muted playsinline></video>
+    <p>和倒地同樣的摔法，但比較慢，之後畫面變暗。</p></div>
+  <div class="card"><h2>處決（朝右）</h2><video src="execute.mp4" autoplay loop muted playsinline></video>
+    <p>第一刀把 Boss 打到失衡跪地，再按攻擊：衝上去刺中（白色閃光、停一下），收劍。</p></div>
+  <div class="card"><h2>處決（朝下）</h2><video src="execute_down.mp4" autoplay loop muted playsinline></video>
+    <p>主角在 Boss 後面時，Boss 跪著會擋住主角，所以顯示半透明剪影；Boss 倒下後就看得到主角本身。</p></div>
+  <div class="card ask"><h2>從奔跑直接接動作<span class="tag">請看這個</span></h2><video src="run_into.mp4" autoplay loop muted playsinline></video>
+    <p>跑步中直接出招、舉劍、蓄力、治療，最後是舉劍移動中直接出招。跑步是往前傾的大步，接下一個動作的第一張會一口氣換姿勢（腳最多移 16 像素）。當初核准時說好接進遊戲後要實際看，請看會不會覺得跳。</p></div>
+  <div class="card ask"><h2>被 Boss 擋住時的剪影<span class="tag new">新加的</span></h2><video src="behind_boss.mp4" autoplay loop muted playsinline></video>
+    <p>主角站在 Boss 正後方時原本會整個被擋住（連揮刀都看不到）。現在被擋住一半以上時，在 Boss 身上畫一個半透明的主角剪影，看得出姿勢；走出來剪影就消失。</p></div>
+</div>
+
+<h2 style="margin-top:28px">整個畫面（遊戲的 2 倍）</h2>
+<div class="shots">
+  <img class="shot" src="guard_full_0101.png" alt="完美彈返的瞬間">
+  <img class="shot" src="walk_run_full_0080.png" alt="奔跑">
+  <img class="shot" src="hits_full_0060.png" alt="被打倒">
+  <img class="shot" src="execute_full_0060.png" alt="處決">
+  <img class="shot" src="behind_boss_full_0032.png" alt="被 Boss 擋住時的剪影">
+</div>
+</main>
+<script>
+  const vids = () => [...document.querySelectorAll('video')];
+  document.querySelectorAll('[data-rate]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-rate]').forEach(x => x.classList.toggle('on', x === b));
+    vids().forEach(v => { v.playbackRate = +b.dataset.rate; v.play(); });
+    document.getElementById('pause').textContent = '全部暫停';
+  }));
+  document.getElementById('pause').addEventListener('click', e => {
+    const paused = vids().some(v => !v.paused);
+    vids().forEach(v => paused ? v.pause() : v.play());
+    e.target.textContent = paused ? '全部播放' : '全部暫停';
+  });
+  const nudge = d => { vids().forEach(v => { v.pause(); v.currentTime = Math.max(0, v.currentTime + d / 60); });
+    document.getElementById('pause').textContent = '全部播放'; };
+  document.getElementById('step').addEventListener('click', () => nudge(1));
+  document.getElementById('back').addEventListener('click', () => nudge(-1));
+</script>
+</body>
+</html>

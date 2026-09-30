@@ -62,6 +62,16 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+## 畫出來的身體（膠囊）相對腳底的範圍：站著、蹲低、跪地時的高度不同，被處決時橫躺；騰空時往上。
+## 主角在後面被擋住時用它判斷要不要畫剪影（player_view）
+static func body_rect(b: BossSim) -> Rect2:
+	if b.state == BS.EXECUTED:
+		return Rect2(-82, -45, 164, 45)
+	var off: Vector2 = compute_pose(b)["body"]
+	var h := H + off.y
+	return Rect2(off.x - R - 1, -h - 1 + _leap_lift(b), 2 * R + 2, h + 2)
+
+
 ## 墜王之躍的騰空高度（負值往上）。準星也用這個跟著升高
 static func leap_lift(b: BossSim) -> float:
 	return _leap_lift(b)

@@ -64,6 +64,8 @@ var last_block_frame := -100000
 var last_posture_damage := -100000
 
 # --- 受擊（§10） ---
+## 最後一次被打中時，從主角指向攻擊者的方向（畫面用：受擊的動畫朝攻擊來源畫，不影響判定）
+var last_hit_dir := Vector2.DOWN
 ## 擊退／推後：方向、每幀位移、剩餘幀數
 var _knock_dir := Vector2.ZERO
 var _knock_step := 0.0
@@ -520,6 +522,8 @@ func _normal_block(hit: BossHitData, from: Vector2) -> void:
 ## 被打中：扣 HP，依命中效果踉蹌／倒地／擊飛倒地；架勢崩潰中一律倒地（§10）。
 func _take_hit(hit: BossHitData, from: Vector2) -> void:
 	hp = maxi(hp - hit.damage, 0)
+	var to_attacker := from - pos
+	last_hit_dir = to_attacker.normalized() if to_attacker.length_squared() > 0.01 else facing
 	var effect := hit.hit_effect
 	if state == State.POSTURE_BREAK:
 		_end_posture_break()
@@ -632,6 +636,11 @@ func max_speed_for(s: State, is_locked: bool, wants_run: bool) -> float:
 
 static func can_run_in(s: State) -> bool:
 	return s == State.IDLE
+
+
+## 這一幀是不是放開搖桿後的減速（畫面用：奔跑放開時接停步）
+func is_braking() -> bool:
+	return _decel_step > 0.0
 
 
 ## 走、跑、慢走共用的移動（LOCOMOTION_STATES）：方向立即跟隨輸入（不滑行），速率線性變化。

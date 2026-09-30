@@ -3,7 +3,11 @@ extends Node2D
 ## 特效以 _process 的 delta 播放：頓幀（只停戰鬥模擬）期間繼續；F2 慢動作時一起變慢。只讀取 sim 的狀態與事件。
 
 const BossView := preload("res://scripts/view/boss_view.gd")
-const PlayerView := preload("res://scripts/view/player_view.gd")
+
+## 第 4 段回旋斬的轉身（和精靈圖一樣，art-progress「四段輕攻擊：第五版」）：第 1 幀開始往左轉，判定開始時側身，
+## 第 15 幀轉回面向目標。轉身期間身邊淡淡畫一圈刀光
+const FINISHER_TURN_START := 1
+const FINISHER_TURN_END := 15
 
 var arena: CombatArena
 ## 每個特效：{kind, pos, dir, t, life, ...}
@@ -99,10 +103,10 @@ func _draw_player_attack() -> void:
 		var st := p.attack.startup_frames()
 		var act_end := p.attack.active_end_frame()
 		var tail := 5
-		# 第 4 段：轉身（起手就開始）時身邊淡淡一圈，畫到轉完為止（PlayerView.FINISHER_TURN_START–END）
+		# 第 4 段：轉身（起手就開始）時身邊淡淡一圈，畫到轉完為止（FINISHER_TURN_START–END）
 		var finisher := p.combo_index == 3
-		var ring_from := PlayerView.FINISHER_TURN_START if finisher else st
-		var turn_end := PlayerView.FINISHER_TURN_END if finisher else act_end
+		var ring_from := FINISHER_TURN_START if finisher else st
+		var turn_end := FINISHER_TURN_END if finisher else act_end
 		if e < mini(st, ring_from) or e >= maxi(act_end, turn_end) + tail:
 			return
 		var sweep := clampf(float(e - st + 1) / (act_end - st), 0.0, 1.0)
@@ -111,9 +115,9 @@ func _draw_player_attack() -> void:
 			# 第 3 段由下往上挑斬：沿面向的直立弧，從前下方挑到頭頂
 			_draw_chop(p.pos, p.facing, PlayerData.ATTACK_RADIUS, sweep, fade, true)
 		else:
-			# 刀光掃過的方向和劍一樣（player_view.swing_range：第 1 段右 → 左、第 2 段左 → 右、第 4 段轉身中
+			# 刀光掃過的方向和精靈圖的劍一樣（swing_range：第 1 段右 → 左、第 2 段左 → 右、第 4 段轉身中
 			# 右 → 左），範圍夾在判定的扇形內
-			var r: Vector2 = PlayerView.swing_range(p.combo_index)
+			var r: Vector2 = swing_range(p.combo_index)
 			var half := deg_to_rad(PlayerData.ATTACK_ARC_DEG) * 0.5
 			var from := clampf(r.x, -half, half)
 			var to := clampf(r.y, -half, half)
@@ -132,6 +136,19 @@ func _draw_player_attack() -> void:
 		c.a *= 1.0 - clampf(float(e - n) / 4.0, 0.0, 1.0)
 		var base := p.pos + Vector2(0, -16)
 		draw_line((base - p.facing * 20).round(), (base + p.facing * PlayerData.THRUST_REACH).round(), c, 3.0)
+
+
+## 揮砍的起點與終點（相對面向的角度，正值是角色的右手側）：四段各自不同（art-progress「四段輕攻擊：第二版」，
+## 使用者的動作設計）。第 1 段右下 → 左上斜斬（右 → 左，最短最快）、第 2 段左 → 右橫斬（最寬）、
+## 第 4 段回旋斬（轉身中砍到：側身時伸直的劍從右掃過目標）。第 3 段由下往上挑斬另外畫（_draw_chop）
+static func swing_range(stage: int) -> Vector2:
+	var span := deg_to_rad(PlayerData.ATTACK_ARC_DEG) * 0.55
+	match stage:
+		0:
+			return Vector2(span * 0.8, -span * 0.8)
+		1:
+			return Vector2(-span * 1.2, span * 1.2)
+	return Vector2(span, -span)
 
 
 ## 直立弧的刀光（第 3 段挑斬，rising：從前方地面挑到頭頂上方；判定仍是 100° 扇形）
