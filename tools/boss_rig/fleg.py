@@ -21,9 +21,9 @@ import arm
 HIP, ANKLE = (160, 344), (152, 600)
 LEG_POLY = [(128, 286), (192, 286), (192, 470), (186, 500), (180, 540), (180, 590), (186, 604), (112, 604),
             (126, 590), (126, 540), (113, 500), (118, 460), (122, 400), (126, 340)]
-BOOT_POLY = [(110, 594), (188, 594), (190, 682), (84, 682), (84, 650), (100, 620)]
-SOLE_ROW = 682
-FRAME = (rig.FW, 272)
+BOOT_POLY = [(110, 594), (188, 594), (190, 676), (84, 676), (84, 650), (100, 620)]
+SOLE_ROW = 675
+FRAME = (rig.FW, rig.FH)
 _parts = {}
 _cache = {}
 
@@ -35,8 +35,8 @@ def _part(poly):
     im = Image.new('RGBA', src.size, (0, 0, 0, 0))
     im.paste(src, (0, 0), m)
     px = im.load()
-    for y in range(min(q[1] for q in poly), max(q[1] for q in poly) + 1):
-        for x in range(min(q[0] for q in poly), max(q[0] for q in poly) + 1):
+    for y in range(min(q[1] for q in poly), min(src.height, max(q[1] for q in poly) + 1)):
+        for x in range(min(q[0] for q in poly), min(src.width, max(q[0] for q in poly) + 1)):
             if px[x, y][3] and arm._is_cloth(px[x, y]):      # the cape behind the leg
                 px[x, y] = (0, 0, 0, 0)
     return im.convert('RGBa')

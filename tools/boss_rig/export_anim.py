@@ -1,25 +1,34 @@
-"""Boss idle and walk: sprite sheets and previews.
+"""Boss idle and the four ways he moves: sprite sheets and previews.
 
     python3 tools/boss_rig/export_anim.py [--no-video]
 
 Sprite sheets -> assets/sprites/boss/ (NOT wired into the game). Rows: down, right, up, left.
-    boss_idle.png        12 columns of 256x224, foot anchor (128, 208); 10 combat frames a pose
-    boss_walk.png        20 columns of 256x272, foot anchor (128, 208); 4 combat frames a pose
-                         (2 at the fast approach)
-    boss_walk_start.png  10 columns of 256x272: standing -> walk; the loop goes on at column
-                         anim_walk.START_JOIN (6)
-    boss_walk_stop.png   4 x 8 columns of 256x272: walk -> standing, one group of 8 for each of
-                         the loop's columns 0, 5, 10, 15 (play the group nearest to the column
-                         the walk ends on)
+    boss_idle.png             12 columns of 256x224, foot anchor (128, 208); 10 combat frames a pose
+For each way of moving (256x224 cells, foot anchor (128, 208), 4 combat frames a pose;
+walk also 2 at the fast approach); the sword is carried on the right shoulder in all of them:
+    boss_walk.png             forward, 20 columns
+    boss_walk_back.png        backwards (retreat), 20 columns
+    boss_strafe_r.png         sideways towards his own right, 20 columns
+    boss_strafe_l.png         sideways towards his own left, 20 columns
+    <name>_start.png          12 columns of 384x336, foot anchor (192, 272) (the sword goes up
+                              over his head): standing -> moving; the loop goes on at column
+                              anim_walk.START_JOINS[kind] (walk 8, back 16, strafe 8)
+    <name>_stop.png           4 x 10 columns of 384x336, foot anchor (192, 272): moving ->
+                              standing, one group of 10 for each of the loop's columns 0, 5, 10,
+                              15 (play the group nearest to the column the loop ends on)
 Previews -> docs/art-preview/boss/idle_walk/:
     idle_<dir>.gif, idle_all.gif     the idle at its real timing
-    walk_<dir>_slow.mp4, _fast.mp4   the loop, 60 fps, the ground scrolling at the game's speed
-    move_<dir>.mp4                   standing -> start -> walk -> stop -> standing, 60 fps, the
-                                     ground moving only while the game moves the Boss
-    walk_all.gif, move_all.gif       four directions side by side (GIF: one frame per pose)
+    walk_<dir>_slow.mp4, _fast.mp4   the forward loop, 60 fps
+    move_<dir>.mp4, move_all.gif     forward: standing -> start -> loop -> stop -> standing
+    move_<kind>_<dir>.mp4, move_<kind>_all.gif   the same for back, strafe_r, strafe_l
     *_frames_<dir>.png               every pose; walk_legs_side.png: the side view's legs alone
+    carry_four.png                   the carry in the four directions, side by side
+    hands_closeup.png                the sword hand at 5x: standing, half-way up, carrying (each
+                                     way of moving), half-way down - in the four directions
     index.html                       everything on one page
-Needs ffmpeg for the mp4s (skipped with --no-video).
+In the videos the Boss stays put and the ground moves under him the way the game moves him
+(60 px/s on screen in every direction: the game is top-down, nothing is foreshortened), only
+while he moves; a mark every 40 px (one step). Needs ffmpeg (skipped with --no-video).
 """
 import os
 import shutil
@@ -38,46 +47,64 @@ import preview
 SHEETS = os.path.join(B.ROOT, 'assets', 'sprites', 'boss')
 OUT = os.path.join(B.ROOT, 'docs', 'art-preview', 'boss', 'idle_walk')
 NAMES = {'down': '朝下', 'right': '朝右', 'up': '朝上', 'left': '朝左'}
+SHEET_OF = {'walk': 'boss_walk', 'back': 'boss_walk_back', 'strafe_r': 'boss_strafe_r', 'strafe_l': 'boss_strafe_l'}
+KIND_NAMES = {'walk': '往前走', 'back': '後退', 'strafe_r': '往他的右手邊側移', 'strafe_l': '往他的左手邊側移'}
+FACING = {'down': (0, 1), 'right': (1, 0), 'up': (0, -1), 'left': (-1, 0)}
 FLOOR = (66, 63, 68)
 MARK = (96, 91, 96)
 GRID = 40                # px between ground marks (one step)
-BOX = (8, 40, 248, 252)  # preview window in the walk frame (room for the dragged sword)
+BOX = (8, 16, 248, 222)  # preview window in the walk frame (room for the carried sword)
+# ... and for anything with the way up / down in it: the sword stands over his head and points
+# forward past the small frame
+MOVE_BOX = (-40, -56, 296, 222)
 IDLE_BOX = (rig.AX - 70, 44, rig.AX + 70, rig.AY + 12)
 STEP = gait.STRIDE / gait.POSES      # px the game moves the Boss per pose
+STOP_AT = 10                         # the previews stop the loop on this pose
 
 
-def sheet(rows, path, fh):
-    """rows: {direction: [frames]} -> one sheet, a row per direction."""
+def travel(direction, kind):
+    """Where the Boss goes on screen: (dx, dy) unit vector."""
+    fx, fy = FACING[direction]
+    if kind == 'walk':
+        return fx, fy
+    if kind == 'back':
+        return -fx, -fy
+    rx, ry = -fy, fx                 # his right: screen left when he faces the camera
+    return (rx, ry) if kind == 'strafe_r' else (-rx, -ry)
+
+
+def sheet(rows, path, fh, big=False):
+    """rows: {direction: [frames]} -> one sheet, a row per direction. big: cells of the attack
+    container (anim_walk.BIG), the frames moved by anim_walk.EXT."""
     n = len(rows['down'])
-    im = Image.new('RGBA', (rig.FW * n, fh * 4), (0, 0, 0, 0))
+    cw, ch = anim_walk.BIG if big else (rig.FW, fh)
+    off = anim_walk.EXT if big else 0
+    im = Image.new('RGBA', (cw * n, ch * 4), (0, 0, 0, 0))
     for r, d in enumerate(rig.DIRS):
         for c, f in enumerate(rows[d]):
-            im.alpha_composite(rig.image(f, (rig.FW, fh)), (c * rig.FW, r * fh))
+            im.alpha_composite(rig.image({(x + off, y + off): v for (x, y), v in f.items()}, (cw, ch)), (c * cw, r * ch))
     im.save(path)
 
 
-def floor(size, box, k, direction, shift):
-    """Ground with marks every GRID px, moved `shift` px against the walking direction."""
+def floor(size, box, k, tv, shift):
+    """Ground with marks every GRID px, moved `shift` px against the travel direction tv."""
     w, h = size
     im = Image.new('RGB', (w, h), preview.BG)
     d = ImageDraw.Draw(im)
     gy = (rig.AY + 1 - box[1]) * k
-    shift = round(shift)
-    if direction in ('right', 'left'):
+    off = round(shift) % GRID
+    if tv[0]:
         top = gy - 14 * k
         d.rectangle((0, top, w, h), fill=FLOOR)
-        sgn = -1 if direction == 'right' else 1
         x0 = (rig.AX - box[0]) * k
         for n in range(-12, 13):
-            x = x0 + (n * GRID + sgn * (shift % GRID)) * k
+            x = x0 + (n * GRID - tv[0] * off) * k
             d.rectangle((x, gy, x + k - 1, gy + 5 * k), fill=MARK)
     else:
-        # seen from the front / back the ground runs up and down the screen (0.35 of the depth)
-        top = gy - 40 * k
+        top = gy - 44 * k
         d.rectangle((0, top, w, h), fill=FLOOR)
-        sgn = -1 if direction == 'down' else 1
-        for n in range(-24, 25):
-            y = gy + round((n * GRID + sgn * (shift % GRID)) * anim_walk.DEPTH) * k
+        for n in range(-12, 13):
+            y = gy + (n * GRID - tv[1] * off) * k
             if top <= y < h:
                 d.rectangle((0, y, w, y + k - 1), fill=MARK)
     return im
@@ -105,13 +132,15 @@ def timeline_loop(frames, hold, loops):
     return out
 
 
-def timeline_move(d, hold=gait.HOLD):
-    """Standing, start, walk, stop, standing - what the game would show - per combat frame."""
+def timeline_move(d, kind='walk', hold=gait.HOLD):
+    """Standing, start, loop, stop, standing - what the game would show - per combat frame."""
     stand = rig.pixels(rig.standing()[d])
-    walk = anim_walk.frames(d)
-    loop = list(range(anim_walk.START_JOIN, gait.POSES)) + list(range(gait.POSES)) + list(range(0, 11))
-    stop_from = loop[-1]
-    moving = anim_walk.frames(d, 'walk_start') + [walk[i] for i in loop]
+    loop = anim_walk.frames(d, kind)
+    seq, i = [], anim_walk.START_JOINS[kind]
+    while len(seq) < 24 or seq[-1] != STOP_AT:
+        seq.append(i % gait.POSES)
+        i += 1
+    moving = anim_walk.frames(d, f'{kind}_start') + [loop[j] for j in seq]
     out, dist = [], 0.0
     for _ in range(36):
         out.append((stand, 0.0))
@@ -119,7 +148,7 @@ def timeline_move(d, hold=gait.HOLD):
         for _ in range(hold):
             dist += STEP / hold
             out.append((f, dist))
-    for f in anim_walk.frames(d, f'walk_stop_{stop_from}'):
+    for f in anim_walk.frames(d, f'{kind}_stop_{STOP_AT}'):
         for _ in range(hold):
             out.append((f, dist))
     for _ in range(48):
@@ -127,11 +156,11 @@ def timeline_move(d, hold=gait.HOLD):
     return out
 
 
-def video(path, timeline, direction, k=3, box=BOX):
+def video(path, timeline, tv, k=3, box=MOVE_BOX):
     size = ((box[2] - box[0]) * k, (box[3] - box[1]) * k)
     tmp = tempfile.mkdtemp()
     for n, (f, shift) in enumerate(timeline):
-        paste_sprite(floor(size, box, k, direction, shift), f, box, k).save(os.path.join(tmp, f'{n:04d}.png'))
+        paste_sprite(floor(size, box, k, tv, shift), f, box, k).save(os.path.join(tmp, f'{n:04d}.png'))
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', '60', '-i', os.path.join(tmp, '%04d.png'),
                     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '10', '-movflags', '+faststart', path],
                    check=True)
@@ -147,7 +176,7 @@ def gif_durations(holds):
     return durs
 
 
-def side_by_side(path, timelines, k=2, box=BOX, every=gait.HOLD):
+def side_by_side(path, timelines, kind, k=2, box=MOVE_BOX, every=gait.HOLD):
     """All four directions in one GIF, one GIF frame per `every` combat frames."""
     w, h = (box[2] - box[0]) * k, (box[3] - box[1]) * k
     n = len(timelines['down'])
@@ -156,7 +185,7 @@ def side_by_side(path, timelines, k=2, box=BOX, every=gait.HOLD):
         im = Image.new('RGB', (w * 4, h), preview.BG)
         for j, d in enumerate(rig.DIRS):
             f, shift = timelines[d][i]
-            im.paste(paste_sprite(floor((w, h), box, k, d, shift), f, box, k), (j * w, 0))
+            im.paste(paste_sprite(floor((w, h), box, k, travel(d, kind), shift), f, box, k), (j * w, 0))
         ims.append(im.quantize(colors=96, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
     ims[0].save(path, save_all=True, append_images=ims[1:], duration=gif_durations([every] * len(ims)), loop=0)
 
@@ -203,39 +232,94 @@ def legs_sheet(path, k=6):
     out.save(path)
 
 
-def hands_sheet(path, idle, walk, k=4):
-    """Close-ups of the sword hand: standing (top) and dragging (bottom), four directions."""
-    boxes = {'down': (48, 56, 148, 190), 'right': (78, 56, 178, 190), 'up': (108, 56, 208, 190),
-             'left': (78, 56, 178, 190)}
-    walk_boxes = {'down': (40, 66, 140, 200), 'right': (70, 66, 170, 200), 'up': (112, 66, 212, 200),
-                  'left': (86, 66, 186, 200)}
-    w, h = 100 * k, 134 * k
-    out = Image.new('RGB', (4 * (w + 8), 2 * (h + 8)), preview.BG)
-    for j, d in enumerate(rig.DIRS):
-        out.paste(preview.render(idle[d][0], boxes[d], k, ground=False), (j * (w + 8), 0))
-        out.paste(preview.render(walk[d][5], walk_boxes[d], k, ground=False), (j * (w + 8), h + 8))
+def strafe_legs_sheet(path, loops, k=4):
+    """The legs of the sidestep and the backward walk, every other pose, four directions."""
+    box = (60, 118, 200, 222)
+    rows = []
+    for kind in ('strafe_r', 'strafe_l', 'back'):
+        for d in rig.DIRS:
+            rows.append((f'{KIND_NAMES[kind]} {NAMES[d]}', [loops[kind][d][i] for i in range(0, gait.POSES, 2)]))
+    tw, th = (box[2] - box[0]) * k, (box[3] - box[1]) * k
+    out = Image.new('RGB', (10 * (tw + 4) + 4, len(rows) * (th + 26) + 4), preview.BG)
+    dr = ImageDraw.Draw(out)
+    for r, (label, fr) in enumerate(rows):
+        y = 4 + r * (th + 26)
+        dr.text((6, y), label, font=preview.font(16), fill=(235, 228, 220))
+        for c, f in enumerate(fr):
+            out.paste(preview.render(f, box, k), (4 + c * (tw + 4), y + 22))
     out.save(path)
 
 
-HTML = '''<!doctype html><meta charset="utf-8"><title>Boss 待機與走路</title>
+HAND_BOX = {'down': (62, 48, 146, 116), 'right': (96, 44, 180, 112), 'up': (110, 44, 194, 112), 'left': (76, 44, 160, 112)}
+
+
+def _labelled(rows, path, tile, left=150):
+    """rows: [(label, [tiles])] -> one sheet, the label left of each row."""
+    tw, th = tile
+    out = Image.new('RGB', (left + 4 * (tw + 6), 24 + len(rows) * (th + 6)), preview.BG)
+    d = ImageDraw.Draw(out)
+    for j, name in enumerate(rig.DIRS):
+        d.text((left + j * (tw + 6) + 4, 3), NAMES[name], font=preview.font(16), fill=(235, 228, 220))
+    for r, (label, tiles) in enumerate(rows):
+        y = 24 + r * (th + 6)
+        d.text((6, y + 6), label, font=preview.font(16), fill=(235, 228, 220))
+        for j, t in enumerate(tiles):
+            out.paste(t, (left + j * (tw + 6), y))
+    out.save(path)
+
+
+def hands_sheet(path, k=5):
+    """Close-ups of the sword hand, the hilt and the shoulder (animation-review §5): standing,
+    half-way up, carrying in each way of moving, half-way down - the four directions side by side."""
+    stand = rig.standing()
+    stages = [('站姿', lambda d: rig.pixels(stand[d]))]
+    stages += [(f'起步第 {i + 1} 張', lambda d, i=i: anim_walk.frames(d, 'walk_start')[i]) for i in (1, 3, 5, 7, 9)]
+    stages += [(KIND_NAMES[kind], lambda d, kind=kind: anim_walk.frames(d, kind)[5]) for kind in anim_walk.KINDS]
+    stages += [(f'停步第 {i + 1} 張', lambda d, i=i: anim_walk.frames(d, f'walk_stop_{STOP_AT}')[i]) for i in (2, 4, 6, 8)]
+    rows = [(label, [preview.render(get(d), HAND_BOX[d], k, ground=False) for d in rig.DIRS]) for label, get in stages]
+    _labelled(rows, path, rows[0][1][0].size)
+
+
+def carry_sheet(path, loops, k=2):
+    """The carry in the four directions side by side: one 3D pose, four views."""
+    box = (6, 18, 250, 218)
+    rows = [(KIND_NAMES[kind], [preview.render(loops[kind][d][5], box, k) for d in rig.DIRS])
+            for kind in ('walk', 'back')]
+    _labelled(rows, path, rows[0][1][0].size, left=70)
+
+
+HTML = '''<!doctype html><meta charset="utf-8"><title>Boss 待機與移動</title>
 <style>body{background:#2a282c;color:#e8e2dc;font-family:-apple-system,"PingFang TC",sans-serif;margin:24px}
 h2{margin-top:36px}figure{display:inline-block;margin:0 16px 20px 0;vertical-align:top}
 figcaption{font-size:14px;color:#b8b0aa;margin-top:4px}img,video{image-rendering:pixelated;display:block;max-width:100%%}
 p{max-width:900px;line-height:1.6}</style>
-<h1>Boss（Veltharis）待機與走路</h1>
-<p>還沒接進遊戲。四個方向：朝下、朝右、朝上、朝左。劍一律在右手：朝左時右手在遠側，握劍的手被身體擋住，靠鏡頭的左手是空的（不是朝右的鏡像）。劍上的火焰、符文發光之後由程式畫，這裡沒有。</p>
-<h2>握劍的手（放大）</h2>
-<figure><img src="hands_closeup.png"><figcaption>上排：站姿。下排：拖劍走路。由左到右朝下、朝右、朝上、朝左</figcaption></figure>
-<h2>從站著到走、再停下來（緩步）</h2>
-<p>站著 → 起步（劍放倒拖在身後、身體前傾）→ 走 → 停步（收腳、站直、把劍拉回來立好）→ 站著。地面只在 Boss 真的在移動時才動，地上的記號每 40px 一條（一步）。</p>
+<h1>Boss（Veltharis）待機與移動</h1>
+<p>還沒接進遊戲。四個方向：朝下、朝右、朝上、朝左。<b>所有移動（往前走、後退、左右側移）都把劍橫著扛在右肩上</b>：劍身平放在肩甲上、劍尖朝後、右手在肩膀前握著握柄。劍一律在右手：朝左時右手在遠側，劍和握劍的手被身體擋住，靠鏡頭的左手是空的（不是朝右的鏡像）。劍上的火焰、符文發光之後由程式畫，這裡沒有。</p>
+<p>影片裡 Boss 留在原地，地面照遊戲裡的速度（每秒 60px）往反方向移動，只有 Boss 真的在移動時才動；地上的記號每 40px 一條（一步）。</p>
+<h2>扛劍的姿勢：四個方向</h2>
+<figure><img src="carry_four.png"><figcaption>同一個姿勢從四個方向看（2 倍）。上排往前走（身體前傾），下排後退（身體直立）</figcaption></figure>
+<h2>握劍的手（放大 5 倍）</h2>
+<figure><img src="hands_closeup.png"><figcaption>由上到下：站姿、把劍從身前往上繞、扛上肩的過程、四種移動、把劍從肩上舉起、在身前放回地上的過程</figcaption></figure>
+<h2>往前走：從站著到走、再停下來</h2>
+<p>站著 → 起步（劍從身前往上繞一圈扛到肩上、身體前傾）→ 走 → 停步（收腳、站直，劍從肩上舉起、在身前繞下來立回地上）→ 站著。</p>
 <figure><img src="move_all.gif"><figcaption>四個方向，遊戲裡的大小（2 倍）</figcaption></figure><br>
 %(move)s
-<h2>走路循環：緩步（每秒 60px，一步 0.67 秒）</h2>
+<h2>往前走的循環：緩步（每秒 60px，一步 0.67 秒）</h2>
 %(slow)s
-<h2>走路循環：快步（每秒 120px，同一組圖播快一倍）</h2>
+<h2>往前走的循環：快步（每秒 120px，同一組圖播快一倍）</h2>
 %(fast)s
-<h2>待機（呼吸一輪 2 秒）</h2>
-<p>朝下、朝右、朝上和上次一樣；朝左重畫了（劍在遠側的手）。</p>
+<h2>側移：面向主角，往他自己的右手邊走</h2>
+<p>站著 → 起步 → 側移 → 停步 → 站著。「朝下」就是主角在畫面下方、Boss 面向下方，往畫面左邊走（他的右手邊）；「朝右」時他的右手邊是靠鏡頭那一側，所以往畫面下方走。</p>
+<figure><img src="move_strafe_r_all.gif"><figcaption>四個方向（2 倍）</figcaption></figure><br>
+%(strafe_r)s
+<h2>側移：往他自己的左手邊走</h2>
+<figure><img src="move_strafe_l_all.gif"><figcaption>四個方向（2 倍）</figcaption></figure><br>
+%(strafe_l)s
+<h2>後退：面向主角往後走</h2>
+<figure><img src="move_back_all.gif"><figcaption>四個方向（2 倍）</figcaption></figure><br>
+%(back)s
+<figure><img src="strafe_back_legs.png"><figcaption>側移與後退的腿（每隔一張）</figcaption></figure>
+<h2>待機（呼吸一輪 2 秒；沒改）</h2>
 <figure><img src="idle_all.gif"><figcaption>四個方向（2 倍）</figcaption></figure>
 <h2>逐張</h2>
 %(sheets)s
@@ -248,18 +332,24 @@ def write_html(video_ok):
             return (f'<figure><video src="{src}" autoplay loop muted playsinline controls></video>'
                     f'<figcaption>{cap}</figcaption></figure>')
         return f'<figure><img src="{src}"><figcaption>{cap}</figcaption></figure>'
+    none = '<p>（沒有 ffmpeg，略過影片；看上面的 GIF）</p>'
+    v = {'move': none, 'slow': none, 'fast': none, 'back': none, 'strafe_r': none, 'strafe_l': none}
     if video_ok:
-        move = ''.join(fig(f'move_{d}.mp4', NAMES[d]) for d in rig.DIRS)
-        slow = ''.join(fig(f'walk_{d}_slow.mp4', NAMES[d]) for d in rig.DIRS)
-        fast = ''.join(fig(f'walk_{d}_fast.mp4', NAMES[d]) for d in rig.DIRS)
-    else:
-        move = slow = fast = '<p>（沒有 ffmpeg，略過影片；看上面的 GIF）</p>'
+        v['move'] = ''.join(fig(f'move_{d}.mp4', NAMES[d]) for d in rig.DIRS)
+        v['slow'] = ''.join(fig(f'walk_{d}_slow.mp4', NAMES[d]) for d in rig.DIRS)
+        v['fast'] = ''.join(fig(f'walk_{d}_fast.mp4', NAMES[d]) for d in rig.DIRS)
+        for kind in ('back', 'strafe_r', 'strafe_l'):
+            v[kind] = ''.join(fig(f'move_{kind}_{d}.mp4', NAMES[d]) for d in rig.DIRS)
     sheets = ''
-    for a, b in (('walk', '走路循環'), ('walk_start', '起步'), ('walk_stop', '停步（從循環第 0、5、10、15 張）')):
-        sheets += ''.join(fig(f'{a}_frames_{d}.png', f'{b} {NAMES[d]}') for d in ('down', 'right', 'up'))
-    sheets += fig('walk_legs_side.png', '走路循環側面的腿（綠線＝靠鏡頭的腿，藍線＝另一條）')
+    for kind in anim_walk.KINDS:
+        b = KIND_NAMES[kind]
+        sheets += ''.join(fig(f'{kind}_frames_{d}.png', f'{b} {NAMES[d]}') for d in rig.DIRS)
+        sheets += ''.join(fig(f'{kind}_start_frames_{d}.png', f'{b}的起步 {NAMES[d]}') for d in rig.DIRS)
+        sheets += ''.join(fig(f'{kind}_stop_frames_{d}.png', f'{b}的停步（從循環第 0、5、10、15 張）{NAMES[d]}') for d in rig.DIRS)
+    sheets += fig('walk_legs_side.png', '往前走側面的腿（綠線＝靠鏡頭的腿，藍線＝另一條）')
+    v['sheets'] = sheets
     with open(os.path.join(OUT, 'index.html'), 'w') as fh:
-        fh.write(HTML % {'move': move, 'slow': slow, 'fast': fast, 'sheets': sheets})
+        fh.write(HTML % v)
 
 
 def main():
@@ -270,31 +360,41 @@ def main():
             os.remove(os.path.join(OUT, f))
     os.makedirs(OUT, exist_ok=True)
     idle = {d: anim_idle.frames(d) for d in rig.DIRS}
-    walk = {d: anim_walk.frames(d) for d in rig.DIRS}
-    start = {d: anim_walk.frames(d, 'walk_start') for d in rig.DIRS}
-    stop = {d: [f for e in anim_walk.STOP_FROM for f in anim_walk.frames(d, f'walk_stop_{e}')] for d in rig.DIRS}
     sheet(idle, os.path.join(SHEETS, 'boss_idle.png'), rig.FH)
-    sheet(walk, os.path.join(SHEETS, 'boss_walk.png'), anim_walk.FH)
-    sheet(start, os.path.join(SHEETS, 'boss_walk_start.png'), anim_walk.FH)
-    sheet(stop, os.path.join(SHEETS, 'boss_walk_stop.png'), anim_walk.FH)
-    moves = {d: timeline_move(d) for d in rig.DIRS}
+    loops = {}
+    for kind in anim_walk.KINDS:
+        loop = {d: anim_walk.frames(d, kind) for d in rig.DIRS}
+        start = {d: anim_walk.frames(d, f'{kind}_start') for d in rig.DIRS}
+        stop = {d: [f for e in anim_walk.STOP_FROM for f in anim_walk.frames(d, f'{kind}_stop_{e}')] for d in rig.DIRS}
+        loops[kind] = loop
+        name = SHEET_OF[kind]
+        sheet(loop, os.path.join(SHEETS, name + '.png'), anim_walk.FH)
+        sheet(start, os.path.join(SHEETS, name + '_start.png'), anim_walk.FH, big=True)
+        sheet(stop, os.path.join(SHEETS, name + '_stop.png'), anim_walk.FH, big=True)
+        moves = {d: timeline_move(d, kind) for d in rig.DIRS}
+        tag = '' if kind == 'walk' else kind + '_'
+        for d in rig.DIRS:
+            tv = travel(d, kind)
+            if video_ok:
+                video(os.path.join(OUT, f'move_{tag}{d}.mp4'), moves[d], tv)
+                if kind == 'walk':
+                    video(os.path.join(OUT, f'walk_{d}_slow.mp4'), timeline_loop(loop[d], gait.HOLD, 3), tv)
+                    video(os.path.join(OUT, f'walk_{d}_fast.mp4'), timeline_loop(loop[d], gait.HOLD // 2, 6), tv)
+            preview.contact(loop[d], k=3, cols=5, box=BOX).save(os.path.join(OUT, f'{kind}_frames_{d}.png'))
+            preview.contact(start[d], k=2, cols=6, box=MOVE_BOX).save(os.path.join(OUT, f'{kind}_start_frames_{d}.png'))
+            preview.contact(stop[d], k=1, cols=10, box=MOVE_BOX,
+                            labels=[f'{e}:{j}' for e in anim_walk.STOP_FROM for j in range(anim_walk.STOP_N)]).save(
+                os.path.join(OUT, f'{kind}_stop_frames_{d}.png'))
+        side_by_side(os.path.join(OUT, f'move_{tag}all.gif'), moves, kind)
+        if kind == 'walk':
+            side_by_side(os.path.join(OUT, 'walk_all.gif'), {d: timeline_loop(loop[d], gait.HOLD, 1) for d in rig.DIRS}, kind)
     for d in rig.DIRS:
         preview.gif(os.path.join(OUT, f'idle_{d}.gif'), idle[d], [anim_idle.HOLD] * anim_idle.N, k=3, box=IDLE_BOX)
-        if video_ok:
-            video(os.path.join(OUT, f'walk_{d}_slow.mp4'), timeline_loop(walk[d], gait.HOLD, 3), d)
-            video(os.path.join(OUT, f'walk_{d}_fast.mp4'), timeline_loop(walk[d], gait.HOLD // 2, 6), d)
-            video(os.path.join(OUT, f'move_{d}.mp4'), moves[d], d)
-        if d != 'left':
-            preview.contact(walk[d], k=3, cols=5, box=BOX).save(os.path.join(OUT, f'walk_frames_{d}.png'))
-            preview.contact(start[d], k=3, cols=5, box=BOX).save(os.path.join(OUT, f'walk_start_frames_{d}.png'))
-            preview.contact(stop[d], k=2, cols=8, box=BOX,
-                            labels=[f'{e}:{j}' for e in anim_walk.STOP_FROM for j in range(anim_walk.STOP_N)]).save(
-                os.path.join(OUT, f'walk_stop_frames_{d}.png'))
     idle_all(os.path.join(OUT, 'idle_all.gif'), idle)
-    side_by_side(os.path.join(OUT, 'walk_all.gif'), {d: timeline_loop(walk[d], gait.HOLD, 1) for d in rig.DIRS})
-    side_by_side(os.path.join(OUT, 'move_all.gif'), moves)
     legs_sheet(os.path.join(OUT, 'walk_legs_side.png'))
-    hands_sheet(os.path.join(OUT, 'hands_closeup.png'), idle, walk)
+    strafe_legs_sheet(os.path.join(OUT, 'strafe_back_legs.png'), loops)
+    hands_sheet(os.path.join(OUT, 'hands_closeup.png'))
+    carry_sheet(os.path.join(OUT, 'carry_four.png'), loops)
     write_html(video_ok)
     print('wrote', SHEETS, 'and', OUT, '(video)' if video_ok else '(no video)')
 

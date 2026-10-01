@@ -1,85 +1,103 @@
-"""Boss walk, dragging the greatsword (走路：緩步逼近；快步＝同一組每張停 2 幀), and the clips
-that join it to the standing pose: walk_start (站姿 → 走路) and walk_stop (走路 → 站姿).
+"""How the Boss moves - forward (walk), backward (back), sideways (strafe_r, strafe_l) - with the
+greatsword carried on his right shoulder, and the clips that join each to the standing pose:
+<kind>_start (站姿 → 移動) and <kind>_stop (移動 → 站姿).
 
-User 2026-09-30: drag the sword (its perspective right in all four directions), lean forward
-(the weight ahead of the feet), and animate going into and out of the walk.
+User 2026-09-30: every way of moving carries the sword level on the right shoulder, the tip
+behind him, the right fist on the grip in front of the shoulder (the dragged sword of the first
+forward walk is gone: a sword dragged behind only makes sense walking forward). The carry is his
+moving / ready pose - every attack will start from it and end in it. Earlier the same day: lean
+forward when walking (the weight ahead of the feet), animate going into and out of the walk,
+the sword hand is the right hand in every direction (facing left it is on the far side).
 
-Clips (every pose is held gait.HOLD = 4 combat frames at 60 px/s, 2 at 120 px/s):
-  walk        20 poses, loops. Legs from gait.py (one model for all directions): the planted
-              foot moves back 4 px per pose, exactly what the game moves the Boss.
-  walk_start  START_N = 10 poses from the standing pose: a half step (4 poses, the game moves
-              him 16 px) then the loop's poses 0-5, while the sword comes down from the
-              planted pose to the drag and the body leans in. The loop goes on at START_JOIN.
-  walk_stop   STOP_N = 8 poses back to the standing pose, from the loop's poses STOP_FROM
-              (0, 5, 10, 15: each heel strike and each mid-stance): the feet are gathered
-              under the hips one after the other, the body straightens, the sword is pulled
-              up and planted. The Boss does not move during it (the game stops him at once).
-Frame: 256 x 272, foot anchor (128, 208) - 48 rows more below the feet than the idle's frame,
-for the back view's sword (it trails towards the camera, below the foot line).
+Clips (every pose is held gait.HOLD = 4 combat frames at 60 px/s; the forward walk 2 at 120 px/s):
+  <kind>        20 poses, loops. Legs from gait.py (one model for all directions): the planted
+                foot moves back 4 px per pose, exactly what the game moves the Boss.
+  <kind>_start  START_N = 12 poses from the standing pose: a half step (4 poses, the game moves
+                him 16 px) then eight of the loop's poses, while the sword goes from planted on
+                the ground round in front of him onto the shoulder (carry.py) and the body leans
+                in. The loop goes on at START_JOINS[kind].
+  <kind>_stop   STOP_N = 10 poses back to the standing pose, from the loop's poses STOP_FROM
+                (0, 5, 10, 15: each heel strike and each mid-stance): the feet are gathered
+                under the hips one after the other, the body straightens, the sword comes off
+                the shoulder, up and round in front of him, and is planted. The Boss does not
+                move during it.
+Frame: the loops 256 x 224, foot anchor (128, 208) - the same as the idle's. The start and stop
+clips: the attack container 384 x 336, foot anchor (192, 272) - the sword stands upright over his
+head and points forward past the small frame; their frames' pixels are in the small frame's
+coordinates, reaching EXT px past its left, top and right edges.
 
 Part by part (animation-review §4.2), side view; front and back read the same numbers through
 the 0.35 depth foreshortening:
   legs     - heel strike, flat, toe-off, swing (gait.py); side view: posed from the concept
              (limb.py), the far leg darker and 2 px up; front/back: the approved leg pixels,
              rows dropped or duplicated between hip, knee and ankle, feet brought in under
-             the hips (FEET_IN) - the standing pose's wide stance is for standing (§4.3)
-  hips     - 1-4 px below standing height: lowest with both feet down, highest over the
-             planted foot; front/back: sway 2 px towards the planted foot
-  chest    - leans forward LEAN_DEG degrees about the hips (side view: every row above the
-             belt is shifted forward in proportion to its height, the head about 8 px; front:
-             the chest and head sit LEAN_ROWS px lower, back: higher - a lean towards / away
-             from the camera) and counter-turns against the legs by 1 px
+             the hips (FEET_IN) - the standing pose's wide stance is for standing (§4.3).
+             Backward: the same legs run the other way (toe first); sideways: see loop_state
+  hips     - 1-4 px below standing height (2-6 in the sidestep): lowest with both feet down;
+             front/back: sway 2 px towards the planted foot
+  chest    - leans forward LEAN_DEG degrees about the hips in the forward walk (half of it in
+             the sidestep, none backing up): side view, every row above the belt is shifted
+             forward in proportion to its height, the head about 5 px; front: the chest and
+             head sit LEAN_ROWS px lower, back: higher. Counter-turns against the legs by 1 px
   head     - follows the chest one pose late
-  sword    - dragged behind on the right (drag.py: one 3D pose projected into each view); the
-             tip stays on the ground, the fist rides on the body one pose late. In the loop
-             the sword is rendered once per view and only sheared in whole pixels (tip fixed,
-             fist moved), so its texture does not shimmer
-  sword arm - hangs from the shoulder, the fist at its end in line with the forearm, the sword
-             passing through the fist (drag.clean_sword: the sword without the standing pose's
-             fist). Side: upper arm, forearm and fist posed on joints (arm.py), in the
-             transitions by IK from the shoulder to the hand; front: the other arm's pixels
-             mirrored; back: the concept's own hanging arm (which the standing pose hides)
-             with a fist seen from the thumb's side - the thumb is towards the blade, which
-             trails behind (user 2026-09-30)
+  sword    - carried on the right shoulder (carry.py: one 3D pose projected into each view):
+             it lies on the shoulder plate and moves with it, in the same pose. Rendered once
+             per view and moved in whole pixels: the very same sword in every way of moving,
+             and its texture does not shimmer
+  sword arm - the right arm in every direction: the upper arm comes forward from under the
+             shoulder plate, the forearm goes up to the fist, which holds the grip in front of
+             the plate (arm.py: the fist is the arm's, in line with the forearm; the sword,
+             drawn without the standing pose's fist, passes through it).
+             Facing right it is the near arm, in front of the chest. Facing down the forearm is
+             in front of the plate, the pommel towards the camera. Facing up the hand is in
+             front of him: only the top of the fist shows over the shoulder. Facing left it is
+             the far arm: the body hides it, only the fist with the pommel shows in front of
+             the throat
   free arm - front/back: swings against its own leg (the fist rises and falls 3 px); facing
              left it is the near arm (arm.py), swinging SWING_SIDE px about the shoulder
-  facing left - not facing right mirrored: the sword is in the right hand, on the far side
-             (side.py). The sword is drawn behind the body and cape, its hand hidden by the
-             torso, its tip further from the camera than the hand (higher on screen)
+  facing left - not facing right mirrored: the sword is on the far shoulder (side.py), drawn
+             behind the body, the cape and the head
   cape     - top on the shoulders; squashed rather than lowered when the hips drop; side:
              trails behind and flutters once per step; front/back: sways after the hips
   tabard, chain, side cloth - hang from the belt, swing later than the hips
 """
 import math
-from PIL import Image, ImageDraw
 import boss as B
 import rig
-import labels
 import gait
 import limb
 import anim_idle
-import drag
+import sword as swd
 
 N = gait.POSES
 HOLD = gait.HOLD
-FW, FH = rig.FW, 272
-START_N = 10
+FW, FH = rig.FW, rig.FH
+# the start and stop clips: the sword swings up in front of him and stands upright over his
+# head - drawn in the attack container (384 x 336, foot anchor (192, 272)), which is this
+# frame grown by EXT px on the left, the top and the right
+EXT = 64
+BIG = (FW + 2 * EXT, FH + EXT + 48)
+START_N = 12
 START_HALF = 4           # poses of the half step before the loop's poses begin
 START_JOIN = START_N - START_HALF      # the loop goes on at this pose after walk_start
-STOP_N = 8
+STOP_N = 10
 STOP_FROM = (0, 5, 10, 15)
 LEAN_DEG = 6.0
 LEAN_ROWS = 3
 FEET_IN = 4              # front/back: each foot this much closer to the centre line than standing
 ARM_SWING = 8.0          # how far the free fist swings forward and back (x DEPTH on screen)
 FAR_UP = 2               # the side view's far leg is drawn this much higher (it is further away)
-DEPTH = drag.DEPTH
-DREF = 2                 # the loop's sword and arm are rendered with the hips this far down
-SWORD_BEHIND = 0.4       # front/back: the sword changes sides of the body at this blend
-DRAG_ARM = (6.0, 12.0)   # side view, the dragging arm: upper arm, forearm degrees back from straight down
+DEPTH = swd.DEPTH
 ELBOW0 = (158, 215)      # side view, local px: the elbow of the approved standing pose (at the chest)
 SWING_SIDE = 5           # facing left: px the free fist swings forward and back
-FAR_BARE = 0.35          # facing left: from this blend on the far hand is behind the torso (bare sword)
+# The sword arm while he carries the sword (carry.py): the fist in front of the shoulder plate,
+# the forearm upright under it, the elbow forward at the chest, the upper arm coming out from
+# under the plate. Elbow relative to the fist, final px:
+SIDE_ELBOW = (-5.0, 21.7)        # side views
+FRONT_ELBOW = (-5.0, 21.0)       # front view (the elbow a little further out than the fist)
+FRONT_ELBOW0 = (95.5, 99.5)      # front view, final px: the standing pose's elbow (behind the fist on the grip:
+                                 # the forearm points at the camera)
+PLATE_TOP = 75                   # side views, final row: the shoulder plate's top, where the blade lies
 
 
 def _frac(v, a, b):
@@ -105,8 +123,8 @@ def piecewise(y, src, tgt):
 #   back      backwards, still facing the player (retreat while the player is down)
 #   strafe_r  sideways towards his own right, facing the player (the breather's circling)
 #   strafe_l  sideways towards his own left
-# They share the dragged sword and the arm that holds it, so the game can switch between them
-# without the sword jumping; they differ in the legs, the lean and the cape.
+# They share the sword carried on the shoulder and the arm that holds it, so the game can switch
+# between them without the sword jumping; they differ in the legs, the lean and the cape.
 KINDS = ('walk', 'back', 'strafe_r', 'strafe_l')
 LEAN_OF = {'walk': 1.0, 'back': 0.0, 'strafe_r': 0.5, 'strafe_l': 0.5}    # share of LEAN_DEG
 TRAIL_OF = {'walk': 1.0, 'back': -0.4, 'strafe_r': 0.0, 'strafe_l': 0.0}  # side view: how far the cape trails behind
@@ -114,6 +132,7 @@ HIP_HALF = 17.0          # front/back: each hip joint this far from the centre l
 STRAFE_IN = 11           # back view: the boots stand 30 px out; in the sidestep they are under the hips (19)
 CROSS = 8.0              # strafing: the trailing foot swings this far forward, around the other leg
 LIFT_STRAFE = 6.0        # strafing: how high the swinging foot is lifted
+STRAFE_D = [6, 6, 5, 4, 3, 2, 2, 3, 4, 5]   # strafing: the hips' drop per pose (px; twice a cycle, 1 px steps)
 
 
 def _walk_state(p):
@@ -160,9 +179,12 @@ def loop_state(i, kind='walk'):
         s = _walk_state((1.0 - p) % 1.0)
     else:
         side = 1 if kind == 'strafe_r' else -1
-        hip = gait.hip_z(p)
+        # the feet are up to 78 px apart: the hips sink more than in the walk, so that the
+        # legs are never longer than they are (front view: hip to ankle 60 px)
+        D = STRAFE_D[i % len(STRAFE_D)]
+        hip = gait.HIP_REST - D
         lead, trail = _strafe_leg(p, False, side, hip), _strafe_leg(p + 0.5, True, side, hip)
-        s = {'D': round(gait.drop(p)), 'tw': 0, 'sw': 0, 'sw1': 0, 'inR': STRAFE_IN, 'inL': STRAFE_IN, 'arm': 0.0,
+        s = {'D': D, 'tw': 0, 'sw': 0, 'sw1': 0, 'inR': STRAFE_IN, 'inL': STRAFE_IN, 'arm': 0.0,
              'p': p, 'legR': lead if side > 0 else trail, 'legL': trail if side > 0 else lead}
     s.update(b=1.0, amp=1.0, kind=kind, lean=LEAN_OF[kind])
     return s
@@ -205,14 +227,15 @@ def start_clip(kind='walk'):
       strafe  the foot on the side he is going to steps out, poses 0-5 follow"""
     # the stepping foot over the four poses: (distance along the travel direction, lift), pitch
     swing = {'walk': [((1.0, 2.0), -6.0), ((6.0, 5.0), -4.0), ((13.0, 5.0), 2.0), ((19.0, 2.5), 8.0)],
-             'back': [((-2.0, 2.0), -6.0), ((-7.0, 5.0), -12.0), ((-12.0, 5.0), -18.0), ((-15.5, 3.5), -23.0)],
+             # (the toe points down: the ankle stays high enough for it to clear the ground)
+             'back': [((-2.0, 2.0), -6.0), ((-7.0, 5.5), -12.0), ((-12.0, 7.0), -18.0), ((-15.5, 7.2), -23.0)],
              'strafe': [((2.0, 2.5), 0.0), ((8.0, 5.0), 0.0), ((15.0, 5.0), 0.0), ((21.0, 2.0), 0.0)]}
     move = -1 if kind == 'back' else 1                   # the planted foot drifts against the travel
     states = []
     for k in range(START_N):
-        b = gait.smooth((k + 1) / START_N)
+        b = ease((k + 1) / START_N)
         if k < START_HALF:
-            D = k + 1
+            D = k + 1 if kind in ('walk', 'back') else k + 2       # the sidestep's loop starts 6 px down
             hip = gait.HIP_REST - D
             u = gait.smooth((k + 1) / START_HALF)
             if kind in ('walk', 'back'):
@@ -256,9 +279,12 @@ def stop_clip(entry, kind='walk'):
     states = []
     for j in range(STOP_N):
         u = {first: gait.smooth(min(1.0, (j + 1) / 4)), ('L' if first == 'R' else 'R'): gait.smooth(_frac(j, 2, 6))}
-        D = round(s0['D'] * (1 - gait.smooth(j / (STOP_N - 1))))
+        if kind in ('walk', 'back'):
+            D = round(s0['D'] * (1 - gait.smooth(j / (STOP_N - 1))))
+        else:
+            D = round(s0['D'] * (1 - (j + 1) / STOP_N))       # up to 6 px to give back: 1 px a pose
         hip = gait.HIP_REST - D
-        b = 1 - gait.smooth((j + 1) / (STOP_N + 1))
+        b = 1 - ease((j + 1) / (STOP_N + 1))
         s = {'D': D, 'b': b, 'amp': b, 'tw': round(s0['tw'] * b), 'sw': round(s0['sw'] * b),
              'sw1': round(s0['sw1'] * b), 'arm': s0['arm'] * b, 'p': s0['p'], 'kind': kind, 'lean': LEAN_OF[kind]}
         for k in 'RL':
@@ -281,28 +307,14 @@ PAULDRON = {
     'front': [(98, 128), (118, 102), (138, 98), (140, 66), (150, 66), (153, 96), (170, 92), (172, 46),
               (181, 46), (184, 92), (190, 100), (190, 196), (150, 204), (112, 200), (98, 190)],
 }
-# back view, local px: the whole right arm down to the cuff (the standing sprite erases it below
-# the elbow), the row of the elbow, where the fist goes
-BACK_ARM = [(236, 108), (262, 100), (290, 112), (302, 150), (298, 200), (300, 245), (314, 262), (314, 300),
-            (310, 336), (270, 336), (266, 298), (262, 255), (244, 240), (236, 200), (232, 150)]
-BACK_ELBOW_ROW = 262
-BACK_FIST = (290, 351)
-
 _built = {}
-
-
-def _fist_centre(layer, rows=13):
-    x0, y0, x1, y1 = layer.bbox()
-    fist = [q for q in layer.pix if q[1] >= y1 - rows]
-    return sum(q[0] for q in fist) / len(fist), (y1 - rows + y1 - 1) / 2
 
 
 def _layers(direction):
     if direction in ('right', 'left'):
         if 'side' not in _built:
             S = dict(side.layers())
-            lay = S['lay']
-            S['place0'] = drag.standing('right', lay)
+            S['place0'] = swd.standing('right', S['lay'])
             _built['side'] = S
         return _built['side']
     if direction in _built:
@@ -345,45 +357,27 @@ def _layers(direction):
             q = (2 * rig.AX - x, y)
             if x > rig.AX and (q not in allpix or q in sword) and y > S['sm']['chest']:
                 cape.pix[q] = c
-        # the sword arm hanging: the free arm's pixels mirrored
-        arm_pix = layers['arm'].pix
-        S['arm2'] = rig.Layer('arm2', {(2 * rig.AX - x, y): c for (x, y), c in arm_pix.items()})
-        S['hand1'] = _fist_centre(S['arm2'])
+        # the sword arm (arm.py: the other arm's drawing mirrored) comes out from under the
+        # shoulder plate here
+        sx, sy = lay.local_to_final(arm.SHOULDER)
+        S['shoulder'] = (2 * rig.AX + 1 - sx, sy)
     else:
         for name in ('leg_l', 'leg_r'):
             rig.extend_up(layers[name], allpix, 14)
         arm_l = layers['arm']
         S['free'] = rig.Layer('free', {q: c for q, c in arm_l.pix.items() if q[0] < rig.AX},
                               {q: c for q, c in arm_l.under.items() if q[0] < rig.AX})
-        # the sword arm: the concept's own hanging right arm (the standing pose erases it below
-        # the elbow: the hand is up on the grip), stylised the same way - not the erased one,
-        # so there is no seam at the cut
-        full = Image.new('RGBA', lay.canvas_size, (0, 0, 0, 0))
-        full.alpha_composite(B.ref('back'), (idle.PAD, idle.PAD))
-        orig = rig.pixels(B.stylize(lay.canvas_to_work(full), B.load_palette()))
-        mask = rig.poly_mask(view, [BACK_ARM], lay)
-        armour = lambda c: not rig.is_cloth(c) and not (c[0] - c[1] > 35 and B.lum(c) < 110)    # not the cape's reds
-        whole = {q: c for q, c in orig.items() if q in mask and armour(c)}
-        elbow = lay.local_to_final((0, BACK_ELBOW_ROW))[1]
-        S['hand1'] = lay.local_to_final(BACK_FIST)
-        # the fist: seen from the thumb's side (the blade trails towards the camera from the
-        # thumb side of the fist) - the front view's hanging fist, which shows that side
-        fist = arm.fist_only(S['hand1'], (0.0, 1.0), (FW, FH), mirror=True)
-        fore = {q: c for q, c in whole.items() if q[1] >= elbow}
-        top = min(q[1] for q in fist)
-        fore = {q: c for q, c in fore.items() if q[1] < top + 2}
-        fore.update(fist)
-        S['forearm'] = rig.Layer('forearm', fore)
-        S['fist_rows'] = max(q[1] for q in fist) - top + 1
-    S['place0'] = drag.standing(view, lay)
+        # (the sword arm: the approved sprite's own, down to just below the elbow - the hand is
+        # up at the shoulder in front of him, as it is when he stands)
+    S['place0'] = swd.standing(view, lay)
     _built[direction] = S
     return S
 
 
-import idle      # noqa: E402  (used by _layers for the back view's arm)
 import side      # noqa: E402
 import arm       # noqa: E402
 import fleg      # noqa: E402
+import carry     # noqa: E402
 
 
 # ------------------------------------------------------------------ shared pieces of a pose
@@ -425,43 +419,57 @@ def shear_to(pix, tip, grip, delta):
 
 
 _swords = {}
+ARM_JOINTS = {}          # (direction, clip, pose) -> the sword arm's joints as drawn (checks.py reads them)
+SWORD_DRAWN = {}         # (direction, clip, pose) -> (the sword's pixels before anything covers it, its placement);
+                         # facing left: in facing-right space, like the pose itself until render() mirrors it
 
 
-def split_at_grip(pix, place):
-    """A drawn sword as (pommel side, blade side) of the grip point."""
-    g, ax = place['grip'], place['axis']
-    back, front = {}, {}
-    for (x, y), c in pix.items():
-        (front if (x + 0.5 - g[0]) * ax[0] + (y + 0.5 - g[1]) * ax[1] >= 0 else back)[(x, y)] = c
-    return back, front
-
-
-def sword_pixels(S, b, hand1, shift, far=False, source='bare'):
-    """The view's sword for blend b (0 standing .. 1 dragged). hand1: where the dragging fist
-    is with the body at rest (final px); shift: (dx, dy) the body has moved it this pose.
-    b = 1: one cached render with the fist DREF px down, sheared to the fist (tip fixed), so
-    the blade's texture does not shimmer. Returns (pixels, placement)."""
-    view, lay = S['view'], S['lay']
+def sword_pixels(S, b, ride, far=False):
+    """The view's sword at blend b (0 planted as he stands .. 1 carried on the shoulder), as
+    (pixels, placement). ride: whole px the chest has moved the shoulder - and the carried
+    sword on it - from rest. b = 1: one cached render per view, moved by whole pixels, so
+    every way of moving shows the very same sword and its texture never shimmers. It is drawn
+    without the standing pose's fist: the fist is the arm's (arm.py)."""
+    view = S['view']
     if b >= 1.0:
         key = (view, far)
         if key not in _swords:
-            place = drag.dragged(view, DREF, lay, hand=(hand1[0], hand1[1] + DREF), far=far)
-            _swords[key] = (drag.sword_image(view, place, (FW, FH), source='bare'), place)
+            place = carry.place(view, 1.0, S['place0'], far)
+            _swords[key] = (swd.sword_image(view, place, (FW, FH), source='bare'), place)
         pix, place = _swords[key]
-        delta = (shift[0], shift[1] - DREF)
         g = place['grip']
-        moved = dict(place, grip=(g[0] + delta[0], g[1] + delta[1]))
-        return shear_to(pix, drag.tip_of(view, place), g, delta), moved
-    p1 = drag.dragged(view, shift[1], lay, hand=(hand1[0] + shift[0], hand1[1] + shift[1]), far=far)
-    place = drag.blend(S['place0'], p1, b)
-    if view == 'right':
-        # the tip stays on the ground while the sword swings back (and comes towards / goes
-        # away from the camera: lower / higher on screen)
-        im, pts, _ = drag.sword_source(view)
-        n = math.hypot(pts['tip'][0] - pts['grip'][0], pts['tip'][1] - pts['grip'][1])
-        ground = rig.AY + 0.9 + (drag.tip_of(view, p1)[1] - (rig.AY + 0.9)) * b
-        place['grip'] = (place['grip'][0], ground - place['axis'][1] * n)
-    return drag.sword_image(view, place, (FW, FH), source=source), place
+        return _moved(pix, ride), dict(place, grip=(g[0] + ride[0], g[1] + ride[1]))
+    place = carry.place(view, b, S['place0'], far, ride)
+    return swd.sword_image(view, place, BIG, source='bare', origin=(-EXT, -EXT)), place
+
+
+def _moved(pix, by):
+    if by == (0, 0):
+        return pix
+    return {(x + by[0], y + by[1]): c for (x, y), c in pix.items()}
+
+
+def _lerp(p, q, t):
+    return (p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t)
+
+
+def ease(t):
+    """The way up to the shoulder and back down: eased at both ends, but less than smooth() -
+    its middle would swing the sword past the body in too few poses (a pop)."""
+    return 0.5 * (t + gait.smooth(t))
+
+
+def reach(shoulder, elbow, hand):
+    """The elbow nearest the wanted one that the arm's bones allow: no further from the fist
+    than the forearm and fist are long, no further from the shoulder than the upper arm (on
+    screen a bone may be shorter - it points at the camera - never longer)."""
+    l1, l2, l3 = arm.lengths()
+    for _ in range(6):
+        for anchor, length in ((hand, l2 + l3), (shoulder, l1)):
+            d = math.dist(elbow, anchor)
+            if d > length:
+                elbow = (anchor[0] + (elbow[0] - anchor[0]) * length / d, anchor[1] + (elbow[1] - anchor[1]) * length / d)
+    return elbow
 
 
 def _finish(direction, out):
@@ -472,9 +480,6 @@ def _finish(direction, out):
 
 
 # ------------------------------------------------------------------ side views
-_arm_cache = {}
-
-
 def pose_side(clip, i, far=False):
     """A side-view pose in facing-right space. far = the Boss faces left (mirrored by
     render()): the sword is in the far hand, the near arm hangs free."""
@@ -498,9 +503,9 @@ def pose_side(clip, i, far=False):
         P = gait.solve(L['hip'][1], (L['ankle'][0], L['ankle'][1] - DEPTH * lat * cam), L['pitch'], L['down'])
         return P, lat * cam
     (near_leg, near_depth), (far_leg, far_depth) = (seen(s['legL']), seen(s['legR'])) if far else (seen(s['legR']), seen(s['legL']))
-    # the legs are HIP_HALF either side of the centre: the far foot is nearer the camera than
-    # the near one only while it crosses in front
-    far_on_top = far_depth - HIP_HALF > near_depth + HIP_HALF
+    # the near leg stays in front: the feet only come level (2 px across at most), and a dark
+    # far leg popping in front for a pose or two reads as a flicker (checks.py caught it)
+    far_on_top = False
 
     def chest_dx(sy, t, ln=lean):
         """Forward shift of a source row: the lean grows with the height above the belt, the
@@ -509,26 +514,37 @@ def pose_side(clip, i, far=False):
 
     sh0 = S['shoulder']
     shoulder = (sh0[0] + chest_dx(sh0[1], tw), sh0[1] + d)
-    # the dragging hand with the body at rest (hips DREF down, full lean): at the end of the
-    # arm hanging from the shoulder
-    sh_ref = (sh0[0] + round(lean_full * max(0.0, belt - sh0[1])), sh0[1] + DREF)
-    J_ref = arm.hanging(sh_ref, *DRAG_ARM)
-    hand1 = (J_ref['hand'][0], J_ref['hand'][1] - DREF)
-    # the hand follows the right shoulder a pose late; with less lean the shoulder (and the
-    # hand under it) is further back
-    rise = max(0.0, belt - sh0[1])
-    kdx = round(lean_kind * rise) - round(lean_full * rise)
-    sword, place = sword_pixels(S, b, hand1, (s1['tw'] + kdx, d1), far=far,
-                                source='bare' if (not far or b >= FAR_BARE) else 'fist')
+    # the carried sword lies on the shoulder plate and the fist holds it there: both move with
+    # the plate's top, in the same pose (it rests on the body: nothing in between could lag)
+    ride = (chest_dx(PLATE_TOP, tw), d)
+    sword, place = sword_pixels(S, b, ride, far=far)
+    SWORD_DRAWN[('left' if far else 'right', clip.name, i)] = (sword, place)
+    # the arm that holds it: from under the shoulder plate forward to the elbow, the forearm up
+    # to the fist on the grip. Carried: one render, moved with the sword. On the way up from /
+    # down to the standing pose: the elbow between the approved sprite's (at the chest) and the
+    # carry's, the forearm from there to the fist wherever the sword has it
+    g1 = carry.fist_screen('right', far)
+    e1 = (g1[0] + SIDE_ELBOW[0], g1[1] + SIDE_ELBOW[1])
+    if b >= 1.0:
+        J, by = arm.pose(sh0, e1, g1), ride
+    else:
+        e0 = lay.local_to_final(ELBOW0)
+        e0 = (e0[0] + chest_dx(e0[1], tw), e0[1] + d)
+        elbow = reach(shoulder, _lerp(e0, (e1[0] + ride[0], e1[1] + ride[1]), b), place['grip'])
+        J, by = arm.pose(shoulder, elbow, place['grip']), (0, 0)
+    ARM_JOINTS[('left' if far else 'right', clip.name, i)] = J
 
     out = []
     if far:
-        if b < FAR_BARE:
-            # the far forearm still reaches past the chest to the fist on the grip
-            g0 = S['place0']['grip']
-            mx, my = round(place['grip'][0] - g0[0]), round(place['grip'][1] - g0[1])
-            out.append({(x + mx, y + my): c for (x, y), c in S['farwrist'].pix.items()})
-        out.append(sword)                                 # behind the cape and the body
+        # the sword is on the far shoulder: behind the cape, the body and the head. What shows
+        # is the blade behind him and, in front of the throat, the fist with the pommel. The
+        # forearm and the elbow are behind the chest: only the fist is drawn (lit like the
+        # fist the standing pose shows in front of the chest)
+        out.extend([sword, _moved(arm.near(arm.render(J, (FW, FH), parts=('fist',))), by)])
+    else:
+        # the near arm is lit like the approved side view's forearm
+        upper = _moved(arm.near(arm.render(J, (FW, FH), parts=('upper',))), by)
+        hand = _moved(arm.near(arm.render(J, (FW, FH), parts=('fore', 'fist'))), by)
     # cape: top on the shoulders; trails behind (-x) when he walks forward, is pushed a little
     # forward when he backs up, hangs straight in a sidestep; flutters once per step
     drift = 2.0 * TRAIL_OF[s['kind']]
@@ -557,6 +573,8 @@ def pose_side(clip, i, far=False):
     body_src = lambda x, y: (x - chest_dx(y - d, tw), y - d)
     out.append(rig.warp(layers['body'], body_src, pad=16))
 
+    pauldron = rig.warp(S['pauldron'], body_src, pad=16)
+    head = rig.warp(layers['head'], lambda x, y: (x - chest_dx(y - d1, tw1), y - d1), pad=16)
     if far:
         # the near arm hangs free from the shoulder and swings against the near (left) leg
         fa = S['free_arm']
@@ -566,28 +584,15 @@ def pose_side(clip, i, far=False):
         pix = {(x + mx, y + my): c for (x, y), c in fa.pix.items()}
         sh = (J['shoulder'][0] + mx, J['shoulder'][1] + my)
         hd = (J['hand'][0] + mx, J['hand'][1] + my)
-        out.append(shear_to(pix, sh, hd, (swing, 0)))
+        out.extend([shear_to(pix, sh, hd, (swing, 0)), pauldron, head])
     else:
-        out.append(sword)
-        # the arm that holds it: from the shoulder to the fist on the grip
-        if b >= 1.0:
-            if 'loop' not in _arm_cache:
-                _arm_cache['loop'] = arm.near(arm.render(J_ref, (FW, FH)))
-            pix = shear_to(_arm_cache['loop'], J_ref['hand'], sh_ref, (round(shoulder[0] - sh_ref[0]), round(shoulder[1] - sh_ref[1])))
-            g = place['grip']
-            pix = shear_to(pix, shoulder, J_ref['hand'], (round(g[0] - J_ref['hand'][0]), round(g[1] - J_ref['hand'][1])))
-        else:
-            # between the standing pose's elbow (the approved sprite's, at the chest) and the
-            # hanging arm's; the forearm runs from there to the fist wherever the sword has it
-            # (half-way down it points towards the camera: short on screen)
-            e0 = lay.local_to_final(ELBOW0)
-            e0 = (e0[0] + chest_dx(e0[1], tw), e0[1] + d)
-            e1 = (J_ref['elbow'][0] + shoulder[0] - sh_ref[0], J_ref['elbow'][1] + shoulder[1] - sh_ref[1])
-            elbow = (e0[0] + (e1[0] - e0[0]) * b, e0[1] + (e1[1] - e0[1]) * b)
-            pix = arm.near(arm.render(arm.pose(shoulder, elbow, place['grip']), (FW, FH)))
-        out.append(pix)
-    out.append(rig.warp(S['pauldron'], body_src, pad=16))
-    out.append(rig.warp(layers['head'], lambda x, y: (x - chest_dx(y - d1, tw1), y - d1), pad=16))
+        # the sword is on the camera's side of the head; the upper arm comes out from under
+        # the shoulder plate; the forearm and the fist are in front of everything
+        out.extend([upper, pauldron, head, sword])
+        if b >= carry.ON_SHOULDER:
+            # the blade lies on the shoulder plate: the plate's rim hides its lower edge
+            out.append({q: c for q, c in pauldron.items() if q in sword and q not in head})
+        out.append(hand)
     return _finish('right', out)
 
 
@@ -626,28 +631,7 @@ def _leg_front_src(layer, lay, L, d, hip_dx, foot_dx, marks):
     return f
 
 
-def _hang_src(layer, top_shift, hand, fist_rows=13, hide_above=False):
-    """A hanging arm drawn from its shoulder (its top rows moved by top_shift) to its fist
-    (the last fist_rows rows, centred on `hand`): rows dropped or duplicated in between, the
-    sideways shift running from the shoulder's to the fist's. hand None: only top_shift."""
-    x0, y0, x1, y1 = layer.bbox()
-    fist_top = y1 - fist_rows
-    fist = [q for q in layer.pix if q[1] >= fist_top]
-    fx = sum(q[0] for q in fist) / len(fist)
-    fy = (fist_top + y1 - 1) / 2
-    hx, hy = hand
-    tgt_fist = round(hy - (fy - fist_top))
-    tgt_top = y0 + top_shift[1]
-    dxf = round(hx - fx)
-    if tgt_fist <= tgt_top:                 # the hand is above the part's top: only the fist shows
-        if hide_above:
-            return lambda x, y: None        # (back view: the raised hand is in front of the body)
-        return lambda x, y: (x - dxf, y - (tgt_fist - fist_top)) if y >= tgt_fist else None
-    src, tgt = [y0, fist_top, y1], [tgt_top, tgt_fist, tgt_fist + (y1 - fist_top)]
-    def f(x, y):
-        dx = round(top_shift[0] + (dxf - top_shift[0]) * _frac(y, tgt[0], tgt[1]))
-        return x - dx, round(piecewise(y, src, tgt))
-    return f
+_fists = {}
 
 
 def _front_back(direction, clip, i):
@@ -658,7 +642,6 @@ def _front_back(direction, clip, i):
     d, d1, b = s['D'], s1['D'], s['b']
     kind = s['kind']
     strafe = kind.startswith('strafe')
-    k_kind = sign * round(LEAN_ROWS * s['lean'])
     k = sign * round(LEAN_ROWS * b * s['lean'])   # the chest's rows: lower in front, higher behind
     # screen x of the Boss's right side: left in the front view, right in the back view
     hipx = -sign * s['sw']
@@ -673,14 +656,12 @@ def _front_back(direction, clip, i):
         return round(t ** 1.5 * (2.5 * -sign * math.sin(2 * math.pi * (j['p'] - 0.05)) + drift
                                  + (0.8 * math.sin(4 * math.pi * j['p']) if strafe else 0.0)) * j['amp'])
     cape = rig.warp(layers['cape'], cape_src(sm, d + k, _hem(clip, i), cx, trail), pad=16)
-    # the dragging fist is where the hanging arm's own fist is (it rides on the chest)
-    kf = sign * LEAN_ROWS
-    h1 = (S['hand1'][0], S['hand1'][1] + kf)
-    # while the sword is still upright in front of the body it keeps its own fist (front view:
-    # with the shadowed arm behind it, which joins the fist to the shoulder)
-    source = 'bare' if b >= SWORD_BEHIND else ('raw' if direction == 'down' else 'fist')
-    sword, place = sword_pixels(S, b, h1, (-sign * s1['sw1'], d1 + k_kind - kf), source=source)
-    hand = place['grip']
+    # the carried sword lies on the shoulder plate, which rides on the chest; the blade and the
+    # guard are on / behind the shoulder, the hilt and the fist in front of it
+    ride = (cx, d + k)
+    sword, place = sword_pixels(S, b, ride)
+    SWORD_DRAWN[(direction, clip.name, i)] = (sword, place)
+    hilt, blade = carry.split(sword, place)
     head = rig.warp(layers['head'], lambda x, y: (x - hx, y - d1 - k), pad=16)
 
     # chest: the lean's rows are taken out of (front) or added to (back) the belly
@@ -693,9 +674,10 @@ def _front_back(direction, clip, i):
 
     out = []
     if direction == 'down':
+        back = carry.blade_back(b)
         out.append(cape)
-        if b >= SWORD_BEHIND:
-            out.append(sword)
+        if back:
+            out.append(blade)       # back over the shoulder: over the cape, behind the plate's rim and the head
         if strafe:
             # the legs swing sideways from the hips and cross: posed from the concept (fleg.py);
             # the trailing leg passes in front (nearer the camera), so it is drawn over the other
@@ -721,15 +703,43 @@ def _front_back(direction, clip, i):
         out.append(rig.warp(free, lambda x, y: (x - cx, round(piecewise(y, [fb[1], fb[3] - 1],
                                                                         [fb[1] + d + k, fb[3] - 1 + d + k + arm_extra]))),
                             pad=16))
-        if b > 0:
-            out.append(rig.warp(S['arm2'], _hang_src(S['arm2'], (cx, d + k), hand), pad=60))
         out.append(rig.warp(S['pauldron'], body_src, pad=16))
         out.append(head)
-        if b < SWORD_BEHIND:
-            out.append(sword)
+        if not back:
+            out.append(blade)       # down, forward or up in front of him: in front
+        # the sword arm (arm.py): the upper arm comes forward from under the shoulder plate
+        # (short on screen), the forearm goes up to the fist in front of the plate; the pommel
+        # points at the camera, so the hilt is over the forearm and the fist closes over it
+        g1 = carry.fist_screen('front')
+        e1 = (g1[0] + FRONT_ELBOW[0], g1[1] + FRONT_ELBOW[1])
+        sh0 = S['shoulder']
+        if b >= 1.0:
+            J, by = arm.pose(sh0, e1, g1), ride
+        else:
+            e0 = (FRONT_ELBOW0[0] + cx, FRONT_ELBOW0[1] + d + k)
+            sh = (sh0[0] + cx, sh0[1] + d + k)
+            J = arm.pose(sh, reach(sh, _lerp(e0, (e1[0] + ride[0], e1[1] + ride[1]), b), place['grip']), place['grip'])
+            by = (0, 0)
+        ARM_JOINTS[('down', clip.name, i)] = J
+        # (lit like the fist on the planted sword, not like the other arm in the cape's shadow)
+        out.append(_moved(arm.near(arm.render(J, (FW, FH), parts=('upper', 'fore'))), by))
+        out.append(hilt)
+        out.append(_moved(arm.near(arm.render(J, (FW, FH), parts=('fist',))), by))
     else:
-        if b < SWORD_BEHIND:
-            out.append(sword)
+        # the hilt and the fist are in front of him: behind everything here (the fist's top
+        # shows over the shoulder); the blade, once it points back over the shoulder, comes
+        # towards the camera: in front of everything. Before that (planted, swinging forward and
+        # up in front of him) it is behind him too - only what rises over his shoulder shows
+        back = carry.blade_back(b)
+        out.append(hilt)
+        if b >= 1.0:
+            if 'back' not in _fists:
+                _fists['back'] = arm.fist_only(carry.fist_screen('back'), (0.0, -1.0), (FW, FH))
+            out.append(_moved(_fists['back'], ride))
+        else:
+            out.append(arm.fist_only(place['grip'], (0.0, -1.0), (FW, FH)))
+        if not back:
+            out.append(blade)
         boots = [('leg_l', s['legL'], s['inL']), ('leg_r', s['legR'], -s['inR'])]
         if kind == 'strafe_l':
             boots.reverse()         # the trailing foot crosses in front of him: behind, seen from the back
@@ -743,17 +753,11 @@ def _front_back(direction, clip, i):
         out.append(rig.warp(free, lambda x, y: (x - cx, round(piecewise(y, [fb[1], fb[3] - 1],
                                                                         [fb[1] + d + k, fb[3] - 1 + d + k + arm_extra]))),
                             pad=16))
-        # the sword arm: the approved arm (down to just below the elbow) rides on the chest;
-        # the forearm and fist come down into view as the hand is lowered (pointing away from
-        # the camera they are foreshortened: rows dropped); the blade comes towards the
-        # camera from the thumb side of the fist, so the pommel is behind the arm and the
-        # blade over it
-        pommel, blade = split_at_grip(sword, place) if b >= SWORD_BEHIND else ({}, {})
-        out.append(pommel)
+        # the sword arm: the approved arm (down to just below the elbow) rides on the chest; the
+        # forearm and the hand are in front of him
         out.append(rig.warp(layers['arm'], lambda x, y: (x - cx, y - d - k) if x - cx >= rig.AX else None, pad=16))
-        if b >= SWORD_BEHIND:
-            out.append(rig.warp(S['forearm'], _hang_src(S['forearm'], (cx, d + k), hand, S['fist_rows'], True), pad=60))
-        out.append(blade)
+        if back:
+            out.append(blade)
         out.append(head)
     return _finish(direction, out)
 

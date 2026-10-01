@@ -5,10 +5,15 @@ stylised like every rendered part (the same method as the legs, limb.py).
 User 2026-09-30: the dragging arm was "twisted, the fist crooked and not joined to the arm" -
 it had been one arm image stretched from the shoulder to the sword's own fist, which turned
 with the sword. Now the arm has an elbow, the fist is part of the arm (in line with the
-forearm, always its own size), and the sword passes through the fist (drag.clean_sword).
+forearm, always its own size), and the sword passes through the fist (sword.clean_sword).
 
 The source arm is seen from the front; its elbow spike points outwards. Mirrored (the default)
 the spike points to screen left = backwards for a Boss facing right.
+
+The same arm holds the sword on the shoulder while he moves (carry.py, anim_walk.py): upper
+arm forward from under the shoulder plate, forearm up to the fist on the grip. render() can
+draw some of its parts only, so that the shoulder plate goes between the upper arm and the
+forearm, and the hilt between the forearm and the fist.
 """
 import math
 from PIL import Image, ImageDraw
@@ -126,17 +131,21 @@ def _stylize(canvas, pal=None):
     return {(x + x0 // 4, y + y0 // 4): c for (x, y), c in rig.pixels(small).items()}
 
 
-def render(J, frame=(rig.FW, rig.FH), mirror=True, pal=None):
-    """The arm on the joints J (pose() / hanging()): {(x, y): colour} in the frame."""
-    key = (tuple(round(v, 2) for k in ('shoulder', 'elbow', 'wrist', 'hand') for v in J[k]), frame, mirror)
+def render(J, frame=(rig.FW, rig.FH), mirror=True, pal=None, parts=None):
+    """The arm on the joints J (pose() / hanging()): {(x, y): colour} in the frame. parts:
+    only these of 'upper', 'fore', 'fist' (another part goes between them in the z order: a
+    shoulder plate over the upper arm, a hilt under the fist)."""
+    key = (tuple(round(v, 2) for k in ('shoulder', 'elbow', 'wrist', 'hand') for v in J[k]), frame, mirror, parts)
     if key in _cache:
         return _cache[key]
-    parts = _part_images(mirror)
     canvas = Image.new('RGBA', (frame[0] * B.WORK, frame[1] * B.WORK), (0, 0, 0, 0))
     target = {'upper': (J['shoulder'], J['elbow']), 'fore': (J['elbow'], J['wrist']), 'fist': (J['wrist'], J['hand'])}
     k = B.sheet_scale()
+    images = _part_images(mirror)
     for name, _, _, _ in PARTS:
-        im, pivot, bone = parts[name]
+        if parts is not None and name not in parts:
+            continue
+        im, pivot, bone = images[name]
         a, b = target[name]
         if math.dist(a, b) < 1.0:
             continue                       # (an upper arm wholly under the shoulder plate)

@@ -107,7 +107,7 @@ def layers():
     shoulder = lay.local_to_final(SHOULDER)
     J = arm.hanging(shoulder, *FREE_ARM)
     _S.update(layers=L, pauldron=pauldron, backdrop=backdrop, farwrist=farwrist, lay=lay, sm=sm, view='right',
-              shoulder=shoulder, free_arm=rig.Layer('free_arm', arm.near(arm.render(J, (rig.FW, 272)))), free_joints=J)
+              shoulder=shoulder, free_arm=rig.Layer('free_arm', arm.near(arm.render(J, (rig.FW, rig.FH)))), free_joints=J)
     return _S
 
 
