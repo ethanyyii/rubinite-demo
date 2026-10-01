@@ -57,14 +57,17 @@ def container(frames):
     return ok, (W, H), (min(xs) + e, max(xs) + e, min(ys) + e, max(ys) + e)
 
 
-def technical(name, d, frames, below=None):
+def technical(name, d, frames, below=None, low_frames=None):
+    """low_frames: measure "below the foot line" on these instead (the attacks: the body without
+    the sword - the blade held low towards the camera is drawn below the line by perspective and
+    is checked in 3D, above the ground, instead)."""
     stand = rig.pixels(rig.standing()[d])
     pal = set(B.load_palette())
     bad = sorted({c for f in frames for c in f.values() if tuple(c) not in pal})
     check(f'{name} {d}: every colour in the palette', not bad, f'{len(bad)} off-palette')
     ok, size, ext = container(frames)
     check(f'{name} {d}: inside the {size[0]}x{size[1]} cell', ok, f'x {ext[0]}..{ext[1]}, y {ext[2]}..{ext[3]}')
-    low = max(q[1] for f in frames for q in f) - GROUND
+    low = max(q[1] for f in (low_frames or frames) for q in f) - GROUND
     lim = BELOW[d] if below is None else max(BELOW[d], below)
     check(f'{name} {d}: nothing more than {lim} px below the foot line', low <= lim, f'lowest {low:+d}')
     base_isl = len(C.islands(stand))
