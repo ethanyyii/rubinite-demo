@@ -26,6 +26,12 @@ const CLEAVE_WIDTH := 53.0
 ## §4.4 突刺的寬度與突進距離
 const THRUST_WIDTH := 40.0
 const LUNGE_DISTANCE := 160.0
+## §4.2 雙斬（及三斬）第二刀：左腳直接往前踏、右腳不收回，Boss 揮兩刀前進一步（2026-10-01 使用者：「這樣的
+## 代價是 boss 揮兩劍會前進一點，我接受，遊戲裡也要改」）。距離 = 第一刀右腳踏出的距離（動畫 tools/boss_rig
+## attacks.RF_QUICK）：踏完後右腳正好在 Boss 的位置上、左腳踏在前面，和第一刀左右對調。
+## 命中前 0.2 秒內（方向已鎖定）踏完，判定期間不動。tuning-log 2026-10-01
+const TWIN_STEP_DISTANCE := 28.0
+const TWIN_STEP_TIME := 0.2
 ## §4.6 灰燼衝擊的環
 const RING_RADIUS := 185.0
 const RING_THICKNESS := 21.0
@@ -175,11 +181,12 @@ static func _twin_first() -> BossHitData:
 		"shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C1"})
 
 
-## §4.2 雙斬第二擊：第一擊之後 0.9 秒
+## §4.2 雙斬第二擊：第一擊之後 0.9 秒；命中前左腳往前踏 TWIN_STEP_DISTANCE
 static func _twin_second(is_last: bool) -> BossHitData:
 	return _hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.1, "damage": 28,
 		"posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2 if is_last else 0.0,
-		"hit_effect": FX.LAUNCH, "shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C2"})
+		"hit_effect": FX.LAUNCH, "shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": &"C2",
+		"step_distance": TWIN_STEP_DISTANCE, "step_time": TWIN_STEP_TIME})
 
 
 ## §4.3 墜誓下劈：起手 1.0 → 判定 0.1；前方直線 CLEAVE_LENGTH、寬 CLEAVE_WIDTH。

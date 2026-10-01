@@ -433,6 +433,9 @@ func _tick_attack() -> void:
 			_face_player()
 			if not in_hold(i, e):
 				_advance_toward_player()
+		# 命中前踏步（雙斬第二刀）：方向已鎖定，判定開始時踏完
+		if hit.step_distance > 0.0 and e >= start - Frames.of(hit.step_time):
+			pos += facing * (hit.step_distance / Frames.of(hit.step_time))
 		if hit.attack_type == CombatTypes.AttackType.UNBLOCKABLE and not _danger_sent[i] \
 				and e >= start - Frames.of(hit.danger_time):
 			_danger_sent[i] = true

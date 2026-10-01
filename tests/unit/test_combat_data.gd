@@ -149,6 +149,16 @@ func test_ranges_match_doc() -> void:
 	assert_near(thrust.length, 150.0)
 	assert_near(thrust.width, 40.0)
 	assert_near(thrust.lunge_distance, 160.0)
+	# 雙斬／三斬第二刀前踏（2026-10-01 使用者）；其他每一擊都不踏
+	for phase in [1, 2]:
+		for id: StringName in VeltharisData.moves(phase):
+			var m := VeltharisData.move(phase, id)
+			for i in m.hits.size():
+				var stepping := id in [&"twin_slash", &"triple_slash", &"triple_slash_delayed"] and i == 1
+				assert_near(m.hits[i].step_distance, VeltharisData.TWIN_STEP_DISTANCE if stepping else 0.0, 0.0001,
+					"%s 第 %d 擊前踏" % [id, i + 1])
+				if stepping:
+					assert_true(m.hits[i].step_time <= m.hits[i].lock_before + 0.0001, "%s：踏步在方向鎖定之後" % id)
 	var ring := VeltharisData.move(1, &"ash_impact").hits[0]
 	assert_eq(ring.shape, CombatTypes.Shape.RING)
 	assert_near(ring.radius, 185.0)

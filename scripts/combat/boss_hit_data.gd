@@ -28,6 +28,10 @@ extends Resource
 @export var thickness := 0.0
 ## 判定期間 Boss 前進的距離（裁決突刺 LUNGE_DISTANCE，160px）
 @export var lunge_distance := 0.0
+## 判定開始前 step_time 秒內 Boss 沿鎖定的方向前進的距離，判定開始時已經踏完（雙斬／三斬第二刀左腳往前踏，
+## TWIN_STEP_DISTANCE；2026-10-01 使用者）。判定期間位置不動，被完美彈返時彈開的動畫從砍到的位置接上
+@export var step_distance := 0.0
+@export var step_time := 0.0
 
 @export_group("預兆與方向")
 ## 命中前幾秒鎖定方向（boss-veltharis §3：0.2 秒；墜王之躍落點 0.3 秒）

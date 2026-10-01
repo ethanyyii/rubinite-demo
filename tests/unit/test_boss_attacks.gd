@@ -286,3 +286,48 @@ func test_delayed_hold_pose_does_not_flip_when_player_crosses() -> void:
 	var pose: Dictionary = BossView.compute_pose(boss())
 	assert_true((pose["dir"] as Vector2).is_equal_approx(ref["dir"]), "停住期間不翻面")
 	assert_eq(pose["hand"], ref["hand"])
+
+
+## 雙斬第二刀左腳直接往前踏（2026-10-01 使用者：「揮第二下左腳直接向前踏好了，右腳不要收回了，這樣的代價是
+## boss 揮兩劍會前進一點，我接受，遊戲裡也要改」）：命中前 TWIN_STEP_TIME 秒內，沿鎖定的方向前進
+## TWIN_STEP_DISTANCE；判定開始時已經踏完，判定期間位置不動（被完美彈返時，彈開的動畫從砍到的位置接上）
+func _assert_second_hit_steps(m: BossMoveData) -> void:
+	sim.boss.pos = Vector2(-150, 0)
+	sim.player.pos = Vector2(300, 150)  # 遠離 Boss 的路徑
+	sim.boss.start_move(m)
+	var start2 := boss().hit_start_frame(1)
+	var step_from := start2 - Frames.of(VeltharisData.TWIN_STEP_TIME)
+	# _to_move_frame(f) 之後第 f 幀已經跑完：p0 是踏步開始前一幀的位置
+	_to_move_frame(step_from - 1)
+	var dir := boss().facing
+	var p0 := boss().pos
+	sim.player.pos = Vector2(-300, 150)  # 鎖定後玩家移開：踏步方向不變
+	_to_move_frame(start2 - 2)
+	assert_true(boss().pos.distance_to(p0) < VeltharisData.TWIN_STEP_DISTANCE - 0.5, "%s：踏步在判定前持續進行" % m.id)
+	_to_move_frame(start2 - 1)
+	var moved := boss().pos - p0
+	assert_near(moved.length(), VeltharisData.TWIN_STEP_DISTANCE, 0.5,
+		"%s：第二刀前踏 %.0fpx，判定開始前踏完" % [m.id, VeltharisData.TWIN_STEP_DISTANCE])
+	assert_near(moved.normalized().angle_to(dir), 0.0, 0.01, "%s：沿鎖定的方向踏" % m.id)
+	var p1 := boss().pos
+	_to_move_frame(start2 + Frames.of(m.hits[1].active) - 1)
+	assert_true(boss().pos.is_equal_approx(p1), "%s：判定期間位置不動" % m.id)
+
+
+func test_twin_second_hit_steps_forward_before_its_hit_box() -> void:
+	_assert_second_hit_steps(VeltharisData.move(1, &"twin_slash"))
+
+
+func test_triple_slash_second_hit_steps_forward_too() -> void:
+	_assert_second_hit_steps(VeltharisData.move(2, &"triple_slash"))
+
+
+func test_twin_first_hit_does_not_step() -> void:
+	sim.boss.pos = Vector2(-150, 0)
+	sim.player.pos = Vector2(300, 150)
+	_start(&"twin_slash")
+	var start1 := boss().hit_start_frame(0)
+	_to_move_frame(start1 - Frames.of(0.2))  # 鎖定之後不再逼近
+	var p0 := boss().pos
+	_to_move_frame(start1 + Frames.of(0.1) - 1)  # 到第一刀判定結束（之後是第二刀的起手，照常逼近）
+	assert_true(boss().pos.is_equal_approx(p0), "第一刀原地（右腳踏出是畫面上的動作，位置不動）")
