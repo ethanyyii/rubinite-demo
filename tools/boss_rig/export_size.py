@@ -213,7 +213,8 @@ def sheet_reach(boss, kn, pal):
 # with a lean or a step into the swing on top). Old values (120 px Boss, hip-high sword) and the
 # shoulder-high sword's in brackets.
 RANGES = {
-    'sweep': 155,       # C1/C2 sweeps, quick slashes, C5 up-slash radius [100, 140]
+    'sweep': 155,       # C1/C2 sweeps, C5 up-slash radius [100, 140]
+    'quick': 165,       # the two one-handed quick slashes (user 2026-10-02: the straight arm and the deep lean reach 168-171, "enlarge the range")
     'chop': 165,        # C3 overhead chop, line length [110, 150]
     'spin': 165,        # C6 spin radius [100, 150]: arms out, two hands
     'thrust': 150,      # C4 sword length of the thrust [100, 135] ...

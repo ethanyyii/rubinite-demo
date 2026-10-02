@@ -113,9 +113,15 @@ class Twist:
 
 SIDE_NEAR = 0.6                # side views: share of the shoulder's 3D move the near plate makes on screen
 SIDE_CHEST = 0.25                # ... the chest
+SIDE_TURN_MAX = 45.0            # ... the whole-body turn: the plates move as for this much turn at most
 TWIST_FB = (34.0, 14.0)         # front / back: half the shoulders' width, half the chest's depth
 FB_DRAW = 0.7                   # front / back: share of the turn drawn (all of it stretches the plates' tassels into blocks)
 TWIST_X0 = {'right': 127.0, 'down': AX + 0.5, 'up': AX + 0.5}
+HIP_FB = (22.0, 12.0)           # front / back, the whole-body turn: half the hips' width, half their depth
+FB_HIP = 0.8                    # ... share of the hips' turn drawn
+CAPE_TURN_MAX = 65.0            # ... the cape's top narrows as for this much turn at most
+CAPE_TURN_K = 1.4               # ... as for this many times the chest's drawn turn
+FB_CHEST_MAX = 35.0             # ... the chest's drawn turn at most (more breaks the plates up into a jumble)
 
 
 def twist_weight(sy, sm):
@@ -213,7 +219,12 @@ def posed_arms(view, s, grip_xy, drawn, far=False):
             continue
         sh3, e3, g3, _ = a
         sxy = drawn[k][0]
-        g = screen(view, g3, gR3, grip_xy, far)
+        if k == 'L' and s.get('two', 0.0) <= 0.0:
+            # swinging free (one-handed): a point of the body, not on the grip - a side view's
+            # elevation, or projected from its own drawn shoulder
+            g = elevation(g3) if view == 'right' else screen(view, g3, sh3, sxy, far)
+        else:
+            g = screen(view, g3, gR3, grip_xy, far)
         n = math.dist(sxy, g)
         if n > A.ARM - 0.3:
             f = (A.ARM - 0.3) / n
@@ -450,6 +461,7 @@ PLATE_FOLLOW = 0.6
 PLATE_MAX = 30.0
 PLATE_MAX_FB = 18.0      # front / back: the plates are wide and spiky there, a bigger turn reads as a jumble
 PLATE_UP = 19.0
+SWING_OVER = 0.35        # front view, one-handed: an upper arm this far towards the camera is drawn over its plate
 _ref = {}
 
 
@@ -476,22 +488,52 @@ def _reference(k):
     return _ref[k]
 
 
+def _plate_deg(direction, k, sw, ref, follow, mx_side, mx_fb, power=1):
+    plane = 'side' if direction in ('right', 'left') else 'front'
+    (ang, w), (ang0, w0) = sw[plane], ref[plane]
+    d = ((ang - ang0 + 180.0) % 360.0 - 180.0) * min(w, w0) ** power
+    if plane == 'side':
+        deg = -d                            # forward: the plate's lower edge goes forward (screen right)
+    else:
+        out_right = (k == 'L') == (direction == 'down')     # screen right is outwards for this arm
+        deg = -d if out_right else d
+    mx = mx_side if plane == 'side' else mx_fb
+    return max(-mx, min(mx, follow * deg))
+
+
+# One-handed swings (s['swing']): the plate turns about the stroke's own middle (the arm reaching
+# straight ahead at the first blow), not about the carry - measured from the carry it sat at its
+# limit through the whole stroke and stood still (user 2026-10-02: "the shoulder must carry the
+# upper arm round")
+SWING_FOLLOW = 0.9
+SWING_MAX = 35.0
+SWING_MAX_FB = 24.0
+_swing_ref = {}
+
+
+def _swing_reference(k):
+    if k not in _swing_ref:
+        import attacks as AT
+        _swing_ref[k] = _swing(k, AT.quick().at(AT.Q1 + 3))
+    return _swing_ref[k]
+
+
 def plate_turn(direction, k, s, far=False):
     """Degrees (clockwise on screen, facing-right space for the side views) the shoulder plate
     of arm k turns in pose s."""
     sw, ref = _swing(k, s), _reference(k)
     if sw is None or ref is None:
         return 0.0
-    plane = 'side' if direction in ('right', 'left') else 'front'
-    (ang, w), (ang0, w0) = sw[plane], ref[plane]
-    d = ((ang - ang0 + 180.0) % 360.0 - 180.0) * min(w, w0)
-    if plane == 'side':
-        deg = -d                            # forward: the plate's lower edge goes forward (screen right)
-    else:
-        out_right = (k == 'L') == (direction == 'down')     # screen right is outwards for this arm
-        deg = -d if out_right else d
-    mx = PLATE_MAX if plane == 'side' else PLATE_MAX_FB
-    return max(-mx, min(mx, PLATE_FOLLOW * deg))
+    deg = _plate_deg(direction, k, sw, ref, PLATE_FOLLOW, PLATE_MAX, PLATE_MAX_FB)
+    w = s.get('swing', 0.0) if k == 'R' else 0.0
+    if w > 0:
+        # an upper arm swinging through the view's line (straight out sideways, seen from the
+        # side) has no angle in the view's plane: there the side views' plate turn fades out (power 2),
+        # or it flips from one side to the other within a frame or two
+        deg2 = _plate_deg(direction, k, sw, _swing_reference(k), SWING_FOLLOW, SWING_MAX, SWING_MAX_FB,
+                          power=2 if direction in ('right', 'left') else 1)
+        deg = deg + (deg2 - deg) * w
+    return deg
 
 
 # ------------------------------------------------------------------ side views
@@ -510,11 +552,16 @@ def pose_side(s, s1, far=False):
     d, d1 = s['D'], s1['D']
     hx, hx1 = round(s['hx']), round(s1['hx'])
     belt = sm['belt']
-    lean, lean1 = math.tan(math.radians(s['lx'])), math.tan(math.radians(s1['lx']))
+    lean, lean1 = side_lean(s), side_lean(s1)
     # the turn, seen from the side: the near shoulder plate goes forward / back, the chest
     # less; the far shoulder plate the other way - turned towards the camera it comes out in
     # front of the chest. Whole pixels, no stretching (stretched columns smear the plates)
-    sn = math.sin(math.radians(-s['tw'] if far else s['tw']))
+    tw_side = -s['tw'] if far else s['tw']
+    if s.get('whole_turn'):
+        # turned further than this the far plate rides up beside the head as a loose piece; the
+        # rest of the turn shows in the hips, the lean and the arms
+        tw_side = max(-SIDE_TURN_MAX, min(SIDE_TURN_MAX, tw_side))
+    sn = math.sin(math.radians(tw_side))
     near_dx = round(SIDE_NEAR * A.SH_R * sn)
     chest_tw = round(SIDE_CHEST * A.SH_R * sn)
     far_dx = -near_dx
@@ -604,7 +651,10 @@ def pose_side(s, s1, far=False):
                                   plate_turn(dkey, far_k, s))
     if far_dx <= 0:
         out.append(far_plate)                     # behind him: under the cape
-    out.append(K.warp(cape, cape_src, pad=24))
+    cape_px = K.warp(cape, cape_src, pad=24)
+    if s.get('whole_turn'):
+        cape_px = drop_islands(cape_px, CAPE_ISLAND_MAX)
+    out.append(cape_px)
     if far_dx > 0:
         out.append(far_plate)                     # turned towards the camera: in front of the cape, behind the chest
     out.append(K.warp(S['backdrop'], lambda x, y: (x - hx, y - d) if y <= AY else None))
@@ -640,6 +690,21 @@ def pose_side(s, s1, far=False):
     return AW._finish('right', out)
 
 
+def side_lean(st):
+    """The lean seen from the side (an elevation): its forward part (attack3d.lean_vec; the part
+    towards / away from the camera is not drawn, as for every point of the body)."""
+    return A.lean_vec(st)[0]
+
+
+def fb_lean(st, direction):
+    """Front / back: (degrees of forward lean for the rows, px sideways on screen per px above
+    the belt). Turned with the whole body the lean goes partly sideways - towards his left is
+    screen right from the front, screen left from behind."""
+    f, r = A.lean_vec(st)
+    lx = math.degrees(math.atan(f))
+    return lx, (-r if direction == 'down' else r)
+
+
 def free_arm(S, s, sh_drawn):
     """Facing left, one-handed: the near (left) arm hangs as in the walk, carried by the shoulder."""
     fa, J = S['free_arm'], S['free_joints']
@@ -653,7 +718,7 @@ def side_head(S, s, s1, far):
     lay, sm = S['lay'], S['sm']
     belt = sm['belt']
     d1 = K.lagged(s['D'], s1['D'])
-    lean1 = math.tan(math.radians(s1['lx']))
+    lean1 = side_lean(s1)
     hx1 = K.lagged(round(s['hx']), round(s1['hx']))
     bow = s1.get('bow', 0.0)
     pv = lay.local_to_final(K.HEAD_PIVOT)
@@ -684,16 +749,47 @@ def front_back(direction, s, s1):
     fwd = round(sign * DEPTH * s['hx'])
     fwd1 = round(sign * DEPTH * s1['hx'])
     d, d1 = s['D'] + fwd, s1['D'] + fwd1
-    k = sign * round(s['lx'] * LEAN_ROWS / LEAN_DEG)
-    k1 = sign * round(s1['lx'] * LEAN_ROWS / LEAN_DEG)
+    lxf, lat = fb_lean(s, direction)
+    lxf1, lat1 = fb_lean(s1, direction)
+    k = sign * round(lxf * LEAN_ROWS / LEAN_DEG)
+    k1 = sign * round(lxf1 * LEAN_ROWS / LEAN_DEG)
+
+    def side_dx(sy, la=lat):
+        """The sideways part of the lean at source row sy (whole px)."""
+        return round(la * max(0.0, sm['belt'] - sy))
     belt, chest = sm['belt'], sm['chest']
     top = min(q[1] for q in layers['head'].pix)
     rows_src, rows_tgt = [top, chest, belt], [top + d + k, chest + d + k, belt + d]
     th = FB_DRAW * s['tw']
     tws = Twist(TWIST_X0[direction], TWIST_FB[0], TWIST_FB[1], th)
+    whole = s.get('whole_turn', False)
+    # the whole-body turn leans deep (28 degrees: the chest and head go down 35+ px): a layer is
+    # only drawn within PAD of where it stands, and at 16 the head's lower half was cut off
+    PAD = WHOLE_PAD if whole else 16
+    th_hip = FB_HIP * s.get('ht', 0.0) if whole else 0.0
+    if whole:
+        th = max(-FB_CHEST_MAX, min(FB_CHEST_MAX, th))
+
+    def twist_at(sy):
+        """The whole body turning (the one-handed slashes, user 2026-10-02: "the whole body
+        turns"): the hips below the belt turned by their own angle (a narrower cylinder), the
+        rows above blending into the chest's turn."""
+        w = twist_weight(sy, sm)
+        a = HIP_FB[0] + (TWIST_FB[0] - HIP_FB[0]) * w
+        b = HIP_FB[1] + (TWIST_FB[1] - HIP_FB[1]) * w
+        return Twist(TWIST_X0[direction], round(a), round(b), th_hip + (th - th_hip) * w)
 
     def body_src(x, y):
         sy = round(piecewise(y, rows_src, rows_tgt))
+        if whole:
+            x = x - side_dx(sy)
+            tw_ = twist_at(sy)
+            if tw_.th == 0:
+                return x, sy
+            r = tw_.src(x)
+            if r is None:
+                return None
+            return round(r[0]), round(sy - DEPTH * r[1])
         w = twist_weight(sy, sm)
         if w <= 0.0:
             return x, sy
@@ -705,17 +801,32 @@ def front_back(direction, s, s1):
 
     def at(p):
         """Where a source point of the upper body is drawn."""
+        y = p[1] + d + k
+        if whole:
+            x1, dd = twist_at(p[1]).fwd(p[0])
+            return (x1 + side_dx(p[1]), y + DEPTH * dd)
         w = twist_weight(p[1], sm)
         x1, dd = tws.fwd(p[0])
-        y = piecewise(p[1], rows_tgt, rows_src) if False else p[1] + d + k
         return (p[0] + (x1 - p[0]) * w, y + DEPTH * dd * w)
 
     cs = s.get('cs', 0.0)
 
+    cape_lat = side_dx(sm['cape_top'] + 8)
+
     def trail(t):
-        return round(sign * -cs * t ** 1.5)
+        # the top rides the shoulders (the lean's sideways part), the hem swings
+        return round(sign * -cs * t ** 1.5 + cape_lat * (1 - t) ** 2)
     cape_layer = E.get('cape', layers['cape'])
-    cape = rig.warp(cape_layer, _cape_src(sm, d + k, cape_twist(tws), trail), pad=24)
+    # turned round (the whole-body turn), the cape hanging from his shoulders is seen side-on:
+    # narrower at the top (user 2026-10-02: with the right shoulder carried to the middle, the
+    # cape left wide behind it read as the shoulder gone)
+    # as far as the chest is drawn turned (th): narrowed for the full 3D turn, the cape left the
+    # drawn shoulder plates floating outside it from behind
+    narrow = math.cos(math.radians(min(abs(th) * CAPE_TURN_K, CAPE_TURN_MAX))) if whole else 1.0
+    cape_cx = TWIST_X0[direction] + side_dx(sm['cape_top'] + 8)
+    cape = rig.warp(cape_layer, _cape_src(sm, d + k, cape_twist(tws), trail, narrow, cape_cx), pad=max(PAD, 24))
+    if whole:
+        cape = drop_islands(cape, CAPE_ISLAND_MAX)      # the narrowed cape's frayed edge leaves specks
 
     # legs
     feet = s['feet']
@@ -737,6 +848,12 @@ def front_back(direction, s, s1):
     arms = A.arms(s)
     shd = E['shoulder']
     gd = A.girdles(s)
+    if whole:
+        # the shoulders ride the chest as it is drawn: turned th (capped at FB_CHEST_MAX), not
+        # the whole 3D turn - turned the 3D 70-80 degrees the right shoulder's move left its plate
+        # in the middle of the chest and the drawn chest's shoulder bare (user 2026-10-02: "in the
+        # front view the right shoulder plate and arm disappear as he swings")
+        gd = {kk: A.yaw(A.yaw(v, -s['tw']), th) for kk, v in gd.items()}
     gs = {}
     for kk in 'RL':
         v = swd.project_vec(view, gd[kk])
@@ -747,7 +864,15 @@ def front_back(direction, s, s1):
         """A shoulder plate carried by its shoulder (the girdle's move, whole px) and turned
         with its upper arm."""
         dx, dy = gs[kk]
-        pix = rig.warp(layer, lambda x, y: body_src(x - dx, y - dy), pad=16)
+        if whole:
+            # a rigid piece of armour: moved whole to where its shoulder is drawn (warped with
+            # the turned chest it was squeezed to a quarter at the cylinder's edge and the
+            # shoulder looked gone - user 2026-10-02: "in the front view the right shoulder plate
+            # and arm disappear as he swings")
+            ox, oy = round(drawn[kk][0] - shd[kk][0]), round(drawn[kk][1] - shd[kk][1])
+            pix = {(x + ox, y + oy): c for (x, y), c in layer.pix.items()}
+        else:
+            pix = rig.warp(layer, lambda x, y: body_src(x - dx, y - dy), pad=PAD)
         if kk in pieces:
             pix = rotate_pixels(pix, (drawn[kk][0], drawn[kk][1] - PLATE_UP), plate_turn(direction, kk, s))
         return pix
@@ -765,7 +890,9 @@ def front_back(direction, s, s1):
         pieces[kk] = (arm_pieces(J, mirror), (sh3, e3, g3))
         JOINTS[(direction, s.get('name'), s.get('i'), kk)] = J
 
-    head = rig.warp(layers['head'], lambda x, y: (x, y - K.lagged(d + k, d1 + k1) - _bow_sink(direction, s1)), pad=16)
+    hpv = max(q[1] for q in layers['head'].pix)            # the neck
+    hdx = K.lagged(side_dx(hpv), side_dx(hpv, lat1))
+    head = rig.warp(layers['head'], lambda x, y: (x - hdx, y - K.lagged(d + k, d1 + k1) - _bow_sink(direction, s1)), pad=PAD)
     out = []
     if direction == 'down':
         bH, bB = split.get('back', ({}, {}))
@@ -779,27 +906,45 @@ def front_back(direction, s, s1):
             left = fleg.leg(LL, 'L', s['D'], 0, lay)
             out.extend([right, left] if s.get('entry', ('',))[0] == 'strafe_r' else [left, right])
         else:
-            out.append(rig.warp(layers['leg_l'], AW._leg_front_src(layers['leg_l'], lay, LR, d, 0, inR, AW.FRONT_LEG['leg_l']), pad=16))
-            out.append(rig.warp(layers['leg_r'], AW._leg_front_src(layers['leg_r'], lay, LL, d, 0, -inL, AW.FRONT_LEG['leg_r']), pad=16))
-        out.append(rig.warp(layers['drape'], _cape_src(sm, d + k, cape_twist(tws), trail), pad=16))
-        out.append(rig.warp(E['body'], body_src, pad=16))
+            # the hips turned: each hip joint comes in towards the middle (HIP_HALF cos), the
+            # legs sheared from there to their feet
+            hin = round(HIP_HALF * (1 - math.cos(math.radians(th_hip))))
+            out.append(rig.warp(layers['leg_l'], AW._leg_front_src(layers['leg_l'], lay, LR, d, hin, inR, AW.FRONT_LEG['leg_l']), pad=PAD))
+            out.append(rig.warp(layers['leg_r'], AW._leg_front_src(layers['leg_r'], lay, LL, d, -hin, -inL, AW.FRONT_LEG['leg_r']), pad=PAD))
+        out.append(rig.warp(layers['drape'], _cape_src(sm, d + k, cape_twist(tws), trail, narrow, cape_cx), pad=PAD))
+        body_px = rig.warp(E['body'], body_src, pad=PAD)
+        if whole:
+            body_px = drop_islands(body_px, ISLAND_MAX)
+        out.append(body_px)
         ht, hh = sm['hang_top'], sm['hang_hem']
         for name, amp in (('chain', 0.6), ('tabard', 0.4)):
             hemx = round(-sign * s1.get('cs', 0.0) * amp)
 
-            def hang_src(x, y, hemx=hemx):
+            # the front of the hips carries the hanging cloth round with the turn, the hem lags
+            turn = (twist_at(sm['belt'] + 4).fwd(TWIST_X0[direction])[0] - TWIST_X0[direction]) if th_hip else 0.0
+
+            def hang_src(x, y, hemx=hemx, turn=turn):
                 t = _frac(y - d, ht, hh)
-                return x - round(hemx * t), y - d
+                return x - round(hemx * t + turn * (1 - 0.6 * t)), y - d
             out.append(rig.warp(layers[name], hang_src))
         if arms['L'] is None:
             # the left arm hangs as approved, riding on the chest
             fb = layers['arm'].bbox()
-            out.append(rig.warp(layers['arm'], lambda x, y: body_src(x, y), pad=16))
+            out.append(rig.warp(layers['arm'], lambda x, y: body_src(x, y), pad=PAD))
         order = sorted(pieces, key=lambda kk: -pieces[kk][1][1][0] * 0 + pieces[kk][1][1][0])
+
+        def toward_camera(kk):
+            # a swinging upper arm reaching towards the camera comes out in front of its plate
+            sh3, e3, _ = pieces[kk][1]
+            return kk == 'R' and s.get('swing', 0.0) > 0.5 and A.unit(A.sub(e3, sh3))[0] > SWING_OVER
         for kk in order:
-            out.append(pieces[kk][0][0])                         # upper arms
+            if not toward_camera(kk):
+                out.append(pieces[kk][0][0])                     # upper arms
         out.append(plate(E['plateR'], 'R'))
         out.append(plate(E['plateL'], 'L'))
+        for kk in order:
+            if toward_camera(kk):
+                out.append(pieces[kk][0][0])
         out.append(head)
         out.append(fB)
         for kk in order:
@@ -831,7 +976,7 @@ def front_back(direction, s, s1):
         out.append(cape)
         if arms['L'] is None:
             free = S['free']
-            out.append(rig.warp(free, lambda x, y: body_src(x, y), pad=16))
+            out.append(rig.warp(free, lambda x, y: body_src(x, y), pad=PAD))
         for kk in 'RL':
             out += shown[kk]
         out.append(plate(E['plateR'], 'R'))
@@ -839,6 +984,36 @@ def front_back(direction, s, s1):
         out.append(head)
         out += [fB, fH]
     return AW._finish(direction, out)
+
+
+ISLAND_MAX = 40       # px: pieces of the turned body cut off from it (the shoulder's top, uncovered by its plate)
+CAPE_ISLAND_MAX = 12
+WHOLE_PAD = 64
+
+
+def drop_islands(pix, mx):
+    """pix without its pieces of mx px or fewer that touch nothing else of it (8-neighbours):
+    turned and leaned far, the shoulder's top that the plate covered at rest is carried off on
+    its own beside the head."""
+    seen, out = set(), dict(pix)
+    for q0 in pix:
+        if q0 in seen:
+            continue
+        comp, stack = [], [q0]
+        seen.add(q0)
+        while stack:
+            x, y = stack.pop()
+            comp.append((x, y))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (x + dx, y + dy)
+                    if n in pix and n not in seen:
+                        seen.add(n)
+                        stack.append(n)
+        if len(comp) <= mx:
+            for q in comp:
+                del out[q]
+    return out
 
 
 def _bow_sink(direction, s1):
@@ -850,9 +1025,10 @@ def cape_twist(tws):
     return tws
 
 
-def _cape_src(sm, d_top, tws, trail):
+def _cape_src(sm, d_top, tws, trail, narrow=1.0, cx=None):
     """A cape / drape layer: its top rides the shoulders (and turns with them), the hem gives
-    `trail(t)` sideways."""
+    `trail(t)` sideways. narrow < 1 (the whole-body turn): the cape's top is seen side-on as the
+    body turns - that share of its width at the shoulders, widening to all of it at the hem."""
     top, hem = sm['cape_top'], sm['cape_hem']
 
     def src(x, y):
@@ -863,6 +1039,9 @@ def _cape_src(sm, d_top, tws, trail):
         t = _frac(y - dy, top, hem)
         sy = y - dy
         x1 = x - trail(t)
+        if narrow < 1.0:
+            f = 1.0 - (1.0 - narrow) * (1 - t) ** 1.5
+            x1 = round(cx + (x1 - cx) / f)
         w = (1 - t) ** 2
         if w > 0.05:
             r = tws.src(x1)
@@ -877,9 +1056,17 @@ JOINTS = {}
 SWORD = {}          # (direction, clip name, pose) -> (sword pixels before anything covers them, placement, grip)
 
 
+SPECK_MAX = 8         # px: the whole-body turn's final frames lose loose specks this small (a sliver of the blade
+                      # showing past the hip while the rest is behind him read as noise)
+
+
 def render_pose(direction, s, s1):
     if direction == 'left':
-        return side.mirror(pose_side(s, s1, far=True))
-    if direction == 'right':
-        return pose_side(s, s1)
-    return front_back(direction, s, s1)
+        f = side.mirror(pose_side(s, s1, far=True))
+    elif direction == 'right':
+        f = pose_side(s, s1)
+    else:
+        f = front_back(direction, s, s1)
+    if s.get('whole_turn'):
+        f = drop_islands(f, SPECK_MAX)
+    return f

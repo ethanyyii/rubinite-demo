@@ -277,10 +277,11 @@ def entry_feet_checks(m):
     bad = []
     for kind in AW.KINDS:
         for e in AT.ENTRY_FROM:
-            sts = AT.entry(m.clip, kind, e) + [m.clip.at(AT.ENTRY_END)]
+            times, _, end = m.entry_spec
+            sts = AT.entry(m.clip, kind, e, *m.entry_spec) + [m.clip.at(end)]
             for i in range(1, len(sts)):
                 if len(moving(sts[i - 1], sts[i])) == 2:
-                    bad.append(f'{kind}{e}:{AT.ENTRY_TIMES[i - 1]}')
+                    bad.append(f'{kind}{e}:{times[i - 1]}')
     check(f'feet {m.sheet}: starting from a move, one foot at a time', not bad, ', '.join(bad[:8]))
 
 
@@ -417,7 +418,11 @@ def feet_below(m, d):
         return max(H.BELOW[d], math.ceil(A.DEPTH * max(xs)) + 1)
     if d == 'up':
         return max(H.BELOW[d], math.ceil(A.DEPTH * -min(xs)) + 1)
-    return H.BELOW[d]
+    # the side views: a foot stepped out sideways towards the camera (DEPTH of it lower), at most
+    # the 2 px animation-review §4.4 allows a foot stepped towards the camera
+    cam = 1.0 if d == 'right' else -1.0
+    lats = [(s['feet'][k][1] if k == 'R' else -s['feet'][k][1]) * cam for s in m.states for k in 'RL']
+    return max(H.BELOW[d], min(2, math.ceil(A.DEPTH * max(lats) - 0.25)))
 
 
 def frame_checks(m):
@@ -468,7 +473,7 @@ def frame_checks(m):
             H.same(f'{m.sheet} {d}', f[0], carry[d], 'starts on the carry (standing, the sword on the shoulder)')
         H.same(f'{m.sheet} {d}', f[-1], carry[d], 'ends on the carry')
     # starting from a move: pose 0 is the loop's pose, then on into the attack's own poses
-    n = len(AT.ENTRY_TIMES)
+    n = len(m.entry_spec[0])
     for (kind, e), en in (m.entries().items() if m.has_entries else ()):
         for d in rig.DIRS:
             H.same(f'{m.sheet} from {kind} {e} {d}', en[d][0], AW.frames(d, kind)[e], 'starts on the loop\'s pose')

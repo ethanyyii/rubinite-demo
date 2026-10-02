@@ -98,13 +98,32 @@ HEAD = (0.0, 0.0, 130.0)                  # the helmet's centre (crown tips to t
 HEAD_R = 11.0
 
 
+LEAN_TURN = 0.5          # the whole-body turn: the lean heads half-way from the hips' turn to the chest's
+
+
+def lean_heading(st):
+    """Degrees (+ = towards his left) the lean goes: straight forward, or with the whole body
+    turning (the one-handed slashes, st['whole_turn']) the way the hips and chest face - a man
+    swung round to his left bends over towards his left."""
+    if not st.get('whole_turn'):
+        return 0.0
+    ht = st.get('ht', 0.0)
+    return ht + LEAN_TURN * (st.get('tw', 0.0) - ht)
+
+
+def lean_vec(st):
+    """(F, R) px the lean moves a point one px above the belt."""
+    lean = math.tan(math.radians(st.get('lx', 0.0)))
+    return yaw((lean, 0.0, 0.0), lean_heading(st))[:2]
+
+
 def shoulder(side_, st):
-    """Shoulder joint (side_ 'R' or 'L') for a pose: hips dropped D, leaned lx about the belt,
-    the upper body turned tw."""
+    """Shoulder joint (side_ 'R' or 'L') for a pose: hips dropped D, leaned lx about the belt
+    (lean_heading()), the upper body turned tw."""
     r = SH_R if side_ == 'R' else -SH_R
     p = yaw((SH_F, r, SH_U), st.get('tw', 0.0))
-    lean = math.tan(math.radians(st.get('lx', 0.0)))
-    return (p[0] + lean * (SH_U - BELT_U) + st.get('hx', 0.0), p[1], p[2] - st.get('D', 0))
+    lv = lean_vec(st)
+    return (p[0] + lv[0] * (SH_U - BELT_U) + st.get('hx', 0.0), p[1] + lv[1] * (SH_U - BELT_U), p[2] - st.get('D', 0))
 
 
 HANG_L = (2.0, -23.4, 75.4)      # the left fist hanging at rest (front view: (151.9, 133.6))
@@ -121,13 +140,29 @@ def fists(st):
     g = st['fist']
     two = st.get('two', 0.0)
     if two <= 0.0:
-        return g, None
+        return g, (free_left(st) if st.get('lfree', 0.0) > 0.0 else None)
     grip = add(g, mul(st['axis'], HANDS))
     if two >= 1.0:
         return g, grip
     rest = shoulder('L', {})
     hang = add(shoulder('L', st), yaw(sub(HANG_L, rest), st.get('tw', 0.0)))
     return g, lerp(hang, grip, smooth(two))
+
+
+def free_left(st):
+    """One-handed (the quick slashes), the left fist swinging free: its hanging place carried by
+    the upper body (HANG_L from the left shoulder, turned with it) moved by `lhand` (F, R, U px
+    in the upper body's own frame). User 2026-10-02: one-handed the whole body turns, the free
+    arm swings with it instead of hanging stiff at his side."""
+    tw = st.get('tw', 0.0)
+    rest = shoulder('L', {})
+    hang = add(shoulder('L', st), yaw(sub(HANG_L, rest), tw))
+    return add(hang, yaw(tuple(st.get('lhand', (0.0, 0.0, 0.0))), tw))
+
+
+def left_weight(st):
+    """How far the left arm is from hanging as approved: on the grip (two) or swinging free."""
+    return smooth(max(st.get('two', 0.0), st.get('lfree', 0.0)))
 
 
 def solve_arm(sh, hand, pole):
@@ -167,13 +202,21 @@ GIRDLE_FWD = 4.5         # the upper arm straight forward (back: the same backwa
 GIRDLE_OUT = 2.0         # the upper arm straight out to its side
 
 
-def _girdle(k, u, tw):
+# One-handed swings (the quick slashes, st['swing'] 0 .. 1; user 2026-10-02: "swinging, the
+# shoulder carries the upper arm round - the upper arm always moves, not only the forearm"):
+# nothing holds the sword arm back, so its shoulder blade travels with it - further forward on a
+# reach (SWING_FWD x GIRDLE_FWD) and in towards the middle when the arm swings across the body.
+SWING_FWD = 2.0
+GIRDLE_IN = 4.0          # px: the swinging arm straight across the body draws its shoulder in
+
+
+def _girdle(k, u, tw, swing=0.0):
     """The shoulder's move for upper-arm direction u (from the shoulder to the elbow)."""
     q = yaw(u, -tw)                       # in the upper body's own frame
     side_ = 1.0 if k == 'R' else -1.0
     lift = GIRDLE_UP * min(1.0, max(0.0, (u[2] + 0.4) / 1.4))
-    fwd = GIRDLE_FWD * q[0]
-    out = GIRDLE_OUT * max(0.0, q[1] * side_)
+    fwd = GIRDLE_FWD * (1.0 + (SWING_FWD - 1.0) * swing) * q[0]
+    out = GIRDLE_OUT * max(0.0, q[1] * side_) - swing * GIRDLE_IN * max(0.0, -q[1] * side_)
     return yaw((fwd, out * side_, 0.0), tw)[:2] + (lift,)
 
 
@@ -204,11 +247,11 @@ def girdles(st):
             continue
         sh = shoulder(k, st)
         e, sh1, _ = solve_arm(sh, g, _pole(k, st))
-        gd = _girdle(k, unit(sub(e, sh1)), st.get('tw', 0.0))
+        gd = _girdle(k, unit(sub(e, sh1)), st.get('tw', 0.0), st.get('swing', 0.0) if k == 'R' else 0.0)
         if k == 'R':
             gd = sub(gd, carry_girdle())
         else:
-            gd = mul(gd, smooth(st.get('two', 0.0)))
+            gd = mul(gd, left_weight(st))
         out[k] = gd
     return out
 
@@ -216,7 +259,7 @@ def girdles(st):
 def _pole(k, st):
     pole = st.get('pole' + k) or POLE[k]
     if k == 'L':
-        pole = lerp(POLE_HANG, pole, smooth(st.get('two', 0.0)))
+        pole = lerp(POLE_HANG, pole, left_weight(st))
     return pole
 
 
@@ -255,14 +298,15 @@ def body_hits(st, step=3.0, start=10.0):
     hits = []
     tw = st.get('tw', 0.0)
     D = st.get('D', 0)
-    lean = math.tan(math.radians(st.get('lx', 0.0)))
+    lv = lean_vec(st)
     hx = st.get('hx', 0.0)
     t = start
     while t <= SWORD_LEN:
         p = add(st['fist'], mul(st['axis'], t))
         u = p[2] + D                                       # height as if standing
-        f = p[0] - hx - lean * max(0.0, u - BELT_U)
-        q = yaw((f, p[1], u), -tw)                         # the upper body's own frame
+        f = p[0] - hx - lv[0] * max(0.0, u - BELT_U)
+        r = p[1] - lv[1] * max(0.0, u - BELT_U)
+        q = yaw((f, r, u), -tw)                            # the upper body's own frame
         what = None
         if 60 <= u <= SH_U + 2 and (q[0] / 13.0) ** 2 + (q[1] / 22.0) ** 2 < 1.0:
             what = 'torso'

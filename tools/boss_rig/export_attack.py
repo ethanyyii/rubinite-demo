@@ -63,16 +63,19 @@ class Move:
     """One attack's clip, its poses and their holds, for each way the game plays it."""
 
     def __init__(self, sheet, clip, total, hits, caption, phase2_recovery=None, entries=False, first=None,
-                 entry_times=False):
+                 entry_times=False, entry_spec=None):
         """entries: draw the starts from a move (the entry sheets); entry_times: only sample the
-        same opening poses (an attack that shares another's entry sheets: the twin slash)."""
+        same opening poses (an attack that shares another's entry sheets: the twin slash);
+        entry_spec: (times, first foot under him, joins the attack) of the start from a move
+        (attacks.ENTRY_*; the quick slashes: attacks.QUICK_ENTRY)."""
         self.sheet, self.clip, self.total, self.hits, self.caption = sheet, clip, total, hits, caption
         self.has_entries = entries
+        self.entry_spec = entry_spec or (AT.ENTRY_TIMES, AT.ENTRY_HALF, AT.ENTRY_END)
         self.first = first              # (Move, pose index): pose 0 is that move's frame (the bounce's contact)
         last = clip.keys[-1][0]
         must = {0, last}
         if entries or entry_times:
-            must |= set(AT.ENTRY_TIMES) | {AT.ENTRY_END}
+            must |= set(self.entry_spec[0]) | {self.entry_spec[2]}
         must |= set(clip.musts)          # the game moving him every frame there (the twin slash's step)
         for start, n in hits:
             must |= {start, start + n}
@@ -110,7 +113,7 @@ class Move:
             out = {}
             for kind in AW.KINDS:
                 for e in AT.ENTRY_FROM:
-                    st = AT.entry(self.clip, kind, e)
+                    st = AT.entry(self.clip, kind, e, *self.entry_spec)
                     fr = {}
                     for d in rig.DIRS:
                         f = [AW.frames(d, kind)[e]]
