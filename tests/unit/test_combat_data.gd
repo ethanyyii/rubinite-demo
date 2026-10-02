@@ -133,11 +133,18 @@ func test_phase1_recovery_matches_doc() -> void:
 ## boss-veltharis §4–§5 的範圍（2026-09-30 使用者：Boss 放大到 160、大劍加長（劍首到下巴、握在上段），範圍照劍
 ## 實際揮到的距離放大；舊值 100／110／40／120／140／16／60／100）
 func test_ranges_match_doc() -> void:
-	for id: StringName in [&"royal_sweep", &"twin_slash", &"quick_combo_2"]:
+	for id: StringName in [&"royal_sweep", &"twin_slash"]:
 		for h: BossHitData in VeltharisData.move(1, id).hits:
 			assert_eq(h.shape, CombatTypes.Shape.SECTOR, "%s" % id)
 			assert_near(h.angle_deg, 150.0)
 			assert_near(h.radius, 155.0, 0.0001, "%s 半徑 155" % id)
+	# 快斬連段的兩刀單手快斬：半徑 165（2026-10-02 使用者：單手伸直、腰彎下去，劍尖畫到 168–171px，「範圍放大吧」）
+	for id: StringName in [&"quick_combo_2", &"quick_combo_3"]:
+		for i in 2:
+			var q := VeltharisData.move(1, id).hits[i]
+			assert_eq(q.shape, CombatTypes.Shape.SECTOR, "%s 第 %d 擊" % [id, i + 1])
+			assert_near(q.angle_deg, 150.0)
+			assert_near(q.radius, 165.0, 0.0001, "%s 第 %d 擊半徑 165" % [id, i + 1])
 	var upslash := VeltharisData.move(1, &"quick_combo_3").hits[2]
 	assert_near(upslash.radius, 155.0)
 	assert_near(upslash.angle_deg, 120.0)

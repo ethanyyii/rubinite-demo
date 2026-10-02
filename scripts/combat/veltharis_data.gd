@@ -18,8 +18,10 @@ const WALK_SPEED := 60.0
 const FAST_SPEED := 120.0
 ## 突刺的劍長（§4.4）
 const SWORD_REACH := 150.0
-## §4.1、§4.2、§4.5 橫掃、反手橫斬、快斬、上挑的扇形半徑（雙手往前伸直劍尖 149px，加上前傾、踏步）
+## §4.1、§4.2、§4.5 橫掃、反手橫斬、上挑的扇形半徑（雙手往前伸直劍尖 149px，加上前傾、踏步）
 const SWEEP_RADIUS := 155.0
+## §4.5 快斬連段兩刀單手快斬的扇形半徑（2026-10-02 使用者：單手伸直、腰彎下去，劍尖揮到 168–171px，「範圍放大吧」）
+const QUICK_SWEEP_RADIUS := 165.0
 ## §4.3 下劈的直線
 const CLEAVE_LENGTH := 165.0
 const CLEAVE_WIDTH := 53.0
@@ -209,7 +211,7 @@ static func _impact_ring(interval: float) -> BossHitData:
 static func _quick_light(interval: float, anim: StringName, is_last: bool) -> BossHitData:
 	return _hit({"attack_type": AT.LIGHT, "interval": interval, "active": 0.1, "damage": 15,
 		"posture_damage": 20, "toughness_damage": PARRY_TOUGHNESS if is_last else PARRY_TOUGHNESS_LIGHT_MID, "bounce_time": 0.8 if is_last else 0.0,
-		"hit_effect": FX.STAGGER, "shape": SH.SECTOR, "radius": SWEEP_RADIUS, "angle_deg": 150.0, "anim": anim})
+		"hit_effect": FX.STAGGER, "shape": SH.SECTOR, "radius": QUICK_SWEEP_RADIUS, "angle_deg": 150.0, "anim": anim})
 
 
 static func _build(phase: int) -> Dictionary:
