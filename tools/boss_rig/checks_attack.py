@@ -336,6 +336,33 @@ def without_arms(f, arms):
             if all(_seg_dist((q[0] + 0.5, q[1] + 0.5), a, b) > ARM_NEAR for a, b in segs)}
 
 
+STRAY = 12           # px: bits of the body left over by without_arms (a raised arm's edge beyond ARM_NEAR)
+
+
+def drop_strays(f):
+    """Without the pieces of at most STRAY pixels: with both arms over the head (the cleave) the
+    bones run over the head seen from behind, the head goes with them and the few pixels of the
+    arms' edges left over became "the upper body" - its column jumped 17 px between two poses."""
+    out, seen = dict(f), set()
+    for q0 in f:
+        if q0 in seen:
+            continue
+        comp, todo = {q0}, [q0]
+        while todo:
+            x, y = todo.pop()
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (x + dx, y + dy)
+                    if n in f and n not in comp:
+                        comp.add(n)
+                        todo.append(n)
+        seen |= comp
+        if len(comp) <= STRAY:
+            for q in comp:
+                del out[q]
+    return out
+
+
 def edges(f):
     t = H.top(f)
     xs = [q[0] for q in f if q[1] < t + H.HEAD_ROWS]
@@ -368,7 +395,7 @@ def steps(label, d, frames, swords, grips, tips, arms=None, offs=None):
         ba, bb = H.body(a, swords[j]), H.body(b, swords[j + 1])
         dt = abs(H.top(ba) + oa[1] - H.top(bb) - ob[1])
         if arms[j] is not None and arms[j + 1] is not None:
-            ea, eb = (edges(without_arms(ba, arms[j])),), (edges(without_arms(bb, arms[j + 1])),)
+            ea, eb = (edges(drop_strays(without_arms(ba, arms[j]))),), (edges(drop_strays(without_arms(bb, arms[j + 1]))),)
         else:
             ea, eb = H.edges(ba, grips[j]), H.edges(bb, grips[j + 1])
         de = max(abs(p + oa[0] - q - ob[0]) for p, q in zip(ea, eb))
@@ -474,11 +501,13 @@ def frame_checks(m):
         H.same(f'{m.sheet} {d}', f[-1], carry[d], 'ends on the carry')
     # starting from a move: pose 0 is the loop's pose, then on into the attack's own poses
     n = len(m.entry_spec[0])
+    # the attack's own pose it joins (its index: the cleave's raise is sampled more densely than the entry)
+    j = m.times.index(m.entry_spec[2]) if m.has_entries else None
     for (kind, e), en in (m.entries().items() if m.has_entries else ()):
         for d in rig.DIRS:
             H.same(f'{m.sheet} from {kind} {e} {d}', en[d][0], AW.frames(d, kind)[e], 'starts on the loop\'s pose')
-            seq = en[d] + [fr[d][n]]
-            names = [(f'{m.clip.name}_{kind}_{e}', i) for i in range(n)] + [(m.clip.name, n)]
+            seq = en[d] + [fr[d][j]]
+            names = [(f'{m.clip.name}_{kind}_{e}', i) for i in range(n)] + [(m.clip.name, j)]
             sw = [drawn(d, nm, i)[0] for nm, i in names]
             gr = [grip(d, nm, i) for nm, i in names]
             tp = [tip_xy(d, drawn(d, nm, i)[1]) if drawn(d, nm, i)[1] else None for nm, i in names]
@@ -515,9 +544,14 @@ def hands_checks(m):
         if key[1] != m.clip.name:
             continue
         n = math.dist(J['shoulder'], J['hand'])
-        if n > A.ARM + 0.5:
-            long_.append(f'{key[0]}:{key[2]}{key[3]} {n:.1f}')
-    check(f'{m.sheet}: no drawn arm longer than the arm (shoulder to fist {A.ARM:.1f} px)', not long_, ', '.join(long_[:6]))
+        # the cleave's arms over the head are drawn longer (attack3d.arm_lengths, the pose's
+        # arm_k); everywhere else the arm as it is
+        st = m.states[key[2]] if key[2] < len(m.states) else {}
+        lim = A.arm_lengths(st)[3]
+        if n > lim + 0.5:
+            long_.append(f'{key[0]}:{key[2]}{key[3]} {n:.1f}/{lim:.1f}')
+    check(f'{m.sheet}: no drawn arm longer than the arm (shoulder to fist {A.ARM:.1f} px; longer only where the pose '
+          f'says so: the cleave over the head)', not long_, ', '.join(long_[:6]))
 
 
 DISTINCT = 0.12      # animation-review §4.5: two hits of one combo differ by this much in outline

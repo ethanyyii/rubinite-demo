@@ -165,24 +165,36 @@ def left_weight(st):
     return smooth(max(st.get('two', 0.0), st.get('lfree', 0.0)))
 
 
-def solve_arm(sh, hand, pole):
+def arm_lengths(st=None):
+    """(upper arm, forearm, fist, whole arm) for a pose: the bones are drawn st['arm_k'] times
+    as long (default 1). Only the cleave's highest point uses it (user 2026-10-03: the cleave is
+    raised over the head - with these short arms both fists cannot get over the helmet and its
+    crown however high the shoulders go and however far he arches back; the arms are drawn a
+    little longer there and the user is told, animation-review §4.3)."""
+    k = (st or {}).get('arm_k', 1.0)
+    return UPPER * k, FORE * k, FIST, (UPPER + FORE) * k + FIST
+
+
+def solve_arm(sh, hand, pole, k=1.0):
     """Elbow for a shoulder and a fist centre: the arm's two segments (upper arm; forearm with
     the fist) bend towards `pole`. Returns (elbow, shoulder used, slack px): a fist out of reach
     pulls the shoulder up to PROTRACT px towards it; slack < 0 is how far it is still out of
-    reach (not allowed: checked)."""
+    reach (not allowed: checked). k: the bones k times as long (arm_lengths())."""
+    up_, fo_ = UPPER * k, FORE * k
+    arm_ = up_ + fo_ + FIST
     d = sub(hand, sh)
     n = norm(d)
-    lo = FORE + FIST
-    if n > ARM:
-        pull = min(PROTRACT, n - ARM + 0.01)
+    lo = fo_ + FIST
+    if n > arm_:
+        pull = min(PROTRACT, n - arm_ + 0.01)
         sh = add(sh, mul(unit(d), pull))
         d = sub(hand, sh)
         n = norm(d)
-    slack = ARM - n
-    n_ = min(n, ARM - 1e-6)
+    slack = arm_ - n
+    n_ = min(n, arm_ - 1e-6)
     u = unit(d)
-    a = (UPPER ** 2 - lo ** 2 + n_ ** 2) / (2 * n_)
-    h = math.sqrt(max(0.0, UPPER ** 2 - a ** 2))
+    a = (up_ ** 2 - lo ** 2 + n_ ** 2) / (2 * n_)
+    h = math.sqrt(max(0.0, up_ ** 2 - a ** 2))
     pp = sub(pole, mul(u, dot(pole, u)))
     if norm(pp) < 1e-6:
         pp = (0.0, 0.0, -1.0)
@@ -210,13 +222,18 @@ SWING_FWD = 2.0
 GIRDLE_IN = 4.0          # px: the swinging arm straight across the body draws its shoulder in
 
 
-def _girdle(k, u, tw, swing=0.0):
-    """The shoulder's move for upper-arm direction u (from the shoulder to the elbow)."""
+def _girdle(k, u, tw, swing=0.0, shrug=0.0, draw_in=0.0):
+    """The shoulder's move for upper-arm direction u (from the shoulder to the elbow). shrug,
+    draw_in (px, the cleave's arms over the head): an upper arm straight up lifts its shoulder
+    GIRDLE_UP + shrug and draws it in towards the neck draw_in (the shoulder blades turn up when
+    both arms go over the head); 0 for every other attack (drawn as before)."""
     q = yaw(u, -tw)                       # in the upper body's own frame
     side_ = 1.0 if k == 'R' else -1.0
-    lift = GIRDLE_UP * min(1.0, max(0.0, (u[2] + 0.4) / 1.4))
+    up_share = min(1.0, max(0.0, (u[2] + 0.4) / 1.4))
+    lift = (GIRDLE_UP + shrug * up_share) * up_share
     fwd = GIRDLE_FWD * (1.0 + (SWING_FWD - 1.0) * swing) * q[0]
     out = GIRDLE_OUT * max(0.0, q[1] * side_) - swing * GIRDLE_IN * max(0.0, -q[1] * side_)
+    out -= draw_in * up_share ** 2
     return yaw((fwd, out * side_, 0.0), tw)[:2] + (lift,)
 
 
@@ -246,8 +263,9 @@ def girdles(st):
             out[k] = (0.0, 0.0, 0.0)
             continue
         sh = shoulder(k, st)
-        e, sh1, _ = solve_arm(sh, g, _pole(k, st))
-        gd = _girdle(k, unit(sub(e, sh1)), st.get('tw', 0.0), st.get('swing', 0.0) if k == 'R' else 0.0)
+        e, sh1, _ = solve_arm(sh, g, _pole(k, st), st.get('arm_k', 1.0))
+        gd = _girdle(k, unit(sub(e, sh1)), st.get('tw', 0.0), st.get('swing', 0.0) if k == 'R' else 0.0,
+                     st.get('shrug', 0.0), st.get('draw_in', 0.0))
         if k == 'R':
             gd = sub(gd, carry_girdle())
         else:
@@ -273,7 +291,7 @@ def arms(st):
         if g is None:
             out[k] = None
             continue
-        e, sh, slack = solve_arm(add(shoulder(k, st), gd[k]), g, _pole(k, st))
+        e, sh, slack = solve_arm(add(shoulder(k, st), gd[k]), g, _pole(k, st), st.get('arm_k', 1.0))
         out[k] = (sh, e, g, slack)
     return out
 

@@ -146,9 +146,10 @@ def moves():
     return [c1, tw, b1, b2]
 
 
-def write_sheet(path, groups):
-    """groups: [{direction: [frames]}] -> one sheet in the attack container."""
-    cw, ch = AW.BIG
+def write_sheet(path, groups, cell=None, top=0):
+    """groups: [{direction: [frames]}] -> one sheet in the attack container (or `cell`: a taller one,
+    `top` more rows above the attack container's - the anchor that much lower)."""
+    cw, ch = cell or AW.BIG
     off = AW.EXT
     n = len(groups[0]['down'])
     im = Image.new('RGBA', (cw * n, ch * 4 * len(groups)), (0, 0, 0, 0))
@@ -156,7 +157,8 @@ def write_sheet(path, groups):
     for g in groups:
         for d in rig.DIRS:
             for c, f in enumerate(g[d]):
-                im.alpha_composite(rig.image({(x + off, y + off): v for (x, y), v in f.items()}, (cw, ch)), (c * cw, r * ch))
+                im.alpha_composite(rig.image({(x + off, y + off + top): v for (x, y), v in f.items()}, (cw, ch)),
+                                   (c * cw, r * ch))
             r += 1
     im.save(path)
 

@@ -35,7 +35,8 @@ STAND_FOOT = (0.0, 0.0, gait.ANKLE_H, 0.0)
 
 def carry_key(**kw):
     k = dict(D=0, hx=0.0, ht=0.0, lx=0.0, tw=0.0, bow=0.0, ck=0.0, cs=0.0, fist=CARRY_FIST, dir=CARRY_DIR,
-             roll=0.0, two=0.0, lfree=0.0, lhand=(0.0, 0.0, 0.0), swing=0.0, feet={'R': STAND_FOOT, 'L': STAND_FOOT})
+             roll=0.0, two=0.0, lfree=0.0, lhand=(0.0, 0.0, 0.0), swing=0.0, arm_k=1.0, shrug=0.0, draw_in=0.0,
+             feet={'R': STAND_FOOT, 'L': STAND_FOOT})
     k.update(kw)
     return k
 
@@ -45,8 +46,13 @@ def boot_drop(pitch):
     return anim_kneel.boot_drop(pitch)
 
 
-SCALARS = ('D', 'hx', 'ht', 'lx', 'tw', 'bow', 'ck', 'cs', 'roll', 'two', 'lfree', 'swing')
-CLAMP01 = ('two', 'lfree', 'swing')
+SCALARS = ('D', 'hx', 'ht', 'lx', 'tw', 'bow', 'ck', 'cs', 'roll', 'two', 'lfree', 'swing', 'arm_k', 'shrug', 'draw_in',
+           'glow')
+# arm_k, shrug, draw_in: the cleave's arms over the head (attack3d.arm_lengths, _girdle); glow: the
+# helmet's cross lit red (the ash impact, anim_attack.glow_head); the defaults draw every other attack
+# exactly as before
+SCALAR_DEFAULT = {'arm_k': 1.0}
+CLAMP01 = ('two', 'lfree', 'swing', 'glow')
 
 
 def _catmull(p0, p1, p2, p3, t):
@@ -77,7 +83,8 @@ class Clip:
     """keys: [(frame, settings)], frame 0 first. at(t) -> the pose at combat frame t. Each
     foot's track is the keys that give it (a key's feet may leave one out, or give None)."""
 
-    def __init__(self, name, keys, steps=None, advance=None, musts=(), whole_turn=False):
+    def __init__(self, name, keys, steps=None, advance=None, musts=(), whole_turn=False, still=False, ground=False,
+                 lead=True, tall=False, flashes=()):
         """steps: {'R': [(frame, foot)], ...} - foot keys between the body's keys (where a step
         leaves the ground or lands). advance: combat frame -> px the game has moved the Boss
         forward since the move started (the twin slash's step before its second hit,
@@ -91,6 +98,21 @@ class Clip:
         self.adv = advance or (lambda t: 0.0)
         self.musts = tuple(musts)
         self.whole_turn = whole_turn      # front / back views draw the hips' turn too (anim_attack.front_back)
+        # still: the fists, the sword's direction and the elbows hold between two equal keys too
+        # (the scalars always do). The cleave's sword stuck in the ground must not drift while the
+        # curve through the keys either side bends past it (animation-review §4.3: a weapon in
+        # the ground does not move); the earlier clips are drawn without it, unchanged
+        self.still = still
+        # ground: the blade may go into the ground (what is below it is not drawn); lead False: the
+        # keys' flat all through, even swinging fast (widths()). Either may be a frame: from there on
+        # (ground) / before it (lead) - the triple slash's twin-slash part is drawn as the twin slash
+        self.ground = ground
+        self.lead = lead
+        # tall: the sword is drawn on the cleave's taller canvas all through (anim_attack.sword_canvas:
+        # raised over his head the blade reaches above the attack container)
+        self.tall = tall
+        # flashes: the frames the helmet's cross flashes at (its brightness from flash_level, not the keys)
+        self.flashes = tuple(flashes)
         self.tracks = {}
         for s in 'RL':
             tr = {t: k['feet'][s] for t, k in keys if k['feet'].get(s) is not None}
@@ -115,17 +137,23 @@ class Clip:
         K4 = self._four(i)
         out = {}
         for k in SCALARS:
-            if K4[1][k] == K4[2][k]:
-                v = K4[1][k]          # a value held between two keys stays put (no overshoot past it)
+            dv = SCALAR_DEFAULT.get(k, 0.0)
+            if K4[1].get(k, dv) == K4[2].get(k, dv):
+                v = K4[1].get(k, dv)          # a value held between two keys stays put (no overshoot past it)
             else:
-                v = _catmull(*[(kk[k],) for kk in K4], u)[0]
+                v = _catmull(*[(kk.get(k, dv),) for kk in K4], u)[0]
             if k in CLAMP01:
                 v = min(1.0, max(0.0, v))
             out[k] = v
         out['D'] = round(out['D'])          # whole pixels (animation-review §4.4: half-pixel heights re-sample the trim)
-        out['fist'] = _catmull(*[kk['fist'] for kk in K4], u)
-        out['lhand'] = _catmull(*[kk['lhand'] for kk in K4], u)
-        dirs = [A.direction(*kk['dir']) for kk in K4]
+        def held(k):
+            """The four keys for field k: under `still`, two equal keys either side hold it."""
+            if self.still and K4[1].get(k) == K4[2].get(k):
+                return [K4[1]] * 4
+            return K4
+        out['fist'] = _catmull(*[kk['fist'] for kk in held('fist')], u)
+        out['lhand'] = _catmull(*[kk['lhand'] for kk in held('lhand')], u)
+        dirs = [A.direction(*kk['dir']) for kk in held('dir')]
         out['axis'] = A.unit(_catmull(*dirs, u))
         # the flat: each key's width (its 'flat' hint, or its roll), interpolated, then made
         # square to the blade
@@ -149,6 +177,16 @@ class Clip:
         out['adv'] = a
         out['t'] = t
         out['whole_turn'] = self.whole_turn
+        if self.tall:
+            out['tall'] = True
+        if self.flashes:
+            out['glow'] = flash_level(t, self.flashes)
+        if self.ground is True or (self.ground is not False and t >= self.ground):
+            # the blade may go into the ground; and the cleave bends over far (30 degrees, the hips
+            # 16 px down): the front / back views draw each layer further from where it stands
+            # (anim_attack: WHOLE_PAD, as the one-handed slashes)
+            out['ground'] = True
+            out['deep'] = True
         return out
 
     def _foot(self, s, t):
@@ -189,7 +227,8 @@ def widths(clip, times):
         mv = A.sub(a2, a1)
         mv = A.sub(mv, A.mul(a, A.dot(mv, a)))
         speed = A.norm(mv) / 2          # radians per frame
-        if speed > 1e-4:
+        lead = clip.lead if isinstance(clip.lead, bool) else t < clip.lead
+        if speed > 1e-4 and lead:
             w1 = A.unit(mv)
             if A.dot(w1, w0) < 0:
                 w1 = A.mul(w1, -1)
@@ -722,8 +761,458 @@ def quick_bounce():
                 whole_turn=True)
 
 
+# ------------------------------------------------------------------ C3 墜誓下劈 (the oath cleave), two hands
+# veltharis_data _cleave_hit: 起手 1.0 s (60 frames) -> 判定 0.1 (6: 60 .. 65) -> 收招 1.2 (72; 二階段
+# x0.75 -> 54): 138 frames. A straight line in front, 165 long, 53 wide (CLEAVE_LENGTH / _WIDTH).
+# The delayed version (oath_cleave_delayed, 40%): the sword is at its highest at 0.8 s (hold_start,
+# frame 48) and stays there, still, for 0.6 s (delay_hold: boss_sim moves him not at all and the
+# pose must not move - combat-design §11.6 rule 8), then comes down the same way: 174 frames, the
+# hit box 96 .. 101. The sheet is the same: the pose at CLEAVE_TOP is held 36 frames longer.
+#
+# The highest point (user 2026-10-03, the first version rejected: "the cleave is raised over the
+# head - you only have it held at the shoulder"): both fists right over the helmet, above its crown
+# (163 px), the blade back over his head and up (40 degrees), the chest arched back (8 degrees) and
+# square to the front. With these arms (36 px from shoulders at 112) both fists cannot get over a
+# helmet that with its crown reaches 160: shoulders shrugged up (the shoulder blades turn up with
+# both arms over the head, `shrug`, `draw_in`) and the chest arched back got them to the forehead
+# (147 px) at the most; the arms are drawn longer as they go up (`arm_k`, at the most ARM_K_TOP at
+# the highest point, back to 1 by the time they reach forward to strike: attack3d.arm_lengths) -
+# the stylised proportions (a helmet as tall as a third of him) make a straight overhead lift
+# otherwise impossible (animation-review §4.3: the move's pose is not lowered because the rig cannot
+# reach it). Fists in front of the face instead covered the visor from the front (the forearms
+# across it); over the helmet the forearms are behind it and the head is drawn over them
+# (anim_attack.behind_head): the visor shows between the arms.
+# The blade's flat (user 2026-10-03: "the edges face front and back, so from the side you see the
+# whole blade, but from the front and the back only a thin line"): from the highest point through
+# the cut, in the ground and out of it, the width is in the vertical plane through the blade
+# (roll 90: one edge forward, one back, the flats to his left and right). From the front and the
+# back the sword coming down at the camera and stuck in the ground before him is its thickness
+# (carry.THICK), not its width. Lifted off the shoulder (lying flat) it turns edge-up on the way up.
+# The cut comes straight down the line in front: the blade falls forward in the vertical plane
+# ahead of him, accelerating; the right foot steps in (one foot, as the sweeps: the windup is the
+# upper body's) and lands with the blow; the hips go two thirds of the way onto it and turn a
+# little to his left (the right shoulder drives forward), the chest leans in over the front knee.
+# As the hit box is on the tip passes 165 px out through the player's height (40 px) and then
+# bites into the ground (CLEAVE_BITE px deep, about 140 px out) and stays there: the recovery
+# opens with the sword stuck in the ground (boss-veltharis §4.3: the biggest opening of the fight)
+# while he stays bent over it. Then he wrenches it out (the weight back onto the left foot, the
+# fists pulling back along the blade until the tip is free), lifts it upright in front of his
+# right shoulder and lays it back on the shoulder (the way every attack puts it back), the right
+# foot stepping back under him.
+CLEAVE_W = 60                 # the hit box (60 .. 65)
+CLEAVE_TOP = 48               # the highest point (hold_start 0.8 s); the delayed version holds it 36 frames
+CLEAVE_HOLD = 36              # delay_hold 0.6 s
+CLEAVE_CONTACT = CLEAVE_W + 3          # the tip through the player's height at the hit box's edge
+CLEAVE_STEP_FROM = 53         # the right foot leaves the ground (the stroke under way)
+CLEAVE_END = CLEAVE_W + 6 + 72         # 138
+CLEAVE_STUCK = (67, 96)       # the blade in the ground, still
+CLEAVE_BACK = (106, 118)      # the right foot back under him
+RC = (40.0, -1.0, gait.ANKLE_H, 0.0)    # the right foot stepped in with the cleave
+UP_OUT_R, UP_OUT_L = (-0.15, 1.0, 0.45), (-0.15, -1.0, 0.45)    # both arms up: the elbows raised out to the sides
+EDGE = 90.0                   # roll: the blade's width in its own vertical plane (the edges front and back)
+ARM_K_TOP = 1.45              # the arms over the head drawn this many times as long (attack3d.arm_lengths)
+SHRUG_TOP, DRAW_IN_TOP = 5.0, 3.0     # px: the shoulders up and in with both arms over the head
+
+
+def overhead(k, shrug, draw_in=None):
+    """The arms on their way over the head: drawn k times as long, the shoulders shrug px further up
+    (and in, in proportion)."""
+    return dict(arm_k=k, shrug=shrug, draw_in=DRAW_IN_TOP * shrug / SHRUG_TOP if draw_in is None else draw_in)
+
+
+def cleave_keys():
+    k = []
+    planted = {'R': RC, 'L': STAND}
+    air = {'R': None, 'L': STAND}
+    k.append((0, carry_key()))
+    # the left hand comes up to the grip as the fists rise off the shoulder; the hilt goes up over
+    # the right shoulder and in over the head, the blade still back behind him (where the carry has
+    # it) and rising; it turns from lying flat to edge-up on the way
+    k.append((8, carry_key(D=1, tw=-3, lx=-1, fist=(13.0, 19.0, 141.0), dir=(168.0, 14.0), two=0.5, roll=35.0,
+                           **overhead(1.1, 1.0))))
+    k.append((16, carry_key(D=1, hx=-0.5, tw=-3, lx=-3, fist=(9.0, 14.0, 153.0), dir=(172.0, 32.0), two=0.8, roll=70.0,
+                            bow=-1, ck=-1, **overhead(1.3, 2.5))))
+    k.append((24, carry_key(D=1, hx=-1.0, tw=-2, lx=-5, fist=(1.0, 3.5, 159.5), dir=(178.0, 38.0), two=1.0, roll=EDGE,
+                            bow=-2, ck=-1, **overhead(1.44, 4.0))))
+    # the highest point: both fists over the helmet, the blade back over his head, the chest arched
+    # back; held still from CLEAVE_TOP - 4 (the delayed version holds it, motionless)
+    top = carry_key(D=1, hx=-1.5, tw=0, lx=-8, fist=(-4.0, 0.0, 163.0), dir=(180.0, 40.0), two=1.0, roll=EDGE,
+                    bow=-3, ck=-2, **overhead(ARM_K_TOP, SHRUG_TOP))
+    k.append((34, dict(top, lx=-7, fist=(-2.0, 2.0, 162.0), dir=(179.0, 39.0), **overhead(1.45, 4.8))))
+    k.append((CLEAVE_TOP - 4, top))
+    k.append((CLEAVE_TOP, top))
+    # the stroke: the fists come forward over his head and down, the blade swings up over him and
+    # falls forward, faster and faster; the arms back to their length as they reach forward; the
+    # right foot off the ground (CLEAVE_STEP_FROM), the hips after it
+    k.append((51, carry_key(D=2, hx=-1.0, tw=0, lx=-7, fist=(3.0, 0.0, 159.0), dir=(180.0, 62.0), two=1.0,
+                            roll=EDGE, bow=-3, ck=-2, **overhead(1.44, 4.8))))
+    k.append((54, carry_key(D=4, hx=2.5, ht=2, tw=2, lx=0, fist=(14.0, 0.0, 151.0), dir=(0.0, 82.0), two=1.0,
+                            roll=EDGE, bow=0, ck=-1, feet=air, **overhead(1.4, 3.5))))
+    k.append((57, carry_key(D=7, hx=9.0, ht=5, tw=4, lx=9, fist=(29.0, 0.0, 137.0), dir=(0.0, 52.0), two=1.0,
+                            roll=EDGE, bow=3, ck=0, feet=air, **overhead(1.21, 1.5))))
+    k.append((59, carry_key(D=9, hx=15.0, ht=8, tw=5, lx=16, fist=(41.0, 0.0, 120.0), dir=(0.0, 30.0), two=1.0,
+                            roll=EDGE, bow=5, ck=1, feet=air, **overhead(1.06, 0.5))))
+    k.append((61, carry_key(D=11, hx=21.0, ht=10, tw=6, lx=21, fist=(53.0, 0.5, 96.0), dir=(0.0, 6.0), two=1.0,
+                            roll=EDGE, bow=7, ck=2, feet=air)))
+    # the blow: the right foot lands, the tip passes the hit box's edge at the player's height
+    k.append((CLEAVE_CONTACT, carry_key(D=15, hx=28.0, ht=12, tw=7, lx=30, fist=(60.0, 0.0, 84.0), dir=(0.0, -26.0),
+                                        two=1.0, roll=EDGE, bow=9, ck=3, feet=planted)))
+    # into the ground: the blade bites and stops; he goes on down over it
+    k.append((65, carry_key(D=16, hx=28.5, ht=12, tw=8, lx=30, fist=(59.0, 0.0, 82.0), dir=(0.0, -45.0), two=1.0,
+                            roll=EDGE, bow=9, ck=3, feet=planted)))
+    stuck = carry_key(D=16, hx=29.0, ht=12, tw=8, lx=30, fist=(60.0, 0.0, 82.0), dir=(0.0, -47.5), two=1.0,
+                      roll=EDGE, bow=8, ck=2, feet=planted)
+    k.append((CLEAVE_STUCK[0], stuck))
+    k.append((CLEAVE_STUCK[1], stuck))
+    # wrenched out: the weight back onto the left foot, the fists pulled back along the blade
+    k.append((101, carry_key(D=14, hx=24.0, ht=10, tw=7, lx=25, fist=(53.0, 0.0, 89.4), dir=(0.0, -47.5), two=1.0,
+                             roll=EDGE, bow=6, ck=1, feet=planted)))
+    k.append((106, carry_key(D=9, hx=14.0, ht=6, tw=3, lx=12, fist=(40.0, 2.0, 98.0), dir=(-4.0, -8.0), two=1.0,
+                             roll=EDGE, bow=4, ck=0, feet=planted)))
+    # lifted upright before his right shoulder, laid back on it (the way the sweeps put it back);
+    # the right foot steps back under him (CLEAVE_BACK), the left hand lets go
+    k.append((112, carry_key(D=6, hx=6.0, ht=3, tw=2, lx=4, fist=(28.0, 8.0, 112.0), dir=(-12.0, 48.0), two=1.0,
+                             roll=-30.0, bow=2, feet={'R': None, 'L': STAND})))
+    k.append((118, carry_key(D=3, hx=1.5, ht=0, tw=1, lx=1, fist=(21.0, 13.0, 123.0), dir=(-18.0, 80.0), two=0.5,
+                             flat=FLAT_R)))
+    k.append((126, carry_key(D=1, fist=(17.0, 20.0, 131.0), dir=(162.0, 40.0), two=0.0, roll=30.0)))
+    k.append((132, carry_key()))
+    return k
+
+
+CLEAVE_MUSTS = (CLEAVE_TOP,) + tuple(range(CLEAVE_W, CLEAVE_W + 7))
+
+
+def cleave_steps():
+    return {'R': [(CLEAVE_STEP_FROM, STAND), (CLEAVE_CONTACT, RC), (CLEAVE_BACK[0], RC), (CLEAVE_BACK[1], STAND)]}
+
+
+POLES_CLEAVE = {
+    8: ((0.1, 1.0, -0.4), (1.0, 0.3, -0.6)),
+    16: ((0.0, 1.0, 0.0), (0.4, -1.0, -0.3)), 24: (UP_OUT_R, UP_OUT_L), 34: (UP_OUT_R, UP_OUT_L), CLEAVE_TOP - 4: (UP_OUT_R, UP_OUT_L), CLEAVE_TOP: (UP_OUT_R, UP_OUT_L),
+    51: (UP_OUT_R, UP_OUT_L),
+    54: ((0.1, 1.0, 0.1), (0.1, -1.0, 0.1)),
+    57: ((0.2, 1.0, -0.4), (0.2, -1.0, -0.4)),
+    59: ((0.1, 0.8, -0.8), (0.1, -0.8, -0.8)),
+    61: (DOWN_R, DOWN_L), CLEAVE_CONTACT: (DOWN_R, DOWN_L), 65: (DOWN_R, DOWN_L),
+    CLEAVE_STUCK[0]: (DOWN_R, DOWN_L), CLEAVE_STUCK[1]: (DOWN_R, DOWN_L),
+    101: (DOWN_R, DOWN_L), 106: (RISE_R, RISE_L), 112: (RISE_R, RISE_L),
+    118: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0)),
+}
+
+
+def cleave():
+    """墜誓下劈: windup 60 (the highest point at 48), hit 6 (60 .. 65), recovery 72 -> 138 frames.
+    Poses of their own (musts): the highest point (the delayed version holds it) and every frame of
+    the hit box (the bounce starts on the contact)."""
+    return Clip('cleave', with_poles(cleave_keys(), POLES_CLEAVE), cleave_steps(), musts=CLEAVE_MUSTS, still=True,
+                ground=True, lead=False, tall=True)
+
+
+def cleave_bounce():
+    """墜誓下劈 parried (bounce_time 1.2: BOUNCED 72 frames), from its contact: the blade is knocked
+    up before it reaches the ground."""
+    keys, steps = bounce_keys(contact_key(cleave(), CLEAVE_CONTACT))
+    return Clip('cleave_bounce', with_poles(keys, POLES_BOUNCE), steps, tall=True)
+
+
+# ------------------------------------------------------------------ 灰燼衝擊 (the ash impact): the sword plunged into the ground
+# veltharis_data _impact_ring(1.1): 起手 1.1 s (66 frames; the last 0.6 s the danger telegraph, drawn
+# by code: white light, white runes over his head) -> the ring from frame 66 (0.2 s) -> 收招 1.4 s (84):
+# 162 frames. Phase 2's 雙重衝擊: a second ring 0.9 s (54) after the first (frame 120, its own 0.6 s
+# telegraph from 84), 收招 1.4 x 0.75 (63): 195 frames. Unblockable: no bounce.
+# User 2026-10-03 (second version): "改成劍尖朝下，雙手往地面下插的插劍，然後劍尖朝下但手一樣要舉過頭頂
+# 蓄力" - not the cleave's cut: the sword turned tip-down and plunged. Off the shoulder the sword goes
+# round in front of him the way he puts it down standing (carry.pose3, the stop's route backwards:
+# up over the shoulder, forward, down) until it hangs tip-down before his chest, both hands on the
+# grip (the right by the pommel, on top; the left below it, by the guard); then both hands lift it
+# straight up until they are over his head, the blade hanging tip-down in front of his face, and he
+# holds it there (the charge: veltharis_data's danger time, the last 0.6 s before the ring; the white
+# telegraph is drawn by code), arched back, the blade angled a little forward past his face
+# (impact_top), the helmet's cross lit red; then, standing (no step, no bending), his arms drive
+# it straight down into the ground steeply (80 degrees) about 45 px ahead of him as the ring goes out
+# (the ring is centred on him). The edges front and back all through, as the cleave holds it (a sword turned over end to
+# end in both hands keeps its edges front and back): from the front and the back the hanging and the
+# planted blade are a thin line. It stays in through the ring and the recovery, comes straight up
+# out of the ground along its line and goes back onto the shoulder the way it came (carry.pose3).
+# The double impact pulls it straight up out of the ground and lifts it over his head again for the
+# second plunge.
+IMPACT_RING = 66
+IMPACT_END = IMPACT_RING + 12 + 84            # 162
+IMPACT_RING2 = IMPACT_RING + 54               # 120: the double impact's second ring
+DOUBLE_END = IMPACT_RING2 + 12 + 63           # 195
+DANGER = 36                                   # veltharis_data danger_time 0.6 s: the charge before each ring
+IMPACT_TOP = IMPACT_RING - DANGER             # 30: the hands over his head (held from 26 until the plunge)
+PLUNGE = 6                                    # frames from the hands over his head to the blade in the ground
+IMPACT_DIR = (0.0, -80.0)                     # the plunged blade: steep, straight ahead
+IMPACT_FIST = (24.0, 0.0, 107.7)              # the right fist as the blade goes in (frame P): 8.5 px deep, standing
+# The helmet's cross flashes red, once, as the charge begins (user 2026-10-03: "我要的是頭盔附近閃一下十字
+# 紅光，像絕區零的怪在攻擊前會閃的那種光一樣……劍插下去前十字紅光要閃一下，警示玩家"): brightest at the start
+# of the game's danger time (the 0.6 s the player has to get out of the ring), fading in before and out
+# after (FLASH_CURVE); the cross lights up with it (glow, anim_attack.glow_head, Clip(flashes=)); the
+# flare round it (a wide cross of light by the helmet) is drawn by code - export_cleave gives the
+# frames, the curve and where (json 'flash'), the previews draw a stand-in. It replaces the whole-body
+# white light of the danger telegraph for this move.
+# User 2026-10-04: "閃光需要有淡入和淡出，不是突然出現光的貼圖，是有過程的": the flash fades in over the
+# 6 frames before the danger time starts, is brightest as it starts, holds and fades out over 10: about
+# a third of a second. FLASH_CURVE: (frames from the peak, brightness 0 .. 1), straight lines between;
+# the helmet's cross (glow) and the code's flare follow the same curve.
+FLASH_CURVE = ((-6, 0.0), (-4, 0.35), (-2, 0.7), (0, 1.0), (4, 1.0), (8, 0.6), (12, 0.35), (14, 0.0))
+FLASH_SPAN = (FLASH_CURVE[0][0], FLASH_CURVE[-1][0])
+
+
+def flash_level(t, peaks):
+    """The flash's brightness at combat frame t, the flashes peaking at `peaks`."""
+    best = 0.0
+    for p in peaks:
+        k = t - p
+        for (k0, v0), (k1, v1) in zip(FLASH_CURVE, FLASH_CURVE[1:]):
+            if k0 <= k <= k1:
+                best = max(best, v0 + (v1 - v0) * (k - k0) / (k1 - k0))
+                break
+    return best
+
+
+def flash_musts(peaks, levels=(0.3, 0.65)):
+    """Frames where the drawn cross changes (its brightness crosses a step of anim_attack.glow_head):
+    each a pose of its own, so a held pose does not carry the change on."""
+    step = lambda v: sum(v >= x for x in levels)
+    out = []
+    for p in peaks:
+        for t in range(p + FLASH_SPAN[0], p + FLASH_SPAN[1] + 2):
+            if step(flash_level(t, peaks)) != step(flash_level(t - 1, peaks)):
+                out.append(t)
+    return tuple(out)
+
+
+def _route(b, **kw):
+    """A key on the way between the carry (b = 1) and the sword hanging tip-down before him (b = 0):
+    carry.pose3's direction and flat (the route he puts the sword down by, standing)."""
+    ax, w = carry.pose3(b)
+    return carry_key(dir=A.angles(ax), flat=w, **kw)
+
+
+def impact_top(**kw):
+    """Both hands right over his head, the blade tip-down past his face and angled forward (68 degrees
+    down: straight down from there it would go through the helmet; hands in front of his face held it
+    straight down, but from the front the forearms then covered the visor), arched back; the cross
+    on the helmet flashes as he holds it (Clip(flashes=), FLASH_CURVE)."""
+    k = carry_key(D=1, hx=-1.0, lx=-10, fist=(-1.0, 2.0, 163.0), dir=(0.0, -68.0), two=1.0, roll=EDGE, bow=-3, ck=-2,
+                  **overhead(ARM_K_TOP, SHRUG_TOP))
+    k.update(kw)
+    return k
+
+
+def impact_raise(t0=0):
+    """Carry -> the sword round in front of him, tip-down (t0 .. t0 + 19) -> lifted over his head
+    (t0 + 26, held): the cross flashes as the charge begins (IMPACT_TOP)."""
+    return [
+        (t0, carry_key()),
+        (t0 + 5, _route(0.82, D=1, fist=(18.0, 21.0, 138.0), two=0.25, **overhead(1.03, 0.3))),
+        (t0 + 10, _route(0.58, D=1, lx=-1, fist=(22.0, 15.0, 134.0), two=0.55, **overhead(1.06, 0.6))),
+        (t0 + 13, _route(0.4, D=1, lx=-1, fist=(22.0, 10.0, 131.0), two=0.75, bow=-1, **overhead(1.09, 0.9))),
+        (t0 + 16, _route(0.22, D=1, lx=-1, fist=(22.0, 7.0, 130.0), two=0.9, bow=-1, **overhead(1.12, 1.2))),
+        (t0 + 19, carry_key(D=1, lx=-2, fist=(21.0, 5.0, 132.0), dir=(0.0, -72.0), two=1.0, roll=EDGE, bow=-1,
+                            **overhead(1.18, 1.6))),
+        (t0 + 22, carry_key(D=1, hx=-0.5, lx=-5, fist=(14.0, 4.0, 146.0), dir=(0.0, -76.0), two=1.0, roll=EDGE, bow=-2,
+                            ck=-1, **overhead(1.3, 3.0))),
+        (IMPACT_TOP - 4, impact_top()),
+        (IMPACT_TOP, impact_top()),
+    ]
+
+
+def _driven(d):
+    """The right fist d px further along the planted blade's line (+ = in, - = out)."""
+    return A.add(IMPACT_FIST, A.mul(A.direction(*IMPACT_DIR), d))
+
+
+def impact_plant(P):
+    """The plunge, standing (user 2026-10-03: "右腳不用往前踏，也不用彎腰，單純手舉過頭頂把劍插下去就好"):
+    from the hands over his head (held until P - PLUNGE) the arms drive the sword straight down in
+    front of him; the blade in the ground from P (the ring's first frame), driven in along its line."""
+    return [
+        (P - PLUNGE, impact_top()),
+        (P - 4, carry_key(D=1, hx=-0.5, lx=-5, fist=(6.0, 1.0, 152.0), dir=(0.0, -74.0), two=1.0, roll=EDGE, bow=0, ck=-1,
+                          **overhead(1.3, 3.0))),
+        (P - 2, carry_key(D=1, lx=-1, fist=(16.0, 0.5, 134.0), dir=(0.0, -78.0), two=1.0, roll=EDGE, bow=3, ck=0,
+                          **overhead(1.15, 1.2))),
+        (P - 1, carry_key(D=2, lx=1, fist=(21.0, 0.0, 120.0), dir=(0.0, -79.0), two=1.0, roll=EDGE, bow=5, ck=1,
+                          **overhead(1.07, 0.4))),
+        (P, carry_key(D=2, lx=2, fist=IMPACT_FIST, dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=6, ck=2)),
+        impact_planted(P + 2, bow=6, ck=1),
+    ]
+
+
+def impact_planted(t, **kw):
+    """Standing over the planted sword, both hands on it (it does not move)."""
+    k = carry_key(D=2, lx=2, fist=_driven(3.3), dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=5, ck=0)
+    k.update(kw)
+    return t, k
+
+
+def impact_pull(t0):
+    """Straight up out of the ground along its line (t0 .. t0 + 6), lifted tip-down, then round
+    onto the shoulder the way it came (carry.pose3); the carry from t0 + 36."""
+    return [
+        (t0 + 6, carry_key(D=1, lx=1, fist=_driven(-16.0), dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=3)),
+        (t0 + 12, carry_key(D=1, fist=(24.0, 3.0, 130.0), dir=(0.0, -75.0), two=1.0, roll=EDGE, bow=2)),
+        (t0 + 18, _route(0.33, D=1, fist=(22.0, 9.0, 130.0), two=0.8, bow=1)),
+        (t0 + 24, _route(0.6, D=1, fist=(21.0, 14.0, 133.0), two=0.5)),
+        (t0 + 30, _route(0.85, D=1, fist=(17.0, 20.0, 135.0), two=0.15)),
+        (t0 + 36, carry_key()),
+    ]
+
+
+RAISE_POLES = {5: ((0.1, 1.0, -0.4), (1.0, 0.3, -0.6)), 10: (RISE_R, RISE_L), 13: (RISE_R, RISE_L),
+               16: (RISE_R, RISE_L), 19: (DOWN_R, DOWN_L), 22: ((0.0, 1.0, 0.0), (0.0, -1.0, 0.0)),
+               IMPACT_TOP - 4: (UP_OUT_R, UP_OUT_L), IMPACT_TOP: (UP_OUT_R, UP_OUT_L)}
+
+
+def poles_plant(P):
+    return {P - PLUNGE: (UP_OUT_R, UP_OUT_L), P - 4: ((0.0, 1.0, 0.0), (0.0, -1.0, 0.0)),
+            P - 2: ((0.1, 1.0, -0.5), (0.1, -1.0, -0.5)), P - 1: (DOWN_R, DOWN_L), P: (DOWN_R, DOWN_L),
+            P + 2: (DOWN_R, DOWN_L)}
+
+
+def poles_pull(t0):
+    return {t0: (DOWN_R, DOWN_L), t0 + 6: (DOWN_R, DOWN_L), t0 + 12: (DOWN_R, DOWN_L), t0 + 18: (RISE_R, RISE_L),
+            t0 + 24: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0))}
+
+
+def _raise_poles(*tables):
+    out = dict(RAISE_POLES)
+    for tb in tables:
+        out.update(tb)
+    return out
+
+
+IMPACT_PULL = 124             # the single impact: out of the ground from here
+# the plunge a pose a frame (the hands come down from over his head 15 px a frame)
+IMPACT_MUSTS = (IMPACT_TOP,) + flash_musts((IMPACT_TOP,)) + tuple(range(IMPACT_RING - PLUNGE, IMPACT_RING + 1))
+# starting from a move the sword goes round from the shoulder to tip-down in front in 22 frames:
+# every 2 frames (every 4 the tip moved 86-95 px a pose)
+IMPACT_ENTRY = (tuple(range(0, 24, 2)), 12, 24)
+
+
+def impact_keys():
+    return impact_raise() + impact_plant(IMPACT_RING) + [impact_planted(IMPACT_PULL)] + impact_pull(IMPACT_PULL)
+
+
+def impact():
+    """灰燼衝擊: tip-down over his head (the cross lit) from frame 26, held through the charge (the
+    last 0.6 s), plunged at frame 66 (the ring), recovery 84 -> 162. The feet do not move."""
+    return Clip('impact', with_poles(impact_keys(), _raise_poles(poles_plant(IMPACT_RING), poles_pull(IMPACT_PULL))),
+                {}, musts=IMPACT_MUSTS, still=True, ground=True, lead=False, tall=True, flashes=(IMPACT_TOP,))
+
+
+# The double impact (phase 2 only; user 2026-10-03: "雙重衝擊波是二階段的boss招式嗎？如果是的話第二下不用再
+# 拔起來插一次了，全身用力往下壓一下就好，不用把劍拔出來"): the first plunge as the ash impact; the sword
+# stays in the ground, he stands over it, hands on the hilt; the cross flashes as the second ring's
+# danger time begins (frame 84, veltharis_data gives each ring its own); he draws himself up (114 ..
+# 118) and throws his whole weight down onto the hilt as the second ring goes out (120: the hips
+# drop, the chest goes over the hilt, the arms push down - the sword does not move), straightens up,
+# pulls it out (157) and puts it back on the shoulder: recovery 63.
+DOUBLE_TOP2 = IMPACT_RING2 - DANGER           # 84: the second ring's danger time begins (the flash)
+DOUBLE_PULL2 = 157             # out of the ground; the carry from DOUBLE_END - 2: one pose of it at the end
+PRESS = (IMPACT_RING2 - 6, IMPACT_RING2 - 2)  # drawn up, then down onto the hilt
+DOUBLE_MUSTS = IMPACT_MUSTS + (DOUBLE_TOP2,) + flash_musts((DOUBLE_TOP2,)) + tuple(range(PRESS[0], IMPACT_RING2 + 2))
+
+
+def double_keys():
+    P2 = IMPACT_RING2
+    _, over = impact_planted(0)
+    k = impact_raise() + impact_plant(IMPACT_RING)
+    k += [
+        (PRESS[0], over),
+        # drawn up over the hilt, then the whole weight thrown down onto it
+        (PRESS[1], carry_key(D=0, lx=-3, fist=over['fist'], dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=-2, ck=-1)),
+        (P2, carry_key(D=9, lx=13, fist=over['fist'], dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=9, ck=2)),
+        (P2 + 3, carry_key(D=10, lx=14, fist=over['fist'], dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=9, ck=2)),
+        (P2 + 14, carry_key(D=5, lx=7, fist=over['fist'], dir=IMPACT_DIR, two=1.0, roll=EDGE, bow=6, ck=1)),
+        impact_planted(P2 + 26),
+        impact_planted(DOUBLE_PULL2),
+    ] + impact_pull(DOUBLE_PULL2)
+    return k
+
+
+def double_impact():
+    """雙重衝擊 (phase 2): the plunge at 66, the weight thrown onto the planted sword at 120 (each ring
+    with its flash at the start of its danger time), recovery 63 -> 195."""
+    poles = _raise_poles(poles_plant(IMPACT_RING), poles_pull(DOUBLE_PULL2))
+    return Clip('double_impact', with_poles(double_keys(), poles), {}, musts=DOUBLE_MUSTS, still=True,
+                ground=True, lead=False, tall=True, flashes=(IMPACT_TOP, DOUBLE_TOP2))
+
+
+# ------------------------------------------------------------------ 三斬 (phase 2): the twin slash, then the cleave
+# veltharis_data triple_slash: _twin_first, _twin_second(false), _cleave_hit(1.0): the third hit 1.0 s
+# (60 frames) after the second starts - frame W2 + 60 = 162, its highest point at W2 + 48 = 150 (the
+# delayed version: held 36 frames there, the hit at 198); recovery 1.2 x 0.75 (phase 2 only: the
+# sheet is drawn with the cleave's 72-frame recovery and played with hold_phase2's 54).
+# The second cut's follow-through (one-handed, the sword low on his right, the left foot 36 px ahead
+# of the right, the game having moved him 28 px) runs on into the cleave's raise: the weight comes
+# back onto the right foot, the sword is lifted on his right side, the left hand takes the grip
+# again, the left foot steps back beside the right (one foot at a time; he does not move forward
+# again), and by TRIPLE_TOP - 4 he is in the cleave's highest point - from there on everything is
+# the cleave's, about where the game has him (ahead()).
+TRIPLE_SHIFT = W2                          # the cleave's frame t is the triple's t + 102
+TRIPLE_W3 = CLEAVE_W + TRIPLE_SHIFT        # 162
+TRIPLE_TOP = CLEAVE_TOP + TRIPLE_SHIFT     # 150
+TRIPLE_END = CLEAVE_END + TRIPLE_SHIFT     # 240 as drawn (phase 1 timing); played with the phase 2 recovery: 222
+TRIPLE_LBACK = (128, 138)                  # the left foot back beside the right
+
+
+def triple_keys():
+    k = [kv for kv in twin_keys() if kv[0] <= W2 + 8]
+    planted = {'R': STAND, 'L': LF}
+    # (the flat as the second cut's edge left it: with the default, lying level, it turned 61 degrees
+    # between two poses as the swing slowed down - a flash)
+    k.append(ahead(W2 + 16, carry_key(D=10, hx=21.0, ht=-18, tw=-28, lx=13, fist=(31.0, 23.0, 88.0), dir=(116.0, -20.0),
+                                      two=0.0, flat=A.unit((-0.91, -0.42, 0.0)), bow=5, ck=1, cs=-4, feet=planted)))
+    # the weight back towards the right foot (the hips staying between the feet until the left
+    # foot lifts), the sword lifted out on his right, outside the shoulder plate (straight up past
+    # it would go through it), the left hand coming back
+    k.append(ahead(W2 + 22, carry_key(D=8, hx=11.0, ht=-9, tw=-17, lx=5, fist=(26.0, 23.0, 104.0), dir=(108.0, 14.0),
+                                      two=0.3, flat=FLAT_R, bow=2, ck=0, cs=-2, feet=planted)))
+    k.append(ahead(TRIPLE_LBACK[0], carry_key(D=7, hx=7.0, ht=-6, tw=-15, lx=2, fist=(23.0, 22.0, 110.0), dir=(110.0, 36.0),
+                                              two=0.6, flat=FLAT_R, bow=0, ck=0, cs=-1, feet=planted)))
+    # the left foot steps back beside the right (TRIPLE_LBACK) as the sword goes up past the plate
+    k.append(ahead(W2 + 30, carry_key(D=4, hx=2.0, ht=-3, tw=-13, lx=-2, fist=(17.0, 16.0, 128.0), dir=(126.0, 60.0),
+                                      two=0.5, flat=FLAT_R, bow=-1, ck=-1, feet={'R': STAND, 'L': None}, **overhead(1.12, 1.0))))
+    # on up over his head (the cleave's raise): the hilt up over the right shoulder first, then in
+    # over the helmet (straight in, the blade would cut through it), the blade back over it, edge-up
+    k.append(ahead(W2 + 35, carry_key(D=3, hx=0.0, tw=-8, lx=-4, fist=(11.0, 12.0, 147.0), dir=(150.0, 52.0), two=0.8,
+                                      roll=72.0, bow=-2, ck=-2, **overhead(1.3, 2.5))))
+    k.append(ahead(W2 + 38, carry_key(D=2, hx=-1.0, tw=-4, lx=-5, fist=(4.0, 4.0, 152.0), dir=(172.0, 54.0), two=1.0,
+                                      roll=EDGE, bow=-3, ck=-2, **overhead(1.42, 3.5))))
+    k += [ahead(t + TRIPLE_SHIFT, kk) for t, kk in cleave_keys() if t >= CLEAVE_TOP - 4]
+    return k
+
+
+def triple_steps():
+    R = [(STEP_FROM, STAND), (W + 3, RF_QUICK)]
+    R += [(t + TRIPLE_SHIFT, (f[0] + TWIN_STEP,) + f[1:]) for t, f in cleave_steps()['R']]
+    L = [(TWIN_STEP2, STAND), (W2 + 3, ahead(0, carry_key(feet={'R': STAND, 'L': LF}))[1]['feet']['L']),
+         (TRIPLE_LBACK[0], (LF[0] + TWIN_STEP,) + LF[1:]), (TRIPLE_LBACK[1], (TWIN_STEP,) + STAND[1:])]
+    return {'R': R, 'L': L}
+
+
+def triple():
+    """三斬: the twin slash (hits 48, 102; the game's step before the second), the cleave (hit 162)."""
+    poles = {t: v for t, v in POLES_TWIN.items() if t <= W2 + 8}
+    poles.update({W2 + 16: ((-0.3, 1.0, -0.4), None), W2 + 22: ((0.0, 1.0, -0.4), (1.0, 0.3, -0.6)),
+                  TRIPLE_LBACK[0]: ((0.0, 1.0, -0.2), (0.8, -0.3, -0.5)),
+                  W2 + 30: ((0.0, 1.0, 0.1), (0.4, -1.0, -0.3)), W2 + 38: (UP_OUT_R, UP_OUT_L)})
+    poles.update({t + TRIPLE_SHIFT: v for t, v in POLES_CLEAVE.items() if t >= CLEAVE_TOP - 4})
+    musts = tuple(range(TWIN_STEP_FROM, W2)) + tuple(t + TRIPLE_SHIFT for t in CLEAVE_MUSTS)
+    # the edge leads through the twin slash's two cuts (drawn as the twin slash); from the second
+    # cut's follow-through on, the keys' flat (lifted up over the head the blade is not cutting:
+    # with the edge leading it turned 62 degrees in a pose as the lift sped up - a flash)
+    return Clip('triple', with_poles(triple_keys(), poles), triple_steps(), advance=twin_advance, musts=musts,
+                still=True, ground=TRIPLE_TOP - 4, lead=W2 + 12, tall=True)
+
+
 # ------------------------------------------------------------------ choosing the poses
-TIP_STEP = 80.0        # px the sword's tip may move on screen between two poses (the Boss's limit, checks_hit)
+TIP_STEP = 80.0       # px the sword's tip may move on screen between two poses (the Boss's limit, checks_hit)
 HAND_STEP = 16.0       # px the fists may move (a part's limit, checks.STEP_MAX)
 VIEWS3 = (('front', False), ('right', False), ('back', False), ('right', True))
 
@@ -743,8 +1232,15 @@ def screen_step(a, b):
     """Largest on-screen move of the tip and of the right fist between two states, over the views
     (with the game's move between them)."""
     worst_tip = worst_hand = 0.0
+    pts = [(A.tip(a), A.tip(b), 'tip'), (a['fist'], b['fist'], 'hand')]
+    if a.get('arm_k', 1.0) != 1.0 or b.get('arm_k', 1.0) != 1.0:
+        # the arms over the head (the cleave): the left fist is the top of him and goes up faster
+        # than the right (it is further along the raised grip) - it is held to the limit too
+        la, lb = A.fists(a)[1], A.fists(b)[1]
+        if la is not None and lb is not None:
+            pts.append((la, lb, 'hand'))
     for view, far in VIEWS3:
-        for p, q, kind in ((A.tip(a), A.tip(b), 'tip'), (a['fist'], b['fist'], 'hand')):
+        for p, q, kind in pts:
             pa, pb = on_screen(view, p, a.get('adv', 0.0), far), on_screen(view, q, b.get('adv', 0.0), far)
             dd = math.dist(pa, pb)
             if kind == 'tip':

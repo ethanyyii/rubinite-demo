@@ -39,6 +39,24 @@ import attacks as AT
 FW, FH, AX, AY = rig.FW, rig.FH, rig.AX, rig.AY
 DEPTH = swd.DEPTH
 EXT, BIG = AW.EXT, AW.BIG
+# The cleave's blade goes into the ground in front of him: seen from the front it reaches down the
+# screen towards the camera further than the attack container's 64 px below the feet - its
+# sheets use a taller cell: TALL_EXTRA more rows at the bottom, and TALL_TOP more at the top (second
+# version: raised over his head and swung on up through upright, the blade reaches 284 px up - the
+# attack container's 272 rows above the feet cut its tip off). The anchor moves down TALL_TOP
+TALL_EXTRA = 16
+TALL_TOP = 24
+TALL = (BIG[0], BIG[1] + TALL_EXTRA + TALL_TOP)
+
+
+def sword_canvas(s):
+    """(size, origin) of the canvas a pose's sword is drawn on: the attack container, or the cleave's
+    taller one (TALL, reaching TALL_TOP further up)."""
+    if s.get('ground') or s.get('tall'):
+        return TALL, (-EXT, -EXT - TALL_TOP)
+    return BIG, (-EXT, -EXT)
+
+
 piecewise, _frac = AW.piecewise, AW._frac
 HIP_HALF = 17.0
 LEAN_ROWS, LEAN_DEG = AW.LEAN_ROWS, AW.LEAN_DEG
@@ -186,6 +204,30 @@ def sword_split(view, pix, pl, fist3, axis3, tier_of):
     return out
 
 
+def ground_cut(view, pix, pl, fist3, axis3, w3, far=False):
+    """The drawn sword without what is in the ground (the cleave bites into it): each pixel's
+    point on the blade (along it and across it, from the placement) back in 3D, dropped below
+    the ground (z < 0). Every view the same way: seen from the front the ground under a blade
+    reaching ahead is lower on screen (DEPTH), so a screen line would not do."""
+    g, ax, wd = pl['grip'], pl['axis'], pl['width']
+    det = ax[0] * wd[1] - ax[1] * wd[0]
+    if abs(det) < 1e-9:
+        return pix
+    kk = math.hypot(*AW._layers({'right': 'right', 'front': 'down', 'back': 'up'}[view])['place0']['axis'])
+    # place() may have turned the width over (to keep the drawing's handedness)
+    pw = swd.project_vec(view, w3, far)
+    sgn = -1.0 if pw[0] * wd[0] + pw[1] * wd[1] < 0 else 1.0
+    out = {}
+    for (x, y), c in pix.items():
+        dx, dy = x + 0.5 - g[0], y + 0.5 - g[1]
+        a = (dx * wd[1] - dy * wd[0]) / det
+        w = (ax[0] * dy - ax[1] * dx) / det
+        z = fist3[2] + axis3[2] * a * kk + sgn * w3[2] * w * kk / swd.FLAT_SEEN
+        if z >= 0.0:
+            out[(x, y)] = c
+    return out
+
+
 # ------------------------------------------------------------------ the arms
 def screen(view, p3, anchor3, anchor_xy, far=False):
     v = swd.project_vec(view, A.sub(p3, anchor3), far)
@@ -226,11 +268,12 @@ def posed_arms(view, s, grip_xy, drawn, far=False):
         else:
             g = screen(view, g3, gR3, grip_xy, far)
         n = math.dist(sxy, g)
-        if n > A.ARM - 0.3:
-            f = (A.ARM - 0.3) / n
+        arm_len = A.arm_lengths(s)[3]
+        if n > arm_len - 0.3:
+            f = (arm_len - 0.3) / n
             sxy = (g[0] + (sxy[0] - g[0]) * f, g[1] + (sxy[1] - g[1]) * f)
         e = elevation(e3) if view == 'right' else screen(view, e3, sh3, sxy, far)
-        e = AW.reach(sxy, e, g)
+        e = AW.reach(sxy, e, g, s.get('arm_k', 1.0))
         # the fist keeps its length on screen (arm.pose): a forearm pointing at the camera
         # that is drawn shorter than the fist would push the fist off the grip - the elbow is
         # kept at least that far from the fist's centre
@@ -613,7 +656,10 @@ def pose_side(s, s1, far=False):
     shR_xy, shR3 = drawn['R']
     grip = elevation(s['fist'])
     pl = place('right', s['axis'], s['w3'], grip, S['place0'], far)
-    pix = swd.sword_image('right', pl, BIG, source='bare', origin=(-EXT, -EXT))
+    size, org = sword_canvas(s)
+    pix = swd.sword_image('right', pl, size, source='bare', origin=org)
+    if s.get('ground'):
+        pix = ground_cut('right', pix, pl, s['fist'], s['axis'], s['w3'], far)
     key = ('left' if far else 'right', s.get('name'), s.get('i'))
     SWORD[key] = (pix, pl, grip)
     split = sword_split('right', pix, pl, s['fist'], s['axis'], side_tier(far))
@@ -680,7 +726,7 @@ def pose_side(s, s1, far=False):
         near_plate = rotate_pixels(near_plate, (sh_drawn[0], sh_drawn[1] - PLATE_UP),
                                    plate_turn(dkey, near_k, s))
     out.append(near_plate)
-    out.append(side_head(S, s, s1, far))
+    out.append(glow_head(side_head(S, s, s1, far), s.get('glow', 0.0)))
     out.append(nearB)
     if near_k in pieces:
         out.append(pieces[near_k][0][1])          # forearm
@@ -739,6 +785,43 @@ def fb_tier(direction):
     return tier
 
 
+# The helmet's red cross lit (the ash impact's warning, user 2026-10-03: "在舉劍時頭盔的十字部分要發出紅光
+# 警示"): the head's red pixels one step brighter (GLOW_HALF on) or two (GLOW_FULL on), within the palette -
+# the dark reds of its shading to the cross's red, the red to its highlight, the highlight to the palest
+# warm colour (the lit core). Only the head's pixels: the cross is the visor's (front) and its edge (side).
+GLOW_HALF, GLOW_FULL = 0.3, 0.65
+GLOW_STEP1 = {(75, 8, 21): (168, 22, 40), (81, 18, 31): (168, 22, 40), (119, 18, 34): (168, 22, 40),
+              (168, 22, 40): (194, 32, 48), (169, 30, 48): (194, 32, 48), (167, 48, 55): (194, 32, 48),
+              (194, 32, 48): (223, 125, 112), (179, 76, 72): (223, 125, 112)}
+GLOW_STEP2 = {(75, 8, 21): (194, 32, 48), (81, 18, 31): (194, 32, 48), (119, 18, 34): (194, 32, 48),
+              (168, 22, 40): (223, 125, 112), (169, 30, 48): (223, 125, 112), (167, 48, 55): (223, 125, 112),
+              (194, 32, 48): (223, 125, 112), (179, 76, 72): (223, 125, 112), (223, 125, 112): (222, 189, 163)}
+
+
+def glow_head(pix, glow):
+    """The head's pixels with the cross lit (glow 0 .. 1; below GLOW_HALF unchanged)."""
+    if glow < GLOW_HALF:
+        return pix
+    table = GLOW_STEP2 if glow >= GLOW_FULL else GLOW_STEP1
+    out = {}
+    for q, c in pix.items():
+        n = table.get(tuple(c[:3]))
+        out[q] = (n + tuple(c[3:])) if n else c
+    return out
+
+
+def behind_head(st, p):
+    """A 3D point (a forearm's middle) behind the front of the helmet and within its outline
+    seen from the front: the head covers it."""
+    u = p[2] + st.get('D', 0)
+    if not (A.SH_U - 6 <= u <= A.SH_U + 48):
+        return False
+    lv = A.lean_vec(st)
+    f = p[0] - st.get('hx', 0.0) - lv[0] * max(0.0, u - A.BELT_U)
+    r = p[1] - lv[1] * max(0.0, u - A.BELT_U)
+    return abs(r) < A.HEAD_R + 2 and f < A.HEAD_R * 0.5
+
+
 def front_back(direction, s, s1):
     sign = 1 if direction == 'down' else -1
     view = 'front' if direction == 'down' else 'back'
@@ -765,7 +848,7 @@ def front_back(direction, s, s1):
     whole = s.get('whole_turn', False)
     # the whole-body turn leans deep (28 degrees: the chest and head go down 35+ px): a layer is
     # only drawn within PAD of where it stands, and at 16 the head's lower half was cut off
-    PAD = WHOLE_PAD if whole else 16
+    PAD = WHOLE_PAD if (whole or s.get('deep')) else 16
     th_hip = FB_HIP * s.get('ht', 0.0) if whole else 0.0
     if whole:
         th = max(-FB_CHEST_MAX, min(FB_CHEST_MAX, th))
@@ -879,7 +962,10 @@ def front_back(direction, s, s1):
     shR3 = A.shoulder('R', s)
     grip = screen(view, s['fist'], shR3, drawn['R'])
     pl = place(view, s['axis'], s['w3'], grip, S['place0'])
-    pix = swd.sword_image(view, pl, BIG, source='bare', origin=(-EXT, -EXT))
+    size, org = sword_canvas(s)
+    pix = swd.sword_image(view, pl, size, source='bare', origin=org)
+    if s.get('ground'):
+        pix = ground_cut(view, pix, pl, s['fist'], s['axis'], s['w3'])
     SWORD.update({(direction, s.get('name'), s.get('i')): (pix, pl, grip)})
     split = sword_split(view, pix, pl, s['fist'], s['axis'], fb_tier(direction))
     pieces = {}
@@ -893,6 +979,8 @@ def front_back(direction, s, s1):
     hpv = max(q[1] for q in layers['head'].pix)            # the neck
     hdx = K.lagged(side_dx(hpv), side_dx(hpv, lat1))
     head = rig.warp(layers['head'], lambda x, y: (x - hdx, y - K.lagged(d + k, d1 + k1) - _bow_sink(direction, s1)), pad=PAD)
+    if direction == 'down':
+        head = glow_head(head, s.get('glow', 0.0))          # (the cross is on the visor: from behind it does not show)
     out = []
     if direction == 'down':
         bH, bB = split.get('back', ({}, {}))
@@ -945,13 +1033,31 @@ def front_back(direction, s, s1):
         for kk in order:
             if toward_camera(kk):
                 out.append(pieces[kk][0][0])
+        # the cleave's arms over the head (shrug): the forearms and fists go up beside and over
+        # the helmet - where they are behind its front, the head is drawn over them (drawn on
+        # top, the two forearms covered the visor and the head read as gone)
+        behind = set()
+        if s.get('shrug', 0.0) > 0.0:
+            for kk in order:
+                sh3, e3, g3 = pieces[kk][1]
+                for j, (p0, p1) in ((1, (e3, g3)), (2, (g3, g3))):
+                    if behind_head(s, A.lerp(p0, p1, 0.5)):
+                        behind.add((kk, j))
+        for kk in order:
+            if (kk, 1) in behind:
+                out.append(pieces[kk][0][1])
+        for kk in sorted(pieces, key=lambda kk: pieces[kk][1][2][0]):
+            if (kk, 2) in behind:
+                out.append(pieces[kk][0][2])
         out.append(head)
         out.append(fB)
         for kk in order:
-            out.append(pieces[kk][0][1])                         # forearms
+            if (kk, 1) not in behind:
+                out.append(pieces[kk][0][1])                     # forearms
         out.append(fH)
         for kk in sorted(pieces, key=lambda kk: pieces[kk][1][2][0]):
-            out.append(pieces[kk][0][2])                         # fists, the nearer on top
+            if (kk, 2) not in behind:
+                out.append(pieces[kk][0][2])                     # fists, the nearer on top
     else:
         bH, bB = split.get('back', ({}, {}))
         fH, fB = split.get('front', ({}, {}))

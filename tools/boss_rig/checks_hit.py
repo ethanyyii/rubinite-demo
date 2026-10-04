@@ -47,14 +47,20 @@ def _sync():
     C.results = results
 
 
+CELL = None          # a taller attack container for the move being checked (the cleave: anim_attack.TALL)
+CELL_TOP = 0         # ... its rows above the attack container's (anim_attack.TALL_TOP)
+
+
 def container(frames):
     big = not E.fits_small(frames)
     e = AW.EXT if big else 0
-    W, H = AW.BIG if big else (rig.FW, rig.FH)
+    t = CELL_TOP if big and CELL else 0
+    W, H = (CELL or AW.BIG) if big else (rig.FW, rig.FH)
     xs = [q[0] for f in frames for q in f]
     ys = [q[1] for f in frames for q in f]
-    ok = E.MARGIN - e <= min(xs) and max(xs) < W - e - E.MARGIN and E.MARGIN - e <= min(ys) and max(ys) < H - e - E.MARGIN
-    return ok, (W, H), (min(xs) + e, max(xs) + e, min(ys) + e, max(ys) + e)
+    ok = (E.MARGIN - e <= min(xs) and max(xs) < W - e - E.MARGIN and E.MARGIN - e - t <= min(ys)
+          and max(ys) < H - e - t - E.MARGIN)
+    return ok, (W, H), (min(xs) + e, max(xs) + e, min(ys) + e + t, max(ys) + e + t)
 
 
 def technical(name, d, frames, below=None, low_frames=None):
@@ -84,8 +90,37 @@ def technical(name, d, frames, below=None, low_frames=None):
 
 
 def body(f, sword):
-    """A frame without the sword (the pixels the sword drew that nothing covers)."""
-    return {q: c for q, c in f.items() if sword.get(q) != c}
+    """A frame without the sword (the pixels the sword drew that nothing covers). Bits of at most
+    BLADE_BITS pixels on where the sword was drawn (or in a hole in it) and joined to nothing else
+    are the blade too (a pinhole in the blade filled at the end, a blade pixel recoloured where its layers
+    meet: alone 24 px over his head they read as the top of the body jumping 27 px - the cleave's
+    triple slash, 2026-10-03)."""
+    out = {q: c for q, c in f.items() if sword.get(q) != c}
+    # on the blade: where the sword drew, or a hole in it (all four sides the sword) - not merely
+    # touching it (a crown spike beside the planted blade is the body)
+    near = lambda q: q in sword or all(n in sword for n in ((q[0] - 1, q[1]), (q[0] + 1, q[1]), (q[0], q[1] - 1),
+                                                           (q[0], q[1] + 1)))
+    seen = set()
+    for q0 in [q for q in out if near(q)]:
+        if q0 in seen:
+            continue
+        comp, todo = {q0}, [q0]
+        while todo and len(comp) <= BLADE_BITS:
+            x, y = todo.pop()
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (x + dx, y + dy)
+                    if n in out and n not in comp:
+                        comp.add(n)
+                        todo.append(n)
+        seen |= comp
+        if len(comp) <= BLADE_BITS and all(near(q) for q in comp):
+            for q in comp:
+                del out[q]
+    return out
+
+
+BLADE_BITS = 4
 
 
 def top(f):

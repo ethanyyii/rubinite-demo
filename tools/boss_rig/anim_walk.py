@@ -459,11 +459,13 @@ def ease(t):
     return 0.5 * (t + gait.smooth(t))
 
 
-def reach(shoulder, elbow, hand):
+def reach(shoulder, elbow, hand, k=1.0):
     """The elbow nearest the wanted one that the arm's bones allow: no further from the fist
     than the forearm and fist are long, no further from the shoulder than the upper arm (on
-    screen a bone may be shorter - it points at the camera - never longer)."""
+    screen a bone may be shorter - it points at the camera - never longer). k: the bones k
+    times as long (attack3d.arm_lengths: the cleave's arms over the head)."""
     l1, l2, l3 = arm.lengths()
+    l1, l2 = l1 * k, l2 * k
     for _ in range(6):
         for anchor, length in ((hand, l2 + l3), (shoulder, l1)):
             d = math.dist(elbow, anchor)
@@ -786,8 +788,27 @@ def clip_of(name):
 
 
 def frames(direction, name='walk'):
-    """Cached frames of a clip (see clip_of)."""
+    """Cached frames of a clip (see clip_of). With BOSS_RIG_CACHE set to a folder the frames (and
+    the sword / arm records the checks read) are also kept there between runs (development: every
+    attack's starts from a move draw the four move loops again)."""
     key = (direction, name)
     if key not in _frames:
-        _frames[key] = render(direction, clip_of(name))
+        import os
+        import pickle
+        folder = os.environ.get('BOSS_RIG_CACHE')
+        path = folder and os.path.join(folder, f'loop_{direction}_{name}.pkl')
+        if path and os.path.exists(path):
+            with open(path, 'rb') as fh:
+                fr, sw, aj = pickle.load(fh)
+            SWORD_DRAWN.update(sw)
+            ARM_JOINTS.update(aj)
+            _frames[key] = fr
+        else:
+            clip = clip_of(name)
+            _frames[key] = render(direction, clip)
+            if path:
+                mine = lambda k: k[0] == direction and k[1] == clip.name
+                with open(path, 'wb') as fh:
+                    pickle.dump((_frames[key], {k: v for k, v in SWORD_DRAWN.items() if mine(k)},
+                                 {k: v for k, v in ARM_JOINTS.items() if mine(k)}), fh)
     return _frames[key]
