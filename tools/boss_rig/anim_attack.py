@@ -351,6 +351,96 @@ def rotate_pixels(pix, pivot, deg, k=4):
     return out
 
 
+def bend_pixels(pix, pivot, deg, y_full, y_zero, k=4):
+    """Whole-pixel art bent forward at the waist (attack3d.bend_point; the judgment thrust): each
+    source row turned about `pivot` by `deg` (clockwise on screen: facing right, forward and down)
+    times its weight - all of it at and above row y_full, none at and below y_zero, eased between
+    (the waist bends; the hips under it do not). Sampled as rotate_pixels (k x k a pixel, the most
+    common colour); the few pixels the eased band leaves uncovered between covered ones are filled
+    from their neighbours. 0 degrees gives the same pixels."""
+    if abs(deg) < 0.5:
+        return dict(pix)
+    buckets = {}
+    for (x, y), col in pix.items():
+        for j in range(k):
+            yy = y + (j + 0.5) / k
+            t = min(1.0, max(0.0, (y_zero - yy) / max(1e-6, y_zero - y_full)))
+            a = math.radians(deg * t * t * (3 - 2 * t))
+            c, s_ = math.cos(a), math.sin(a)
+            for i in range(k):
+                px, py = x + (i + 0.5) / k - pivot[0], yy - pivot[1]
+                q = (math.floor(px * c - py * s_ + pivot[0]), math.floor(px * s_ + py * c + pivot[1]))
+                buckets.setdefault(q, []).append(col)
+    out = {}
+    for q, cols in buckets.items():
+        if len(cols) >= k * k // 2:
+            out[q] = max(set(cols), key=cols.count)
+    # holes the band opened: an empty pixel with covered pixels on both sides (left-right or up-down)
+    lo, hi = min(y_full, y_zero) - 2 - abs(deg) * 0.5, max(y_full, y_zero) + 2
+    for _ in range(2):
+        add = {}
+        for (x, y) in list(out):
+            for q in ((x + 1, y), (x, y + 1)):
+                if q in out or not (lo <= q[1] <= hi):
+                    continue
+                X, Y = q
+                if ((X - 1, Y) in out and (X + 1, Y) in out) or ((X, Y - 1) in out and (X, Y + 1) in out):
+                    add[q] = out.get((X - 1, Y)) or out.get((X, Y - 1))
+        out.update(add)
+    return out
+
+
+def fill_enclosed(pix, y0, y1):
+    """Transparent pixels between rows y0 and y1 that the outline closes in (not reachable from outside
+    the figure), filled from their filled neighbours - the most common colour, darkest first among
+    ties (the space behind). Bent towards the camera, the folded-away chest leaves the space round the
+    lowered head open; behind it would be his back (the judgment thrust)."""
+    xs = [q[0] for q in pix]
+    ys = [q[1] for q in pix]
+    X0, X1, Y0, Y1 = min(xs) - 1, max(xs) + 1, min(ys) - 1, max(ys) + 1
+    outside = {(X0, Y0)}
+    st = [(X0, Y0)]
+    while st:
+        x, y = st.pop()
+        for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if X0 <= q[0] <= X1 and Y0 <= q[1] <= Y1 and q not in pix and q not in outside:
+                outside.add(q)
+                st.append(q)
+    holes = [(x, y) for x in range(X0, X1 + 1) for y in range(max(Y0, y0), min(Y1, y1) + 1)
+             if (x, y) not in pix and (x, y) not in outside]
+    out = dict(pix)
+    todo = set(holes)
+    while todo:
+        done = {}
+        for (x, y) in todo:
+            cols = [out[q] for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q in out]
+            if cols:
+                done[(x, y)] = min(set(cols), key=lambda c: (-cols.count(c), sum(c[:3])))
+        if not done:
+            break
+        out.update(done)
+        todo -= set(done)
+    return out
+
+
+def bend_at(p, pivot, deg):
+    """Where a point above the waist is drawn bent (bend_pixels' full turn)."""
+    if abs(deg) < 0.5 or p[1] >= pivot[1]:
+        return p
+    a = math.radians(deg)
+    c, s_ = math.cos(a), math.sin(a)
+    px, py = p[0] - pivot[0], p[1] - pivot[1]
+    return (px * c - py * s_ + pivot[0], px * s_ + py * c + pivot[1])
+
+
+BEND_BAND = (6, 2)        # px above / below the belt the waist's bend eases in over (bend_pixels)
+BEND_HEAD_BEHIND = 30.0   # degrees: bent further, the back view draws the head behind the cape and plates
+FOLD_MIN = 0.45           # front / back: the bent torso's rows squeezed to this share at the most
+CAPE_EXACT_D = 16         # px: crouched further, the side cape's rows are solved exactly (cape_src)
+BENT_CLOTH, BENT_CLOTH_SWING = 0.75, 3.0   # bent: the side tabard's length share and its swing per px of the cape's kick
+BENT_BACKDROP = 14        # px below the belt the side view's underlay reaches, bent
+
+
 def under_fill(source, region, exclude, reach=14, shade=0.8, top=None):
     """Colours for `region` (the pixels a shoulder plate covers at rest), from the armour
     below it reflected upwards column by column (rig.extend_up's way: the texture goes on), the
@@ -621,9 +711,20 @@ def pose_side(s, s1, far=False):
     def plate_src(x, y):
         return body_src(x, y, near_dx - chest_tw)
 
+    # bent at the waist (attack3d.bend_point): the upper body turned about the belt (the drawn
+    # body's centre line there); 0 for every earlier attack (nothing changes)
+    bend = s.get('bend', 0.0)
+    pivot = (rig.AX + hx, belt + d)
+
+    def bent(pix, full=None, zero=None):
+        if abs(bend) < 0.5:
+            return pix
+        return bend_pixels(pix, pivot, bend, pivot[1] - BEND_BAND[0] if full is None else full,
+                           pivot[1] + BEND_BAND[1] if zero is None else zero)
+
     def at(p):
         """Where the near shoulder joint is drawn (it moves with the shoulder plate)."""
-        return (p[0] + hx + chest_dx(p[1]) + near_dx, p[1] + d)
+        return bend_at((p[0] + hx + chest_dx(p[1]) + near_dx, p[1] + d), pivot, bend)
 
     # legs: the feet where the pose has them, the hips at hx
     feet = s['feet']
@@ -686,12 +787,18 @@ def pose_side(s, s1, far=False):
         # the top rides the shoulders, the hem stays on the ground (anim_walk.cape_src)
         t = _frac(y - d, top, hem)
         dy = round(d * (1 - t))
+        if d > CAPE_EXACT_D:
+            # crouched lower than any earlier attack (the judgment thrust, 28 px): the two-step guess
+            # above drifts and draws the hem up to 5 px into the ground - solve row = s + d (1 - t(s))
+            H_ = hem - top
+            sy = (y - d + d * top / H_) / (1.0 - d / H_)
+            dy = round(y - sy)
         t = _frac(y - dy, top, hem)
         x1 = x - round(hx * (1 - t)) - round(chest_dx(top + 8) * (1 - t)) - round(ck * t ** 1.5)
         return x1, y - dy
     dkey = 'left' if far else 'right'
-    far_plate = far_lit(K.warp(S['pauldron'], lambda x, y: body_src(x - g_far[0], y + AW.FAR_UP - g_far[1], far_dx - chest_tw),
-                               pad=16))
+    far_plate = far_lit(bent(K.warp(S['pauldron'], lambda x, y: body_src(x - g_far[0], y + AW.FAR_UP - g_far[1], far_dx - chest_tw),
+                                    pad=16)))
     if far_k in pieces:
         far_plate = rotate_pixels(far_plate, (sh_far_drawn[0], sh_far_drawn[1] - PLATE_UP),
                                   plate_turn(dkey, far_k, s))
@@ -700,33 +807,45 @@ def pose_side(s, s1, far=False):
     cape_px = K.warp(cape, cape_src, pad=24)
     if s.get('whole_turn'):
         cape_px = drop_islands(cape_px, CAPE_ISLAND_MAX)
+    # bent: the cape's top goes with the shoulders, over the back; it hangs free from the waist down
+    cape_px = bent(cape_px, top + d + 8, pivot[1] + 10)
     out.append(cape_px)
     if far_dx > 0:
         out.append(far_plate)                     # turned towards the camera: in front of the cape, behind the chest
-    out.append(K.warp(S['backdrop'], lambda x, y: (x - hx, y - d) if y <= AY else None))
+    # the underlay that fills in behind the body; bent (the judgment thrust's wide stance and flight)
+    # only about the waist - between the legs spread apart it showed as a dark slab down to the ground
+    bd_low = (belt + d + BENT_BACKDROP) if abs(bend) >= 0.5 else AY
+    out.append(bent(K.warp(S['backdrop'], lambda x, y: (x - hx, y - d) if y <= bd_low else None)))
     out.append({(x, y - AW.FAR_UP): c for (x, y), c in limb.darken(limb.leg_pixels(far_leg)).items()})
     ht, hh = sm['hang_top'], sm['hang_hem']
     sw = round(0.5 * s1.get('ck', 0.0))
+    # bent (the judgment thrust): the tabard swings back with the lunge (the cape's kick, three times as
+    # far) and its hem rides up with the hips instead of reaching down to the ground - hanging straight
+    # down from the low hips to the ground under him in the air it read as a post holding him up
+    bent_cloth = abs(bend) >= 0.5
+    hem_t = min(ht + d + (hh - ht) * BENT_CLOTH, hh + min(d1, 2)) if bent_cloth else (hh + min(d1, 2))
+    if bent_cloth:
+        sw = round(BENT_CLOTH_SWING * s1.get('ck', 0.0))
 
     def cloth_src(x, y):
         # the tabard hangs from the belt (d) to a hem that stays above the ground
-        sy = round(piecewise(y, [ht, hh], [ht + d, hh + min(d1, 2)]))
+        sy = round(piecewise(y, [ht, hh], [ht + d, hem_t]))
         t = _frac(sy, ht, hh)
         return x - round(hx * (1 - 0.5 * t)) + round(sw * t), sy
     out.append(K.warp(layers['cloth'], cloth_src))
     out.append(limb.leg_pixels(near_leg))
-    body = K.warp(extra('right')['body'], body_src, pad=16)
+    body = bent(K.warp(extra('right')['body'], body_src, pad=16))
     out.append(body)
     if near_k in pieces:
         out.append(pieces[near_k][0][0])          # the upper arm, under the shoulder plate
     elif far:
         out.append(free_arm(S, s, sh_drawn))
-    near_plate = K.warp(S['pauldron'], lambda x, y: plate_src(x - g_near[0], y - g_near[1]), pad=16)
+    near_plate = bent(K.warp(S['pauldron'], lambda x, y: plate_src(x - g_near[0], y - g_near[1]), pad=16))
     if near_k in pieces:
         near_plate = rotate_pixels(near_plate, (sh_drawn[0], sh_drawn[1] - PLATE_UP),
                                    plate_turn(dkey, near_k, s))
     out.append(near_plate)
-    out.append(glow_head(side_head(S, s, s1, far), s.get('glow', 0.0)))
+    out.append(glow_head(side_head(S, s, s1, far, pivot if abs(bend) >= 0.5 else None), s.get('glow', 0.0)))
     out.append(nearB)
     if near_k in pieces:
         out.append(pieces[near_k][0][1])          # forearm
@@ -758,9 +877,11 @@ def free_arm(S, s, sh_drawn):
     return {(x + mx, y + my): c for (x, y), c in fa.pix.items()}
 
 
-def side_head(S, s, s1, far):
+def side_head(S, s, s1, far, pivot=None):
     """The head follows the chest a pose late (at most K.HEAD_LAG px behind); bowed it turns
-    about the neck; it does not turn with the shoulders (it keeps looking where he strikes)."""
+    about the neck; it does not turn with the shoulders (it keeps looking where he strikes).
+    pivot: bent at the waist (attack3d.bend_point) - the neck carried round with the chest and
+    the head turned with it as well as bowed (a negative bow lifts the face back up)."""
     lay, sm = S['lay'], S['sm']
     belt = sm['belt']
     d1 = K.lagged(s['D'], s1['D'])
@@ -769,6 +890,12 @@ def side_head(S, s, s1, far):
     bow = s1.get('bow', 0.0)
     pv = lay.local_to_final(K.HEAD_PIVOT)
     dx = round(lean1 * max(0.0, belt - pv[1])) + hx1
+    if pivot is not None:
+        bend = s.get('bend', 0.0)
+        p0 = (pv[0] + dx, pv[1] + d1)
+        p1 = bend_at(p0, pivot, bend)
+        ox, oy = round(p1[0] - pv[0]), round(p1[1] - pv[1])
+        return {(x + ox, y + oy): c for (x, y), c in K.head_side(bow + bend).items()}
     if abs(bow) < 0.5:
         return K.warp(S['layers']['head'], lambda x, y: (x - dx, y - d1), pad=16)
     return {(x + dx, y + d1): c for (x, y), c in K.head_side(bow).items()}
@@ -843,12 +970,27 @@ def front_back(direction, s, s1):
     belt, chest = sm['belt'], sm['chest']
     top = min(q[1] for q in layers['head'].pix)
     rows_src, rows_tgt = [top, chest, belt], [top + d + k, chest + d + k, belt + d]
+    # bent at the waist (attack3d.bend_point): a row h px over the belt is drawn h * fold over it -
+    # turned forward it comes down (cos) and towards the camera (front: lower on screen) or away
+    # (back: higher) by the depth (DEPTH sin). The head and the shoulder plates are rigid: moved, not
+    # squeezed (fold_drop()). 0 for every earlier attack
+    bend = s.get('bend', 0.0)
+    fold = math.cos(math.radians(bend)) - sign * DEPTH * math.sin(math.radians(bend))
+
+    def fold_drop(row):
+        """px a point at source row `row` (over the belt) comes down on screen bent."""
+        return max(0.0, belt - row) * (1.0 - fold)
+    if abs(bend) >= 0.5:
+        # the torso's rows squeezed no further than FOLD_MIN (to a fifth they smear into streaks); the
+        # head and plates, moved the whole way down, cover the rest of the chest as they would
+        fr = max(fold, FOLD_MIN)
+        rows_tgt = [belt + d + k - (belt - top) * fr, belt + d + k - (belt - chest) * fr, belt + d]
     th = FB_DRAW * s['tw']
     tws = Twist(TWIST_X0[direction], TWIST_FB[0], TWIST_FB[1], th)
     whole = s.get('whole_turn', False)
     # the whole-body turn leans deep (28 degrees: the chest and head go down 35+ px): a layer is
     # only drawn within PAD of where it stands, and at 16 the head's lower half was cut off
-    PAD = WHOLE_PAD if (whole or s.get('deep')) else 16
+    PAD = WHOLE_PAD if (whole or s.get('deep') or abs(s.get('bend', 0.0)) >= 0.5) else 16
     th_hip = FB_HIP * s.get('ht', 0.0) if whole else 0.0
     if whole:
         th = max(-FB_CHEST_MAX, min(FB_CHEST_MAX, th))
@@ -884,7 +1026,7 @@ def front_back(direction, s, s1):
 
     def at(p):
         """Where a source point of the upper body is drawn."""
-        y = p[1] + d + k
+        y = p[1] + d + k + fold_drop(p[1])
         if whole:
             x1, dd = twist_at(p[1]).fwd(p[0])
             return (x1 + side_dx(p[1]), y + DEPTH * dd)
@@ -907,7 +1049,11 @@ def front_back(direction, s, s1):
     # drawn shoulder plates floating outside it from behind
     narrow = math.cos(math.radians(min(abs(th) * CAPE_TURN_K, CAPE_TURN_MAX))) if whole else 1.0
     cape_cx = TWIST_X0[direction] + side_dx(sm['cape_top'] + 8)
-    cape = rig.warp(cape_layer, _cape_src(sm, d + k, cape_twist(tws), trail, narrow, cape_cx), pad=max(PAD, 24))
+    # the cape's top rides the shoulders - from behind; bent towards the camera, his back (and the cape on
+    # it) rises behind the lowered head and shoulders: its top comes half as far (squeezed all the way down
+    # with the shoulders it smeared into streaks; left up, it stood over the head like an arch)
+    cape_d = d + k + round(fold_drop(sm['cape_top'] + 8) * (1.0 if direction == 'up' else 0.5))
+    cape = rig.warp(cape_layer, _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx), pad=max(PAD, 24))
     if whole:
         cape = drop_islands(cape, CAPE_ISLAND_MAX)      # the narrowed cape's frayed edge leaves specks
 
@@ -947,7 +1093,7 @@ def front_back(direction, s, s1):
         """A shoulder plate carried by its shoulder (the girdle's move, whole px) and turned
         with its upper arm."""
         dx, dy = gs[kk]
-        if whole:
+        if whole or abs(bend) >= 0.5:
             # a rigid piece of armour: moved whole to where its shoulder is drawn (warped with
             # the turned chest it was squeezed to a quarter at the cylinder's edge and the
             # shoulder looked gone - user 2026-10-02: "in the front view the right shoulder plate
@@ -978,7 +1124,11 @@ def front_back(direction, s, s1):
 
     hpv = max(q[1] for q in layers['head'].pix)            # the neck
     hdx = K.lagged(side_dx(hpv), side_dx(hpv, lat1))
-    head = rig.warp(layers['head'], lambda x, y: (x - hdx, y - K.lagged(d + k, d1 + k1) - _bow_sink(direction, s1)), pad=PAD)
+    # bent: the head carried down with the neck (fold_drop of its middle: the 3D head's place); the bend
+    # already puts it there - the bowed head's sink is not added (with it the head went down behind the arms)
+    hdrop = round(fold_drop((top + hpv) / 2))
+    sink = 0 if abs(bend) >= 0.5 else _bow_sink(direction, s1)
+    head = rig.warp(layers['head'], lambda x, y: (x - hdx, y - K.lagged(d + k, d1 + k1) - hdrop - sink), pad=PAD)
     if direction == 'down':
         head = glow_head(head, s.get('glow', 0.0))          # (the cross is on the visor: from behind it does not show)
     out = []
@@ -999,7 +1149,7 @@ def front_back(direction, s, s1):
             hin = round(HIP_HALF * (1 - math.cos(math.radians(th_hip))))
             out.append(rig.warp(layers['leg_l'], AW._leg_front_src(layers['leg_l'], lay, LR, d, hin, inR, AW.FRONT_LEG['leg_l']), pad=PAD))
             out.append(rig.warp(layers['leg_r'], AW._leg_front_src(layers['leg_r'], lay, LL, d, -hin, -inL, AW.FRONT_LEG['leg_r']), pad=PAD))
-        out.append(rig.warp(layers['drape'], _cape_src(sm, d + k, cape_twist(tws), trail, narrow, cape_cx), pad=PAD))
+        out.append(rig.warp(layers['drape'], _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx), pad=PAD))
         body_px = rig.warp(E['body'], body_src, pad=PAD)
         if whole:
             body_px = drop_islands(body_px, ISLAND_MAX)
@@ -1085,10 +1235,17 @@ def front_back(direction, s, s1):
             out.append(rig.warp(free, lambda x, y: body_src(x, y), pad=PAD))
         for kk in 'RL':
             out += shown[kk]
+        if bend >= BEND_HEAD_BEHIND:
+            # bent right over, away from the camera: the head is lower and further than the
+            # shoulders - behind the cape's collar and the plates
+            out.insert(out.index(cape), head)
         out.append(plate(E['plateR'], 'R'))
         out.append(plate(E['plateL'], 'L'))
-        out.append(head)
+        if bend < BEND_HEAD_BEHIND:
+            out.append(head)
         out += [fB, fH]
+    if abs(bend) >= 0.5:
+        return fill_enclosed(AW._finish(direction, out), round(top + d), round(belt + d))
     return AW._finish(direction, out)
 
 

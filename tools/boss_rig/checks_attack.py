@@ -452,7 +452,10 @@ def feet_below(m, d):
     return max(H.BELOW[d], min(2, math.ceil(A.DEPTH * max(lats) - 0.25)))
 
 
-def frame_checks(m):
+def frame_checks(m, entry_feet=False):
+    """entry_feet: starting from a move the feet go straight to a stance that steps a foot back (the
+    judgment thrust): the entry sheets get the main sheet's allowance for a foot towards the camera
+    (feet_below) too. Every earlier attack gathers the feet under him and keeps the allowance as was."""
     fr = m.frames()
     carry = {d: E.carry_frame(d) for d in rig.DIRS}
     for d in rig.DIRS:
@@ -522,7 +525,8 @@ def frame_checks(m):
             # moving sideways the foot towards the camera is lower: no lower than in the loop it
             # comes from (+1: the same foot drawn with the knee bent another way)
             loop_low = max(q[1] for f in AW.frames(d, kind) for q in f) - rig.AY + 1
-            H.technical(f'{m.sheet} from {kind} {e}', d, en[d], max(below_allowed(m, d), loop_low))
+            H.technical(f'{m.sheet} from {kind} {e}', d, en[d], max(below_allowed(m, d), loop_low,
+                                                                     feet_below(m, d) if entry_feet else 0))
             ar = [joints(d, nm, i) for nm, i in names]
             ar[0] = joints(d, kind, e)
             steps(f'{m.sheet} from {kind} {e}', d, seq, sw, gr, tp, ar)

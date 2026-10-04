@@ -47,10 +47,10 @@ def boot_drop(pitch):
 
 
 SCALARS = ('D', 'hx', 'ht', 'lx', 'tw', 'bow', 'ck', 'cs', 'roll', 'two', 'lfree', 'swing', 'arm_k', 'shrug', 'draw_in',
-           'glow')
+           'glow', 'bend')
 # arm_k, shrug, draw_in: the cleave's arms over the head (attack3d.arm_lengths, _girdle); glow: the
-# helmet's cross lit red (the ash impact, anim_attack.glow_head); the defaults draw every other attack
-# exactly as before
+# helmet's cross lit red (the ash impact, anim_attack.glow_head); bend: bent forward at the waist (the
+# judgment thrust, attack3d.bend_point); the defaults draw every other attack exactly as before
 SCALAR_DEFAULT = {'arm_k': 1.0}
 CLAMP01 = ('two', 'lfree', 'swing', 'glow')
 
@@ -1312,12 +1312,14 @@ def entry_order(s0, kind):
     return max('RL', key=lambda k: abs(legs[k]['ankle'][0]) + abs(legs[k].get('lat', 0.0)))
 
 
-def entry(clip, kind, entry_pose, times=ENTRY_TIMES, half=ENTRY_HALF, end=ENTRY_END):
+def entry(clip, kind, entry_pose, times=ENTRY_TIMES, half=ENTRY_HALF, end=ENTRY_END, to_end=False):
     """States for `times` starting from loop pose `entry_pose` of `kind` (anim_walk.KINDS);
     the first is the loop pose itself (draw it with anim_walk). One foot at a time (user
     2026-10-01): the first (entry_order) steps under him by `half` while the other stays
     planted (its foot rolling flat), then the other steps under him by `end` (ENTRY_*; the quick
-    slashes' shorter windup: QUICK_ENTRY)."""
+    slashes' shorter windup: QUICK_ENTRY). to_end: each foot goes straight to where the clip has
+    it at `end` (the judgment thrust's windup steps the right foot back: from a move it steps
+    there directly, not first under him and then back - one step for each foot)."""
     import anim_walk as AW
     s0 = AW.loop_state(entry_pose, kind)
     f0 = loop_feet(s0)
@@ -1325,6 +1327,7 @@ def entry(clip, kind, entry_pose, times=ENTRY_TIMES, half=ENTRY_HALF, end=ENTRY_
     span = {first: (0, half), ('L' if first == 'R' else 'R'): (half, end)}
     lean0 = AW.LEAN_DEG * AW.LEAN_OF[kind]
     states = poses(clip, list(times))
+    goal = clip.at(end)['feet'] if to_end else None
     for st in states:
         t = st['t']
         w = gait.smooth(t / end)
@@ -1332,7 +1335,7 @@ def entry(clip, kind, entry_pose, times=ENTRY_TIMES, half=ENTRY_HALF, end=ENTRY_
         st['D'] = round(s0['D'] + (st['D'] - s0['D']) * w)
         feet = {}
         for k in 'RL':
-            a, b = f0[k], st['feet'][k]
+            a, b = f0[k], (goal or st['feet'])[k]
             t0, t1 = span[k]
             u = min(1.0, max(0.0, (t - t0) / (t1 - t0)))
             ww = gait.smooth(u)
@@ -1422,3 +1425,213 @@ def c1_bounce():
 def twin_bounce():
     keys, steps = bounce_keys(contact_key(twin(), W2 + 3))
     return Clip('twin_bounce', with_poles(keys, POLES_BOUNCE), steps)
+
+
+# ------------------------------------------------------------------ C4 裁決突刺 (the judgment thrust), two hands
+# veltharis_data judgment_thrust: 起手 0.6 s (36 frames) -> the lunge 0.2 s (12 frames, frames 36 .. 47),
+# the hit box on all through it: a capsule SWORD_REACH (150) long, THRUST_WIDTH wide, from where the game
+# has him, while the game moves him LUNGE_DISTANCE (160 px) forward, the same each frame (boss_sim) ->
+# 收招 0.8 s (48; 二階段 x0.75 -> 36): 96 frames. Heavy: parried, BOUNCED 1.2 s. The punish move (the
+# player's posture broken: always this one).
+#
+# The windup (user 2026-10-04: "劍收到側腰沒錯，要收在右側，同時右腳也要往後張開，左右腳變成左腳在前右腳在後，
+# 且打開的寬度大於肩距，身體也要往下前傾"), then after the first version: "突刺的身體還是壓得不夠低，整個身體
+# 要彎下去，頭的高度只在劍的上面一點點這麼彎，手要續力到身體後面，讓頭幾乎要跟劍尖一樣位置（比劍尖後面一點），
+# 整個人會因為彎腰變扁，腳也要再張開一點，然後彈射出去時是右腳（在後面的腳）用力蹬，讓整個身體飛出去".
+# So: the sword comes off the shoulder the way the sweeps put it back (lifted, upright before the right
+# shoulder, the tip lowered forward) and is drawn back past his right hip - the fists behind the hips,
+# the blade along his right side under the bent chest, its tip out ahead of his face, the edges up and
+# down; he bends right over at the waist (bend: the chest turned down about the belt, attack3d.bend_point
+# - the lean lx only shears, the head would stay as high), the head lifted to look ahead but only just
+# over the blade; the upper body coiled to his right; the right foot alone steps back THRUST_STANCE px
+# (the shoulders are 41 apart), the hips low, the weight on the front (left) foot. The blade is 118 px
+# from the grip, longer than he is bent over: drawn back as far as the arms go (the right fist 6 px behind
+# the hips) its tip is still about THRUST_TIP_AHEAD px past his face.
+# The lunge: the right foot drives him off (its leg straightening as the hips go forward over the left
+# foot, the heel up), the arms drive the sword straight out, the chest uncoils part way; then he flies -
+# both feet off the ground, low and flat, the right leg stretched out behind from the push, the left knee
+# reaching through - and lands on the left foot (planted from there, the game carries him over it), the
+# right foot coming down behind as the lunge ends. Through the hit box the tip is about 150 px ahead of
+# where the game has him (the capsule's end), at the player's height. Each frame of the lunge is a pose of
+# its own (the game moves him 13 px a frame). Both feet move in the lunge - the game moves him 160 px in
+# 0.2 s; outside it, one foot at a time.
+# The recovery: held bent over the front knee a moment (the opening), straightening up as the sword is
+# drawn back in, the left foot steps back under him, the sword is lifted upright before the right
+# shoulder and laid back on it, the right foot steps up beside the left: the carry, where the game has him.
+THRUST_W = 36                                  # the hit box (36 .. 47); the game moves him those 12 frames
+LUNGE = 160.0                                  # veltharis_data LUNGE_DISTANCE
+LUNGE_FRAMES = 12                              # the hit box's active 0.2 s
+THRUST_END = THRUST_W + LUNGE_FRAMES + 48      # 96
+THRUST_STANCE = 60.0                           # px the right foot steps back (the shoulders are 41 apart; the first version 44)
+THRUST_RB = (-THRUST_STANCE, 0.0, gait.ANKLE_H, 0.0)
+THRUST_LAND = {'R': (-40.0, 0.0, gait.ANKLE_H, 0.0), 'L': (14.0, 0.0, gait.ANKLE_H, 0.0)}   # about where the game ends
+THRUST_RSTEP = (10, 22)                        # the right foot steps back
+THRUST_LLAND = THRUST_W + 10                   # the left foot lands (in the air from THRUST_W)
+THRUST_RLAND = THRUST_W + 11                   # the right foot comes down behind
+THRUST_LBACK = (62, 72)                        # recovery: the left foot steps back under him
+THRUST_RUP = (76, 88)                          # ... then the right foot up beside it
+THRUST_REACH = 40.0                            # px the right fist is ahead of the hips with the arms driven out
+THRUST_BEND = 62.0                             # degrees bent at the waist, driven out (cocked: 64)
+THRUST_TIP_AHEAD = 83                          # px the cocked tip is ahead of his head's centre (measured; about 70 past the face)
+# from a move the sword comes off the shoulder and swings up before it fast: every 2 frames (every 4
+# the tip moved 100-107 px a pose, as the ash impact's)
+THRUST_ENTRY = (tuple(range(0, ENTRY_END, 2)), ENTRY_HALF, ENTRY_END, True)
+
+
+def lunge_advance(t):
+    """px the game has moved him forward at combat frame t (after that frame's update)."""
+    return LUNGE * min(1.0, max(0.0, (t - THRUST_W + 1) / LUNGE_FRAMES))
+
+
+def _lunging(t, k):
+    """A key written about where the game has him at frame t, put on the ground."""
+    return ahead(t, k, dx=lunge_advance(t))
+
+
+def _cocked(**kw):
+    """Bent right over, the sword drawn back past the right hip, the wide stance, coiled to his right.
+    The head lifted (bow < 0) to look ahead over the blade."""
+    k = carry_key(D=28, hx=-12.0, ht=-16, tw=-30, lx=0, bend=64.0, bow=-38, ck=-3, cs=-2, fist=(-7.0, 18.0, 62.0),
+                  dir=(-16.0, -4.0), roll=EDGE, two=1.0, feet={'R': THRUST_RB, 'L': STAND})
+    k.update(kw)
+    return k
+
+
+def _thrust_out(**kw):
+    """The sword driven out ahead, both arms straight, bent right over (the head just over the hands)."""
+    k = carry_key(D=24, hx=6.0, ht=-2, tw=-15, lx=0, bend=THRUST_BEND, bow=-38, ck=-5, cs=-1, dir=(0.0, -13.0), roll=EDGE,
+                  two=1.0, feet={'R': None, 'L': None})
+    k.update(kw)
+    if 'fist' not in kw:
+        k['fist'] = (k['hx'] + THRUST_REACH, 2.0, 88.0 - k['D'])      # the arms out from the shoulders, wherever the hips are
+    if 'dir' not in kw:
+        k['dir'] = (0.0, -13.0 - 0.5 * (24 - k['D']))                 # higher in the air, the tip angled down to stay at his height
+    return k
+
+
+def thrust_keys():
+    W_ = THRUST_W
+    k = [(0, carry_key()),
+         # off the shoulder the way the sweeps put it back, reversed: lifted, the left hand coming up,
+         # upright before the right shoulder, then the tip lowered forward as he starts to bend
+         (6, carry_key(D=1, fist=(17.0, 20.0, 131.0), dir=(162.0, 40.0), roll=30.0, two=0.2)),
+         (12, carry_key(D=6, tw=-8, lx=2, bend=8.0, fist=(21.0, 12.0, 120.0), dir=(-18.0, 80.0), flat=FLAT_R, two=0.6)),
+         (18, carry_key(D=16, hx=-8.0, ht=-8, tw=-26, bend=34.0, bow=-15, ck=-1, fist=(14.0, 11.0, 92.0), dir=(-6.0, 6.0),
+                        roll=EDGE, two=1.0, feet={'R': None, 'L': STAND})),
+         # cocked: drawn back past the right hip, bent right over, the right foot back - held (the read)
+         (24, _cocked(D=26, hx=-11.5, tw=-29, bend=62.0, bow=-37, ck=-2, fist=(-6.0, 18.0, 63.0), dir=(-15.0, -4.0))),
+         (32, _cocked()),
+         # the drive: the right leg pushes the hips forward over the left foot, the fists go forward,
+         # the chest uncoils, the right heel comes up (a pose a frame: the fists travel 12-16 px a frame)
+         (W_ - 3, _cocked(D=27, hx=-10.0, ht=-14, tw=-28, bend=63.5, bow=-38, fist=(3.0, 14.0, 62.0), dir=(-11.0, -7.0))),
+         (W_ - 2, _cocked(D=26, hx=-7.0, ht=-10, tw=-25, bend=63.0, bow=-38, fist=(15.0, 9.0, 62.0), dir=(-6.0, -10.0))),
+         (W_ - 1, _cocked(D=26, hx=-4.5, ht=-6, tw=-23, bend=62.5, bow=-38, fist=(27.0, 5.0, 62.0), dir=(-3.0, -12.0)))]
+    # the lunge, about where the game has him: a key every frame (the game moves him every frame). The
+    # game starts at 13 px a frame at once: the hips drop back behind where it has him for the first
+    # frames (on screen he speeds up instead of jumping 19 px), then come on over the front foot as it
+    # lands. In the air the hips ride a little higher; they land low again
+    hxs = (-6.0, -7.0, -6.5, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0)
+    Ds = (25, 23, 21, 19, 18, 18, 18, 19, 20, 22, 24, 24)
+    cks = (-4, -5, -6, -6, -6, -6, -6, -5, -4, -3, -2, -2)
+    tws = (-21, -17, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15)
+    for i, (h, D_, c, w) in enumerate(zip(hxs, Ds, cks, tws)):
+        k.append(_lunging(W_ + i, _thrust_out(hx=h, D=D_, ck=c, tw=w,
+                                              feet=(THRUST_LAND if i == LUNGE_FRAMES - 1 else {'R': None, 'L': None}))))
+    # stopped: held there a frame (the game stops at once)
+    k.append(ahead(W_ + LUNGE_FRAMES, _thrust_out(hx=2.0, ck=-2, feet=THRUST_LAND), dx=LUNGE))
+    # recovery, where the game ends (LUNGE on)
+    end = lambda t, kk: ahead(t, kk, dx=LUNGE)
+    land = THRUST_LAND
+    k += [end(51, _thrust_out(D=24, hx=3.0, ck=1, feet=land)),
+          end(56, _thrust_out(D=24, hx=2.5, bend=58.0, bow=-36, ck=0, feet=land)),
+          # straightening up, drawn back in, the weight back between the feet; the left foot steps back
+          end(THRUST_LBACK[0], carry_key(D=18, hx=-2.0, ht=-8, tw=-22, bend=30.0, bow=-18, ck=-1, fist=(22.0, 8.0, 80.0),
+                                         dir=(-6.0, -4.0), roll=EDGE, two=1.0, feet=land)),
+          end(THRUST_LBACK[1], carry_key(D=12, hx=-12.0, ht=-8, tw=-14, bend=8.0, lx=2, bow=-4, fist=(14.0, 10.0, 100.0),
+                                         dir=(-10.0, 34.0), roll=EDGE, two=1.0, feet={'R': land['R'], 'L': STAND})),
+          # upright before the right shoulder, laid back on it; the right foot up beside the left
+          end(78, carry_key(D=6, hx=-8.0, ht=-4, tw=-6, lx=3, fist=(14.0, 12.0, 120.0), dir=(-18.0, 80.0), flat=FLAT_R,
+                            two=0.5, feet={'R': None, 'L': STAND})),
+          end(86, carry_key(D=2, hx=-1.0, fist=(16.0, 20.0, 131.0), dir=(162.0, 40.0), roll=30.0, two=0.0)),
+          end(93, carry_key())]
+    return k
+
+
+def thrust_steps():
+    W_ = THRUST_W
+    adv = lunge_advance
+    H_ = gait.ANKLE_H
+    # the push: the heel comes up as the drive starts (the toe on the ground), then the right leg is
+    # stretched out behind him in the air and comes down behind as he lands (a key every frame: the
+    # foot is where it is drawn)
+    R = [(THRUST_RSTEP[0], STAND), (THRUST_RSTEP[1], THRUST_RB), (W_ - 3, THRUST_RB), (W_ - 1, THRUST_RB[:3] + (-35.0,))]
+    rair = {W_: (-60.0, 24.0, -50.0), W_ + 1: (-60.0, 27.0, -45.0)}
+    for t, x in zip(range(W_ + 2, THRUST_RLAND - 2), (-58.0, -56.0, -55.0, -53.5, -52.5, -51.0, -49.0)):
+        rair[t] = (x, 28.0, -38.0)
+    rair[THRUST_RLAND - 2] = (-47.0, 24.0, -25.0)
+    rair[THRUST_RLAND - 1] = (-43.0, 19.0, -10.0)
+    R += [(t, (x + adv(t), 0.0, z, p)) for t, (x, z, p) in sorted(rair.items())]
+    R += [(THRUST_RLAND, (THRUST_LAND['R'][0] + LUNGE,) + THRUST_LAND['R'][1:])]
+    R += [(THRUST_RUP[0], (THRUST_LAND['R'][0] + LUNGE,) + THRUST_LAND['R'][1:]), (THRUST_RUP[1], (LUNGE,) + STAND[1:])]
+    lw = THRUST_LAND['L'][0] + LUNGE
+    # the left foot leaves the ground with the push and reaches through in the air (lifted, the toe
+    # coming up to land on the heel), lands ahead of him; planted from there on while the game carries
+    # him over it
+    air = ((-8.0, 19.0, 0.0), (-4.0, 22.0, 0.0), (3.0, 23.0, 2.0), (10.0, 24.0, 4.0), (17.0, 24.0, 6.0),
+           (24.0, 23.0, 8.0), (30.0, 22.0, 9.0), (34.0, 21.0, 10.0), (37.0, 19.5, 10.0), (38.0, H_ + 1.5, 8.0))
+    L = [(W_ - 1, STAND)] + [(W_ + i, (x + adv(W_ + i), 0.0, z, p)) for i, (x, z, p) in enumerate(air)]
+    L += [(THRUST_LLAND, (lw,) + THRUST_LAND['L'][1:]),
+          (THRUST_LBACK[0], (lw,) + THRUST_LAND['L'][1:]), (THRUST_LBACK[1], (LUNGE,) + STAND[1:])]
+    return {'R': R, 'L': L}
+
+
+POLES_THRUST = {
+    6: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0)), 12: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0)),
+    18: (RISE_R, (0.6, -0.2, -1.0)),
+    # cocked: the right elbow back and out behind the hip, the left across under the chest
+    24: ((-1.0, 0.6, 0.0), (0.2, 0.2, -1.0)), 32: ((-1.0, 0.6, 0.0), (0.2, 0.2, -1.0)),
+    THRUST_W - 3: ((-0.9, 0.6, -0.3), (0.3, 0.0, -1.0)), THRUST_W - 2: ((-0.6, 0.8, -0.6), (0.2, -0.2, -1.0)),
+    THRUST_W - 1: ((-0.2, 0.8, -0.8), (0.1, -0.4, -1.0)),
+    THRUST_W: (DOWN_R, DOWN_L), THRUST_W + 4: (DOWN_R, DOWN_L), THRUST_W + 8: (DOWN_R, DOWN_L),
+    THRUST_W + 11: (DOWN_R, DOWN_L), THRUST_W + 12: (DOWN_R, DOWN_L), 51: (DOWN_R, DOWN_L), 56: (DOWN_R, DOWN_L),
+    THRUST_LBACK[0]: ((-0.5, 0.8, -0.6), (0.2, -0.3, -1.0)), THRUST_LBACK[1]: (RISE_R, RISE_L),
+    78: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0)),
+}
+
+
+def thrust():
+    """裁決突刺: windup 36, the lunge (hit box) 36 .. 47 with the game moving him 160 px, recovery 48 -> 96."""
+    # musts: every frame of the lunge (the game moves him); every other frame as the weight comes back
+    # off the front foot and he straightens; lead False: a thrust, not a cut - the edges stay up and
+    # down while it drives out (with the edge leading the flat turned flat)
+    return Clip('thrust', with_poles(thrust_keys(), POLES_THRUST), thrust_steps(), advance=lunge_advance,
+                musts=tuple(range(THRUST_W, THRUST_W + LUNGE_FRAMES + 1)) + THRUST_BACK_MUSTS, lead=False)
+
+
+THRUST_BACK_MUSTS = tuple(range(52, 74, 2))
+THRUST_CONTACT = THRUST_W + 11       # the bounce starts from the lunge's last frame (landed, the sword out)
+
+
+def thrust_bounce():
+    """Parried (BOUNCED 1.2 s): the sword knocked up and back over his head onto the shoulder, he is
+    jolted upright (the bend gone in a few frames) and rocks back onto the right foot; the left foot
+    steps back under him, then the right foot up beside it - one foot at a time - into the carry, where
+    the game has him."""
+    c = contact_key(thrust(), THRUST_CONTACT)          # about where the game has him (it does not move now)
+    c['bend'] = THRUST_BEND
+    fL, fR = c['feet']['L'], c['feet']['R']
+    k = [(0, c),
+         (4, carry_key(D=c['D'] - 4, hx=c['hx'] - 6.0, ht=-2, tw=-4, bend=30.0, bow=-14, ck=3, fist=(c['hx'] + 24.0, 2.0, 92.0),
+                       dir=(0.0, 30.0), two=0.5, feet={'R': fR, 'L': fL})),
+         (10, carry_key(D=12, hx=-6.0, ht=-4, tw=0, lx=-7, bend=4.0, fist=(21.0, 6.0, 122.0), dir=(-12.0, 72.0), two=0.0,
+                        roll=90.0, bow=-13, ck=5, feet={'R': fR, 'L': fL})),
+         (20, carry_key(D=11, hx=-14.0, ht=-4, lx=-10, fist=(4.0, 14.0, 132.0), dir=(162.0, 58.0), two=0.0, roll=40.0,
+                        bow=-12, ck=4, feet={'R': fR, 'L': None})),
+         (34, carry_key(D=8, hx=-13.0, ht=-3, lx=-6, fist=(3.0, 21.0, 134.0), dir=(162.0, 18.0), bow=-6, ck=2,
+                        feet={'R': fR, 'L': STAND})),
+         (52, carry_key(D=2, hx=-1.0, lx=-2, bow=-1, fist=(CARRY_FIST[0] - 1.0,) + CARRY_FIST[1:], feet={'R': None, 'L': STAND})),
+         (60, carry_key(D=1, bow=-0.5)),
+         (66, carry_key())]
+    steps = {'L': [(12, fL), (28, STAND)], 'R': [(36, fR), (52, STAND)]}
+    return Clip('thrust_bounce', with_poles(k, {4: (DOWN_R, None), 10: ((0.0, 1.0, -0.4), None),
+                                                20: ((-0.2, 1.0, 0.0), None)}), steps)

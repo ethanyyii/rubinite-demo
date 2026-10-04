@@ -117,13 +117,35 @@ def lean_vec(st):
     return yaw((lean, 0.0, 0.0), lean_heading(st))[:2]
 
 
+def bend_point(st, p, inverse=False):
+    """A point of the upper body (F, R, U as standing, about the anchor before the hips' hx) bent
+    forward st['bend'] degrees at the waist: turned about the belt (BELT_U) in the vertical plane
+    the lean heads in (lean_heading()). The lean lx only shifts the rows forward (a shear - the
+    head stays as high); the bend turns them, so the chest and head come down (the judgment
+    thrust, user 2026-10-04: "整個身體要彎下去，頭的高度只在劍的上面一點點"). inverse: from where a
+    point is drawn back to the standing body (a point below the belt either way is the hips',
+    not bent). 0 degrees (every earlier attack) changes nothing."""
+    b = st.get('bend', 0.0)
+    if not b:
+        return p
+    h = lean_heading(st)
+    q = yaw(p, -h)
+    a = math.radians(-b if inverse else b)
+    f, u = q[0], q[2] - BELT_U
+    f1, u1 = f * math.cos(a) + u * math.sin(a), u * math.cos(a) - f * math.sin(a)
+    if u1 < 0.0 if inverse else u <= 0.0:
+        return p
+    return yaw((f1, q[1], u1 + BELT_U), h)
+
+
 def shoulder(side_, st):
     """Shoulder joint (side_ 'R' or 'L') for a pose: hips dropped D, leaned lx about the belt
-    (lean_heading()), the upper body turned tw."""
+    (lean_heading()), bent at the waist (bend_point()), the upper body turned tw."""
     r = SH_R if side_ == 'R' else -SH_R
     p = yaw((SH_F, r, SH_U), st.get('tw', 0.0))
     lv = lean_vec(st)
-    return (p[0] + lv[0] * (SH_U - BELT_U) + st.get('hx', 0.0), p[1] + lv[1] * (SH_U - BELT_U), p[2] - st.get('D', 0))
+    p = bend_point(st, (p[0] + lv[0] * (SH_U - BELT_U), p[1] + lv[1] * (SH_U - BELT_U), p[2]))
+    return (p[0] + st.get('hx', 0.0), p[1], p[2] - st.get('D', 0))
 
 
 HANG_L = (2.0, -23.4, 75.4)      # the left fist hanging at rest (front view: (151.9, 133.6))
@@ -321,9 +343,9 @@ def body_hits(st, step=3.0, start=10.0):
     t = start
     while t <= SWORD_LEN:
         p = add(st['fist'], mul(st['axis'], t))
-        u = p[2] + D                                       # height as if standing
-        f = p[0] - hx - lv[0] * max(0.0, u - BELT_U)
-        r = p[1] - lv[1] * max(0.0, u - BELT_U)
+        f, r, u = bend_point(st, (p[0] - hx, p[1], p[2] + D), inverse=True)     # as if standing
+        f = f - lv[0] * max(0.0, u - BELT_U)
+        r = r - lv[1] * max(0.0, u - BELT_U)
         q = yaw((f, r, u), -tw)                            # the upper body's own frame
         what = None
         if 60 <= u <= SH_U + 2 and (q[0] / 13.0) ** 2 + (q[1] / 22.0) ** 2 < 1.0:
