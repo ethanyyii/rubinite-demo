@@ -132,6 +132,7 @@ class Twist:
 SIDE_NEAR = 0.6                # side views: share of the shoulder's 3D move the near plate makes on screen
 SIDE_CHEST = 0.25                # ... the chest
 SIDE_TURN_MAX = 45.0            # ... the whole-body turn: the plates move as for this much turn at most
+SPIN_SIDE_MAX = 20.0            # ... drawn with a turned facing (the ash spin, render_spun)
 TWIST_FB = (34.0, 14.0)         # front / back: half the shoulders' width, half the chest's depth
 FB_DRAW = 0.7                   # front / back: share of the turn drawn (all of it stretches the plates' tassels into blocks)
 TWIST_X0 = {'right': 127.0, 'down': AX + 0.5, 'up': AX + 0.5}
@@ -261,19 +262,19 @@ def posed_arms(view, s, grip_xy, drawn, far=False):
             continue
         sh3, e3, g3, _ = a
         sxy = drawn[k][0]
-        if k == 'L' and s.get('two', 0.0) <= 0.0:
-            # swinging free (one-handed): a point of the body, not on the grip - a side view's
-            # elevation, or projected from its own drawn shoulder
+        if (k == 'L' and s.get('two', 0.0) <= 0.0) or (k == 'R' and s.get('back')):
+            # swinging free (one-handed; or the right hand, the sword slung on his back): a point of the
+            # body, not on the grip - a side view's elevation, or projected from its own drawn shoulder
             g = elevation(g3) if view == 'right' else screen(view, g3, sh3, sxy, far)
         else:
             g = screen(view, g3, gR3, grip_xy, far)
         n = math.dist(sxy, g)
-        arm_len = A.arm_lengths(s)[3]
+        arm_len = A.arm_lengths(s, k)[3]
         if n > arm_len - 0.3:
             f = (arm_len - 0.3) / n
             sxy = (g[0] + (sxy[0] - g[0]) * f, g[1] + (sxy[1] - g[1]) * f)
         e = elevation(e3) if view == 'right' else screen(view, e3, sh3, sxy, far)
-        e = AW.reach(sxy, e, g, s.get('arm_k', 1.0))
+        e = AW.reach(sxy, e, g, A.arm_scale(s, k))
         # the fist keeps its length on screen (arm.pose): a forearm pointing at the camera
         # that is drawn shorter than the fist would push the fist off the grip - the elbow is
         # kept at least that far from the fist's centre
@@ -610,7 +611,7 @@ def _swing(k, st):
     q = A.unit(A.yaw(A.sub(e, sh), -st.get('tw', 0.0)))
     side_ = 1.0 if k == 'R' else -1.0
     return {'side': (math.degrees(math.atan2(q[0], -q[2])), math.hypot(q[0], q[2])),
-            'front': (math.degrees(math.atan2(q[1] * side_, -q[2])), math.hypot(q[1], q[2]))}
+            'front': (math.degrees(math.atan2(q[1] * side_, -q[2])), math.hypot(q[1], q[2])), 'up': q[2]}
 
 
 def _reference(k):
@@ -638,6 +639,7 @@ def _plate_deg(direction, k, sw, ref, follow, mx_side, mx_fb, power=1):
 # straight ahead at the first blow), not about the carry - measured from the carry it sat at its
 # limit through the whole stroke and stood still (user 2026-10-02: "the shoulder must carry the
 # upper arm round")
+UPWRAP_FADE = (0.6, 0.95)    # the upper arm's upward share: the side plate's turn fades out from the first to the second
 SWING_FOLLOW = 0.9
 SWING_MAX = 35.0
 SWING_MAX_FB = 24.0
@@ -657,6 +659,14 @@ def plate_turn(direction, k, s, far=False):
     sw, ref = _swing(k, s), _reference(k)
     if sw is None or ref is None:
         return 0.0
+    if s.get('upwrap') and direction in ('right', 'left'):
+        # (the king's leap) measured from the carry's upper arm, the turn wraps round where the arm points back a
+        # little below level (106 - 180 degrees): the free arm swung back there flipped the plate 60 degrees in a
+        # frame. Here it wraps at straight up instead, and fades out as the arm comes up to it (UPWRAP_FADE)
+        (ang, w), (ang0, w0) = sw['side'], ref['side']
+        d = (ang - ang0) * min(w, w0)
+        fade = min(1.0, max(0.0, (UPWRAP_FADE[1] - sw['up']) / (UPWRAP_FADE[1] - UPWRAP_FADE[0])))
+        return max(-PLATE_MAX, min(PLATE_MAX, PLATE_FOLLOW * -d)) * fade
     deg = _plate_deg(direction, k, sw, ref, PLATE_FOLLOW, PLATE_MAX, PLATE_MAX_FB)
     w = s.get('swing', 0.0) if k == 'R' else 0.0
     if w > 0:
@@ -692,8 +702,10 @@ def pose_side(s, s1, far=False):
     tw_side = -s['tw'] if far else s['tw']
     if s.get('whole_turn'):
         # turned further than this the far plate rides up beside the head as a loose piece; the
-        # rest of the turn shows in the hips, the lean and the arms
-        tw_side = max(-SIDE_TURN_MAX, min(SIDE_TURN_MAX, tw_side))
+        # rest of the turn shows in the hips, the lean and the arms. Turned right round (the ash spin) the next
+        # facing's drawing takes over at 45 degrees: the side view draws less of what is left (SPIN_SIDE_MAX)
+        mx = SPIN_SIDE_MAX if s.get('spun') else SIDE_TURN_MAX
+        tw_side = max(-mx, min(mx, tw_side))
     sn = math.sin(math.radians(tw_side))
     near_dx = round(SIDE_NEAR * A.SH_R * sn)
     chest_tw = round(SIDE_CHEST * A.SH_R * sn)
@@ -755,15 +767,18 @@ def pose_side(s, s1, far=False):
     drawn = {near_k: (sh_drawn, sh_near3), far_k: (sh_far_drawn, sh_far3)}
     # the sword: grip at the right fist, from the drawn right shoulder
     shR_xy, shR3 = drawn['R']
-    grip = elevation(s['fist'])
-    pl = place('right', s['axis'], s['w3'], grip, S['place0'], far)
+    g3, ax3, w3 = (A.back_sword(s) if s.get('back') else (s['fist'], s['axis'], s['w3']))
+    grip = elevation(g3)
+    pl = place('right', ax3, w3, grip, S['place0'], far)
     size, org = sword_canvas(s)
     pix = swd.sword_image('right', pl, size, source='bare', origin=org)
     if s.get('ground'):
-        pix = ground_cut('right', pix, pl, s['fist'], s['axis'], s['w3'], far)
+        pix = ground_cut('right', pix, pl, g3, ax3, w3, far)
     key = ('left' if far else 'right', s.get('name'), s.get('i'))
     SWORD[key] = (pix, pl, grip)
-    split = sword_split('right', pix, pl, s['fist'], s['axis'], side_tier(far))
+    # slung on his back (the king's leap): all of it on his back, over the cape, under the body
+    mount = pix if s.get('back') else {}
+    split = {} if s.get('back') else sword_split('right', pix, pl, s['fist'], s['axis'], side_tier(far))
     pieces = {}
     for k, (J, sh3, e3, g3) in posed_arms('right', s, grip, drawn, far).items():
         P = arm_pieces(J, True)
@@ -791,7 +806,13 @@ def pose_side(s, s1, far=False):
             # crouched lower than any earlier attack (the judgment thrust, 28 px): the two-step guess
             # above drifts and draws the hem up to 5 px into the ground - solve row = s + d (1 - t(s))
             H_ = hem - top
-            sy = (y - d + d * top / H_) / (1.0 - d / H_)
+            if s.get('exact_cape'):
+                # (2026-10-05) solved right: y = s + d (1 - (s - top) / H). The judgment thrust's (approved, drawn
+                # as it was) has the sign of d top / H the other way round: the cape's top stays up where it stands,
+                # over the crouched head
+                sy = (y - d - d * top / H_) / (1.0 - d / H_)
+            else:
+                sy = (y - d + d * top / H_) / (1.0 - d / H_)
             dy = round(y - sy)
         t = _frac(y - dy, top, hem)
         x1 = x - round(hx * (1 - t)) - round(chest_dx(top + 8) * (1 - t)) - round(ck * t ** 1.5)
@@ -816,6 +837,8 @@ def pose_side(s, s1, far=False):
     # only about the waist - between the legs spread apart it showed as a dark slab down to the ground
     bd_low = (belt + d + BENT_BACKDROP) if abs(bend) >= 0.5 else AY
     out.append(bent(K.warp(S['backdrop'], lambda x, y: (x - hx, y - d) if y <= bd_low else None)))
+    if mount:
+        out.append(mount)
     out.append({(x, y - AW.FAR_UP): c for (x, y), c in limb.darken(limb.leg_pixels(far_leg)).items()})
     ht, hh = sm['hang_top'], sm['hang_hem']
     sw = round(0.5 * s1.get('ck', 0.0))
@@ -1053,7 +1076,9 @@ def front_back(direction, s, s1):
     # it) rises behind the lowered head and shoulders: its top comes half as far (squeezed all the way down
     # with the shoulders it smeared into streaks; left up, it stood over the head like an arch)
     cape_d = d + k + round(fold_drop(sm['cape_top'] + 8) * (1.0 if direction == 'up' else 0.5))
-    cape = rig.warp(cape_layer, _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx), pad=max(PAD, 24))
+    # (exact: crouched deeper than CAPE_EXACT_D - the hips' drop, as the side view's)
+    exact = s.get('exact_cape', False) and s['D'] > CAPE_EXACT_D
+    cape = rig.warp(cape_layer, _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx, exact=exact), pad=max(PAD, 24))
     if whole:
         cape = drop_islands(cape, CAPE_ISLAND_MAX)      # the narrowed cape's frayed edge leaves specks
 
@@ -1106,14 +1131,17 @@ def front_back(direction, s, s1):
             pix = rotate_pixels(pix, (drawn[kk][0], drawn[kk][1] - PLATE_UP), plate_turn(direction, kk, s))
         return pix
     shR3 = A.shoulder('R', s)
-    grip = screen(view, s['fist'], shR3, drawn['R'])
-    pl = place(view, s['axis'], s['w3'], grip, S['place0'])
+    g3, ax3, w3 = (A.back_sword(s) if s.get('back') else (s['fist'], s['axis'], s['w3']))
+    grip = screen(view, g3, shR3, drawn['R'])
+    pl = place(view, ax3, w3, grip, S['place0'])
     size, org = sword_canvas(s)
     pix = swd.sword_image(view, pl, size, source='bare', origin=org)
     if s.get('ground'):
-        pix = ground_cut(view, pix, pl, s['fist'], s['axis'], s['w3'])
+        pix = ground_cut(view, pix, pl, g3, ax3, w3)
     SWORD.update({(direction, s.get('name'), s.get('i')): (pix, pl, grip)})
-    split = sword_split(view, pix, pl, s['fist'], s['axis'], fb_tier(direction))
+    # slung on his back (the king's leap): from the front behind the cape, from behind over everything
+    mount = pix if s.get('back') else {}
+    split = {} if s.get('back') else sword_split(view, pix, pl, s['fist'], s['axis'], fb_tier(direction))
     pieces = {}
     for kk, (J, sh3, e3, g3) in posed_arms(view, s, grip, {k_: (v, None) for k_, v in drawn.items()}).items():
         # front: the right arm is the left arm's drawing mirrored (as the carry); the left arm
@@ -1121,6 +1149,19 @@ def front_back(direction, s, s1):
         mirror = (kk == 'R') if direction == 'down' else (kk == 'L')
         pieces[kk] = (arm_pieces(J, mirror), (sh3, e3, g3))
         JOINTS[(direction, s.get('name'), s.get('i'), kk)] = J
+
+    # the leap's wind-up (arms_behind; user 2026-10-05 "起跳的過程，手要往身後蓄力"): an arm swung right back behind
+    # him - the pieces of it behind his back (REAR_F px behind its shoulder) are drawn from the front behind the
+    # body, the cape and the slung sword, from behind over the sword (otherwise the front view drew the fists over
+    # the shoulder plates, beside the helmet, and the back view hid them under the sword)
+    rear = []
+    if s.get('arms_behind'):
+        for kk, (P, (sh3, e3, g3)) in list(pieces.items()):
+            mids = [A.lerp(p0, p1, 0.5) for p0, p1 in ((sh3, e3), (e3, g3), (g3, g3))]
+            back_ = [j for j in range(3) if mids[j][0] < sh3[0] - REAR_F]
+            rear += [(mids[j][0], P[j]) for j in back_]
+            pieces[kk] = (tuple({} if j in back_ else P[j] for j in range(3)), pieces[kk][1])
+        rear.sort(key=lambda r: r[0])                       # the furthest back first
 
     hpv = max(q[1] for q in layers['head'].pix)            # the neck
     hdx = K.lagged(side_dx(hpv), side_dx(hpv, lat1))
@@ -1136,7 +1177,8 @@ def front_back(direction, s, s1):
         bH, bB = split.get('back', ({}, {}))
         mH, mB = split.get('mid', ({}, {}))
         fH, fB = split.get('front', ({}, {}))
-        out += [bB, bH, cape, mB, mH]
+        out += [px for _, px in rear]
+        out += [mount, bB, bH, cape, mB, mH]
         if sideways:
             # a sidestep's legs swing sideways: drawn from the concept as the sidestep draws them
             import fleg
@@ -1149,7 +1191,7 @@ def front_back(direction, s, s1):
             hin = round(HIP_HALF * (1 - math.cos(math.radians(th_hip))))
             out.append(rig.warp(layers['leg_l'], AW._leg_front_src(layers['leg_l'], lay, LR, d, hin, inR, AW.FRONT_LEG['leg_l']), pad=PAD))
             out.append(rig.warp(layers['leg_r'], AW._leg_front_src(layers['leg_r'], lay, LL, d, -hin, -inL, AW.FRONT_LEG['leg_r']), pad=PAD))
-        out.append(rig.warp(layers['drape'], _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx), pad=PAD))
+        out.append(rig.warp(layers['drape'], _cape_src(sm, cape_d, cape_twist(tws), trail, narrow, cape_cx, exact=exact), pad=PAD))
         body_px = rig.warp(E['body'], body_src, pad=PAD)
         if whole:
             body_px = drop_islands(body_px, ISLAND_MAX)
@@ -1243,12 +1285,14 @@ def front_back(direction, s, s1):
         out.append(plate(E['plateL'], 'L'))
         if bend < BEND_HEAD_BEHIND:
             out.append(head)
-        out += [fB, fH]
+        out += [fB, fH, mount]
+        out += [px for _, px in reversed(rear)]
     if abs(bend) >= 0.5:
         return fill_enclosed(AW._finish(direction, out), round(top + d), round(belt + d))
     return AW._finish(direction, out)
 
 
+REAR_F = 12.0         # px behind its shoulder a piece of an arm is behind his back (arms_behind)
 ISLAND_MAX = 40       # px: pieces of the turned body cut off from it (the shoulder's top, uncovered by its plate)
 CAPE_ISLAND_MAX = 12
 WHOLE_PAD = 64
@@ -1288,10 +1332,12 @@ def cape_twist(tws):
     return tws
 
 
-def _cape_src(sm, d_top, tws, trail, narrow=1.0, cx=None):
+def _cape_src(sm, d_top, tws, trail, narrow=1.0, cx=None, exact=False):
     """A cape / drape layer: its top rides the shoulders (and turns with them), the hem gives
     `trail(t)` sideways. narrow < 1 (the whole-body turn): the cape's top is seen side-on as the
-    body turns - that share of its width at the shoulders, widening to all of it at the hem."""
+    body turns - that share of its width at the shoulders, widening to all of it at the hem.
+    exact (the new attacks of 2026-10-05, Clip(exact_cape)): crouched deeper than CAPE_EXACT_D the rows are
+    solved (y = s + d (1 - (s - top) / H)): the two-step guess drew the kneeling leap's hem 17 px below the feet."""
     top, hem = sm['cape_top'], sm['cape_hem']
 
     def src(x, y):
@@ -1299,6 +1345,9 @@ def _cape_src(sm, d_top, tws, trail, narrow=1.0, cx=None):
         # between (anim_walk.cape_src)
         t = _frac(y - d_top, top, hem)
         dy = round(d_top * (1 - t))
+        if exact:
+            H_ = hem - top
+            dy = round(y - (y - d_top - d_top * top / H_) / (1.0 - d_top / H_))
         t = _frac(y - dy, top, hem)
         sy = y - dy
         x1 = x - trail(t)
@@ -1323,7 +1372,42 @@ SPECK_MAX = 8         # px: the whole-body turn's final frames lose loose specks
                       # showing past the hip while the rest is behind him read as noise)
 
 
+def lowered(s):
+    """The pose with him put down on the ground (lift taken off every point that has it): drawn so, then moved up."""
+    L = s.get('lift', 0.0) if s else 0.0
+    if not L:
+        return s
+    t = dict(s, lift=0.0)
+    t['fist'] = (s['fist'][0], s['fist'][1], s['fist'][2] - L)
+    t['feet'] = {k: (f[0], f[1], f[2] - L) + tuple(f[3:]) for k, f in s['feet'].items()}
+    return t
+
+
 def render_pose(direction, s, s1):
+    L = round(s.get('lift', 0.0))
+    if L:
+        # off the ground (the king's leap): drawn put down, then the whole frame moved up L px (in every view the
+        # height is 1:1 on screen), with the sword's and the arms' records
+        f = render_pose(direction, lowered(s), lowered(s1))
+        key = (direction, s.get('name'), s.get('i'))
+        rec = SWORD.get(key)
+        if rec:
+            pix, pl, grip = rec
+            up = lambda p: (p[0], p[1] - L)
+            SWORD[key] = ({up(q): c for q, c in pix.items()}, dict(pl, grip=up(pl['grip'])), up(grip))
+        for kk in 'RL':
+            J = JOINTS.get(key + (kk,))
+            if J:
+                JOINTS[key + (kk,)] = {n: (v[0], v[1] - L) for n, v in J.items()}
+        return {(x, y - L): c for (x, y), c in f.items()}
+    if s.get('spin'):
+        k = spin_quarters(s)
+        if k % 4:
+            return render_spun(direction, s, s1, k)
+        if k:
+            # turned whole circles: the same facing, the turn less the circles
+            s = dict(s, tw=s['tw'] - 90.0 * k, ht=s['ht'] - 90.0 * k)
+            s1 = dict(s1, tw=s1['tw'] - 90.0 * k, ht=s1['ht'] - 90.0 * k) if s1 else s1
     if direction == 'left':
         f = side.mirror(pose_side(s, s1, far=True))
     elif direction == 'right':
@@ -1332,4 +1416,109 @@ def render_pose(direction, s, s1):
         f = front_back(direction, s, s1)
     if s.get('whole_turn'):
         f = drop_islands(f, SPECK_MAX)
+    return f
+
+
+# ------------------------------------------------------------------ the whole body turned right round (the ash spin)
+# The four facings are four drawings of one man; a body turned a full circle (the ash spin, user 2026-10-04:
+# "迴旋用右手單手拿劍轉一圈") is drawn, for each sheet row, with the facing his body is nearest to: turned a
+# quarter to his left, the one seen from the sheet row's camera a quarter round (facing the camera, turned to his
+# left he shows his right side: the facing-right drawing). The pose is turned back into that facing's frame
+# (every point and direction of it about the vertical axis, the turns tw / ht less the quarters) and the rest of
+# the turn (at most 45 degrees) is drawn as the whole-body turn draws it. The game does not move him: the turn is
+# about the anchor (the pivot foot is under him, hx 0).
+TURN_ORDER = ('down', 'right', 'up', 'left')      # a quarter turn to his left: the next one
+
+
+def spin_quarters(s):
+    """Quarter turns (+ = to his left) the body is nearest: the hips' and the chest's turns averaged."""
+    return round((s['tw'] + s['ht']) / 2.0 / 90.0)
+
+
+def spin_foot(f, side_, k):
+    """A foot (x, out, z, pitch, down, ...) of the attack's frame in the frame turned k quarters: its place on
+    the ground about the anchor (out from its own hip's line, HIP_HALF either side) turned with the body."""
+    sgn = 1.0 if side_ == 'R' else -1.0
+    fw = f[0]
+    rw = sgn * (AT.HIP_HALF + f[1])
+    x, r, _ = A.yaw((fw, rw, 0.0), -90.0 * k)
+    out = sgn * r - AT.HIP_HALF
+    return (x, out) + tuple(f[2:5])
+
+
+def spun(s, k, strict=True):
+    """The state seen in the frame turned k quarters to his left (strict: the hips must be over the anchor -
+    the state drawn; the one before it, read only for what lags a pose, need not)."""
+    if not s:
+        return s
+    deg = -90.0 * k
+    t = dict(s)
+    for key in ('fist', 'axis', 'w3', 'flat', 'poleR', 'poleL'):
+        if t.get(key) is not None:
+            t[key] = A.yaw(t[key], deg)
+    t['tw'] = s['tw'] - 90.0 * k
+    t['ht'] = s['ht'] - 90.0 * k
+    t['feet'] = {side_: spin_foot(f, side_, k) for side_, f in s['feet'].items()}
+    if strict and abs(s.get('hx', 0.0)) > 0.5:
+        raise ValueError(f'a spun pose turns about the anchor: hx must be 0 ({s.get("hx")} at frame {s.get("t")})')
+    t['hx'] = 0.0
+    t.pop('spin', None)
+    t['spun'] = True
+    return t
+
+
+def _flip_record(pix=None, pl=None, grip=None, J=None):
+    m = lambda p: (2 * rig.AX - p[0], p[1])
+    out = []
+    if pix is not None:
+        out.append({m(q): c for q, c in pix.items()})
+    if pl is not None:
+        pl = dict(pl, grip=m(pl['grip']), axis=(-pl['axis'][0], pl['axis'][1]), width=(-pl['width'][0], pl['width'][1]))
+        out.append(pl)
+    if grip is not None:
+        out.append(m(grip))
+    if J is not None:
+        out.append({n: m(v) for n, v in J.items()})
+    return out
+
+
+VIEW_OF = {'right': 'right', 'left': 'right', 'down': 'front', 'up': 'back'}
+
+
+def render_spun(direction, s, s1, k):
+    """A pose of the spin for sheet row `direction`, drawn with the facing turned k quarters. The sword and
+    arm records (SWORD, JOINTS: what the checks and the json read) are filed under the sheet row, in its own
+    convention (facing-right space for the left row), with the tip where it is drawn."""
+    d2 = TURN_ORDER[(TURN_ORDER.index(direction) + k) % 4]
+    name, i = s.get('name'), s.get('i')
+    tmp = f'{name}~{direction}'
+    a, b = dict(spun(s, k), name=tmp), dict(spun(s1, k, strict=False) or {}, name=tmp)
+    if not s1:
+        b = a
+    f = render_pose(d2, a, b)
+    raw = 'left' if d2 == 'left' else d2
+    rec = SWORD.pop((raw, tmp, i), None)
+    if rec:
+        pix, pl, grip = rec
+        tip = swd.tip_of(VIEW_OF[d2], pl)
+        if d2 == 'left':              # facing-right space -> the frame
+            pix, pl, grip = _flip_record(pix, pl, grip)
+            tip = (2 * rig.AX - tip[0], tip[1])
+        if direction == 'left':       # the frame -> the left row's facing-right space
+            pix, pl, grip = _flip_record(pix, pl, grip)
+            tip = (2 * rig.AX - tip[0], tip[1])
+        # the tip where it is drawn, read with the sheet row's view (sword.tip_of scales by the view's sword)
+        n = swd.tip_of(VIEW_OF[direction], {'grip': (0.0, 0.0), 'axis': (1.0, 0.0)})[0]
+        pl = dict(pl, axis=((tip[0] - grip[0]) / n, (tip[1] - grip[1]) / n))
+        SWORD[(direction, name, i)] = (pix, pl, grip)
+    for kk in 'RL':
+        J = JOINTS.pop((raw, tmp, i, kk), None)
+        if J is None:
+            JOINTS.pop((direction, name, i, kk), None)
+            continue
+        if d2 == 'left':
+            J = _flip_record(J=J)[0]
+        if direction == 'left':
+            J = _flip_record(J=J)[0]
+        JOINTS[(direction, name, i, kk)] = J
     return f

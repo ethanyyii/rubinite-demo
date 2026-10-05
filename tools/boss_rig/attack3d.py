@@ -145,7 +145,7 @@ def shoulder(side_, st):
     p = yaw((SH_F, r, SH_U), st.get('tw', 0.0))
     lv = lean_vec(st)
     p = bend_point(st, (p[0] + lv[0] * (SH_U - BELT_U), p[1] + lv[1] * (SH_U - BELT_U), p[2]))
-    return (p[0] + st.get('hx', 0.0), p[1], p[2] - st.get('D', 0))
+    return (p[0] + st.get('hx', 0.0), p[1], p[2] - st.get('D', 0) + st.get('lift', 0.0))
 
 
 HANG_L = (2.0, -23.4, 75.4)      # the left fist hanging at rest (front view: (151.9, 133.6))
@@ -168,6 +168,11 @@ def fists(st):
         return g, grip
     rest = shoulder('L', {})
     hang = add(shoulder('L', st), yaw(sub(HANG_L, rest), st.get('tw', 0.0)))
+    grab = st.get('lgrab', 0.0)
+    if grab > 0.0:
+        # the free left hand (one-handed until now: the quick combo's upswing) takes the grip from
+        # where it swings, not from hanging; 0 for every earlier attack (drawn as before)
+        hang = lerp(hang, free_left(st), grab)
     return g, lerp(hang, grip, smooth(two))
 
 
@@ -187,14 +192,22 @@ def left_weight(st):
     return smooth(max(st.get('two', 0.0), st.get('lfree', 0.0)))
 
 
-def arm_lengths(st=None):
+def arm_lengths(st=None, side='R'):
     """(upper arm, forearm, fist, whole arm) for a pose: the bones are drawn st['arm_k'] times
     as long (default 1). Only the cleave's highest point uses it (user 2026-10-03: the cleave is
     raised over the head - with these short arms both fists cannot get over the helmet and its
     crown however high the shoulders go and however far he arches back; the arms are drawn a
     little longer there and the user is told, animation-review §4.3)."""
-    k = (st or {}).get('arm_k', 1.0)
+    k = arm_scale(st or {}, side)
     return UPPER * k, FORE * k, FIST, (UPPER + FORE) * k + FIST
+
+
+def arm_scale(st, side='R'):
+    """How many times as long an arm is drawn (arm_lengths): the pose's arm_k, both arms - but under `left_own` (the
+    king's leap: only the right arm, the blow, is drawn longer) the left arm is its own length."""
+    if side == 'L' and st.get('left_own'):
+        return 1.0
+    return st.get('arm_k', 1.0)
 
 
 def solve_arm(sh, hand, pole, k=1.0):
@@ -285,7 +298,7 @@ def girdles(st):
             out[k] = (0.0, 0.0, 0.0)
             continue
         sh = shoulder(k, st)
-        e, sh1, _ = solve_arm(sh, g, _pole(k, st), st.get('arm_k', 1.0))
+        e, sh1, _ = solve_arm(sh, g, _pole(k, st), arm_scale(st, k))
         gd = _girdle(k, unit(sub(e, sh1)), st.get('tw', 0.0), st.get('swing', 0.0) if k == 'R' else 0.0,
                      st.get('shrug', 0.0), st.get('draw_in', 0.0))
         if k == 'R':
@@ -313,17 +326,55 @@ def arms(st):
         if g is None:
             out[k] = None
             continue
-        e, sh, slack = solve_arm(add(shoulder(k, st), gd[k]), g, _pole(k, st), st.get('arm_k', 1.0))
+        e, sh, slack = solve_arm(add(shoulder(k, st), gd[k]), g, _pole(k, st), arm_scale(st, k))
         out[k] = (sh, e, g, slack)
     return out
 
 
 def tip(st):
-    return add(st['fist'], mul(st['axis'], SWORD_LEN))
+    return add(sword_grip(st), mul(sword_axis(st), SWORD_LEN))
 
 
 def pommel(st):
-    return sub(st['fist'], mul(st['axis'], POMMEL))
+    return sub(sword_grip(st), mul(sword_axis(st), POMMEL))
+
+
+# ------------------------------------------------------------------ the sword slung on his back (the king's leap)
+# User 2026-10-04: "劍會收放在背上（斜掛著）" - the right hand puts the sword on his back for the leap and draws it
+# again after the landing. Slung: the grip (where the right fist holds it) behind the right shoulder, over it, the
+# blade down across his back to behind his left hip and on past it, the flat against his back (over the cape); it
+# rides the upper body rigidly (turned, leaned, bent about the belt as one piece - unlike bend_point, the part below
+# the belt swings back with it), dropped with the hips and lifted with him.
+MOUNT_GRIP = (-17.0, 14.0, 140.0)                 # the upper body's frame, standing
+MOUNT_DIR = (-0.08, -0.5, -0.86)                  # down across the back to his left (normalised in back_sword)
+
+
+def back_sword(st):
+    """(grip, axis, width) of the sword slung on his back for a pose (the width across the blade, in the plane of
+    his back)."""
+    d = unit(MOUNT_DIR)
+    w = unit(cross(d, (-1.0, 0.0, 0.0)))
+    tw = st.get('tw', 0.0)
+    h = lean_heading(st)
+    a = math.radians(st.get('bend', 0.0) + st.get('lx', 0.0))
+
+    def tilt(p, point):
+        q = yaw(yaw(p, tw), -h)
+        f, r, u = q[0], q[1], (q[2] - BELT_U if point else q[2])
+        f1, u1 = f * math.cos(a) + u * math.sin(a), u * math.cos(a) - f * math.sin(a)
+        return yaw((f1, r, u1 + (BELT_U if point else 0.0)), h)
+    g = tilt(MOUNT_GRIP, True)
+    g = (g[0] + st.get('hx', 0.0), g[1], g[2] - st.get('D', 0) + st.get('lift', 0.0))
+    return g, unit(tilt(d, False)), unit(tilt(w, False))
+
+
+def sword_grip(st):
+    """Where the sword's grip point is: in the right fist, or slung on his back (st['back'])."""
+    return back_sword(st)[0] if st.get('back') else st['fist']
+
+
+def sword_axis(st):
+    return back_sword(st)[1] if st.get('back') else st['axis']
 
 
 # ------------------------------------------------------------------ what may not happen
@@ -336,14 +387,21 @@ def body_hits(st, step=3.0, start=10.0):
     48 px over them); all turned, leaned and dropped with the upper body. Returns the distances
     along the blade that are inside, and what they hit."""
     hits = []
+    if st.get('back'):
+        # slung on his back it rides the upper body at a fixed place outside the torso, the plates and the
+        # helmet (attack3d.back_sword); the test below un-bends only what is over the belt and would read a
+        # rigidly tilted blade as passing through the hips
+        return hits
     tw = st.get('tw', 0.0)
     D = st.get('D', 0)
     lv = lean_vec(st)
     hx = st.get('hx', 0.0)
     t = start
+    g0, ax0 = sword_grip(st), sword_axis(st)
+    lift = st.get('lift', 0.0)
     while t <= SWORD_LEN:
-        p = add(st['fist'], mul(st['axis'], t))
-        f, r, u = bend_point(st, (p[0] - hx, p[1], p[2] + D), inverse=True)     # as if standing
+        p = add(g0, mul(ax0, t))
+        f, r, u = bend_point(st, (p[0] - hx, p[1], p[2] + D - lift), inverse=True)     # as if standing
         f = f - lv[0] * max(0.0, u - BELT_U)
         r = r - lv[1] * max(0.0, u - BELT_U)
         q = yaw((f, r, u), -tw)                            # the upper body's own frame

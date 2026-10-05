@@ -265,12 +265,11 @@ static func _build(phase: int) -> Dictionary:
 		# §5 雙重衝擊：第一個環之後 0.9 秒再擴張第二個環；兩個環都有 0.6 秒危險預兆
 		out[&"double_impact"] = _move(&"double_impact", "雙重衝擊", [_impact_ring(1.1), _impact_ring(0.9)],
 			1.4 * rec, {"debug_key": 8})
-		# §5.1 灰燼迴旋（新招，文件列出的收招 1.2 秒即為二階段數值，不再縮短）
+		# §5.1 灰燼迴旋（新招，文件列出的收招 1.2 秒即為二階段數值，不再縮短）。
+		# 2026-10-04 使用者決定只轉一圈、只打一下（原本兩圈兩擊）：判定 0.25 秒內轉完一整圈（美術：右手單手、
+		# 劍尖一幀最多走 80px，0.1 秒轉一圈做不到），被完美彈返彈開 1.2 秒（原本第二擊的）。tuning-log 2026-10-04
 		out[&"ash_spin"] = _move(&"ash_spin", "灰燼迴旋", [
-			_hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.1, "damage": 24, "posture_damage": 35,
-				"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 0.0, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE,
-				"radius": SPIN_RADIUS, "anim": &"C6"}),
-			_hit({"attack_type": AT.HEAVY, "interval": 0.7, "active": 0.1, "damage": 24, "posture_damage": 35,
+			_hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.25, "damage": 24, "posture_damage": 35,
 				"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE,
 				"radius": SPIN_RADIUS, "anim": &"C6"}),
 		], 1.2, near_step.merged({"debug_key": 9}))

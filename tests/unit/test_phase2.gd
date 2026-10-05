@@ -170,8 +170,9 @@ func test_kings_leap_can_be_parried() -> void:
 	assert_eq(boss().state, BS.BOUNCED)
 
 
-func test_ash_spin_connects_twice_all_around() -> void:
-	# 玩家鎖定並按住格擋（普通格擋兩次），Boss 在北、南兩側都打得到（360°）
+func test_ash_spin_connects_once_all_around() -> void:
+	# 玩家鎖定並按住格擋（普通格擋一次），Boss 在北、南兩側都打得到（360°）。
+	# 2026-10-04 使用者決定只轉一圈、只打一下（原本兩擊）
 	for side in [Vector2(0, -70), Vector2(0, 70)]:
 		sim = CombatSim.new(1)
 		sim.boss.phase = 2
@@ -189,7 +190,7 @@ func test_ash_spin_connects_twice_all_around() -> void:
 		for e in event_log:
 			if e["type"] == &"boss_hit_result":
 				n += 1
-		assert_eq(n, 2, "迴旋兩擊都打到（玩家在 %s）" % side)
+		assert_eq(n, 1, "迴旋打到一次（玩家在 %s）" % side)
 		held["block"] = false
 
 

@@ -47,12 +47,14 @@ def boot_drop(pitch):
 
 
 SCALARS = ('D', 'hx', 'ht', 'lx', 'tw', 'bow', 'ck', 'cs', 'roll', 'two', 'lfree', 'swing', 'arm_k', 'shrug', 'draw_in',
-           'glow', 'bend')
+           'glow', 'bend', 'lgrab', 'lift')
 # arm_k, shrug, draw_in: the cleave's arms over the head (attack3d.arm_lengths, _girdle); glow: the
 # helmet's cross lit red (the ash impact, anim_attack.glow_head); bend: bent forward at the waist (the
-# judgment thrust, attack3d.bend_point); the defaults draw every other attack exactly as before
+# judgment thrust, attack3d.bend_point); lgrab: the free left hand takes the grip from where it swings
+# (the upswing, attack3d.fists); the defaults draw every other attack exactly as before
+# lift: the whole man off the ground (the king's leap, px; attack3d.shoulder, anim_attack.render_pose)
 SCALAR_DEFAULT = {'arm_k': 1.0}
-CLAMP01 = ('two', 'lfree', 'swing', 'glow')
+CLAMP01 = ('two', 'lfree', 'swing', 'glow', 'lgrab')
 
 
 def _catmull(p0, p1, p2, p3, t):
@@ -71,6 +73,7 @@ def hip_x(st, side_):
     sgn = 1.0 if side_ == 'R' else -1.0
     ht = st.get('ht', 0.0)
     if st.get('whole_turn'):
+        ht = (ht + 180.0) % 360.0 - 180.0          # turned whole circles (the ash spin): the same hips
         # the legs are solved in the side plane (a knee always bends forward): turned further
         # than this the back hip comes over the back foot and both knees fold forward - he looks
         # as if he sits down. The rest of the turn shows in the front / back hips, the lean, the
@@ -84,7 +87,8 @@ class Clip:
     foot's track is the keys that give it (a key's feet may leave one out, or give None)."""
 
     def __init__(self, name, keys, steps=None, advance=None, musts=(), whole_turn=False, still=False, ground=False,
-                 lead=True, tall=False, flashes=()):
+                 lead=True, tall=False, flashes=(), spin=False, back=None, exact_cape=False, upwrap=False,
+                 behind=None, left_own=False):
         """steps: {'R': [(frame, foot)], ...} - foot keys between the body's keys (where a step
         leaves the ground or lands). advance: combat frame -> px the game has moved the Boss
         forward since the move started (the twin slash's step before its second hit,
@@ -113,6 +117,22 @@ class Clip:
         self.tall = tall
         # flashes: the frames the helmet's cross flashes at (its brightness from flash_level, not the keys)
         self.flashes = tuple(flashes)
+        # spin: the whole body may turn right round (the ash spin): each view draws it with the facing it is
+        # nearest (anim_attack.render_spun)
+        self.spin = spin
+        # back: (from, to) frames the sword is slung on his back and the right hand is free (the king's leap)
+        self.back = back
+        # exact_cape: the side view's cape crouched deeper than anim_attack.CAPE_EXACT_D solved right (the
+        # judgment thrust's is drawn as approved)
+        self.exact_cape = exact_cape
+        # upwrap: the side views' shoulder plate turn wraps at the arm straight up (anim_attack.plate_turn; the leap)
+        self.upwrap = upwrap
+        # left_own: the arms drawn longer (arm_k) is the right arm only; the left keeps its length (attack3d.arm_scale; the
+        # leap's blow is the right fist's)
+        self.left_own = left_own
+        # behind: (from, to) frames the free arms swing right back behind him: the front view draws what of them is
+        # behind his back behind him, the back view over the slung sword (anim_attack.front_back; the leap's wind-up)
+        self.behind = behind
         self.tracks = {}
         for s in 'RL':
             tr = {t: k['feet'][s] for t, k in keys if k['feet'].get(s) is not None}
@@ -179,6 +199,18 @@ class Clip:
         out['whole_turn'] = self.whole_turn
         if self.tall:
             out['tall'] = True
+        if self.spin:
+            out['spin'] = True
+        if self.back and self.back[0] <= t < self.back[1]:
+            out['back'] = True
+        if self.behind and self.behind[0] <= t < self.behind[1]:
+            out['arms_behind'] = True
+        if self.left_own:
+            out['left_own'] = True
+        if self.exact_cape:
+            out['exact_cape'] = True
+        if self.upwrap:
+            out['upwrap'] = True
         if self.flashes:
             out['glow'] = flash_level(t, self.flashes)
         if self.ground is True or (self.ground is not False and t >= self.ground):
@@ -759,6 +791,150 @@ def quick_bounce():
     keys, steps = bounce_keys(contact_key(quick(), Q2 + 3), scale=2.0 / 3.0)
     return Clip('quick_bounce', with_poles(keys, {round(t * 2 / 3): v for t, v in POLES_BOUNCE.items()}), steps,
                 whole_turn=True)
+
+
+# ------------------------------------------------------------------ C5 上挑: the quick combo's third hit (quick_combo_3)
+# veltharis_data quick_combo_3: the two light slashes (as quick_combo_2), then 0.8 s after the second
+# starts (48 frames) the third: 判定 0.1 s (108 .. 113), heavy, a 120-degree sector in front, radius
+# SWEEP_RADIUS 155, launching; parried it bounces him 1.2 s; 收招 0.9 s (54; 二階段 x0.75 -> 41): 168 frames.
+# Up to the second cut's follow-through (Q2 + 8) the keys are the quick slashes' own (the same frames
+# up to the second hit box's end, as the triple slash shares the twin slash's).
+# The second cut leaves the sword low behind him on his right, one-handed, the arm straight, the chest
+# turned to his right, the weight on the right foot ahead. From there it runs on into the upswing's load:
+# he sinks right down and bends over (bend: the chest turned down about the belt, as the judgment thrust),
+# the chest turning on further to his right, the blade pressed low behind him on the right, its tip near
+# the ground; the free left hand comes across and takes the grip (heavy: two hands) - held a moment, low,
+# the blade trailing behind him (the read: about to scoop up). Then the scoop: the legs drive him up, the
+# bend comes out and he arches back, the chest unwinds from his right round to his left, both arms swing
+# the blade from low behind him on his right forward and up: entering the sector low on his right front,
+# straight ahead at the hit box's edge at the player's height, leaving it on his left front rising (the
+# edge leading: a cut). The back (left) heel comes up and he pivots on the ball; neither foot leaves its
+# place. The blade carries on up over his left shoulder, he holds it there arched back (the opening),
+# then brings it down before him, upright before his right shoulder and back onto it (the way the sweeps
+# put it back), the left hand letting go, the right foot stepping back under him.
+Q3 = Q2 + 48                  # 108: the third hit box (108 .. 113)
+QUICK3_END = Q3 + 6 + 54      # 168
+QUICK3_LOW = (92, 100)        # held low before the scoop
+QUICK3_TOP = (120, 128)       # held up over the left shoulder after it
+QUICK3_BACK = (140, 152)      # the right foot back under him
+QUICK3_SHARED = Q2 + 8        # the quick slashes' keys up to here
+
+
+def q3key(**kw):
+    """A key of the upswing: the free left hand takes the grip from where it swings (lgrab)."""
+    k = carry_key(swing=1.0, lgrab=1.0, lfree=1.0)
+    k.update(kw)
+    return k
+
+
+def quick3_keys():
+    k = [kv for kv in quick().keys if kv[0] <= QUICK3_SHARED]
+    p2 = {'R': RQ2, 'L': LBALL2}
+    flat = {'R': RQ2, 'L': STAND}
+    piv = {'R': RQ2, 'L': LBALL}
+    # held low: turned far round to his right (the chest 72 degrees, as far as the quick slashes turn it to
+    # his left), sunk and bent over; both fists before the right hip (the left arm across him - with the
+    # right hand by the pommel the right side is the grip's awkward one: turned less, the left hand
+    # cannot reach), the blade sloping down behind him on his right to a tip 8 px off the ground
+    low = q3key(D=22, hx=24.0, ht=-14, tw=-72, lx=0, bend=36.0, bow=-24, fist=(37.0, 20.0, 69.0), dir=(148.0, -28.0),
+                flat=FLAT_R, two=1.0, ck=-3, cs=-6, feet=flat)
+    k += [
+        # the follow-through sinks on into the load: the right arm draws in, the blade lowered behind him,
+        # the left hand coming across
+        (76, q3key(D=15, hx=26.0, ht=-15, tw=-58, lx=12, bend=14.0, bow=-6, fist=(30.0, 40.0, 76.0), dir=(138.0, -18.0),
+                   flat=FLAT_R, two=0.0, lhand=(-2.0, 2.0, 14.0), ck=0, cs=-6, feet=p2)),
+        (84, q3key(D=20, hx=25.0, ht=-14, tw=-68, lx=3, bend=30.0, bow=-18, fist=(35.0, 25.0, 71.0), dir=(145.0, -25.0),
+                   flat=FLAT_R, two=0.6, lhand=(8.0, 8.0, 16.0), ck=-2, cs=-6, feet=flat)),
+        (QUICK3_LOW[0], low),
+        (QUICK3_LOW[1], low),
+        # the scoop: up off the legs, unbending, the chest unwinding to his left, the blade swung round
+        # in front and up
+        (104, q3key(D=20, hx=24.5, ht=-10, tw=-58, lx=0, bend=34.0, bow=-22, fist=(44.0, 16.0, 70.0), dir=(118.0, -25.0),
+                    two=1.0, ck=-2, cs=-4, feet=piv)),
+        (Q3, q3key(D=17, hx=25.0, ht=-2, tw=-30, lx=0, bend=29.0, bow=-18, fist=(45.0, 4.0, 70.0), dir=(60.0, -24.0),
+                   two=1.0, ck=0, cs=-1, feet=piv)),
+        (Q3 + 2, q3key(D=14, hx=25.0, ht=6, tw=-6, lx=0, bend=25.0, bow=-14, fist=(44.0, -2.0, 72.0), dir=(4.0, -17.0),
+                       two=1.0, ck=2, cs=2, feet=piv)),
+        (Q3 + 3, q3key(D=13, hx=24.5, ht=9, tw=4, lx=0, bend=22.0, bow=-12, fist=(45.0, -8.0, 74.0), dir=(-16.0, -8.0),
+                       two=1.0, ck=3, cs=3, feet=piv)),
+        (Q3 + 5, q3key(D=9, hx=23.0, ht=14, tw=24, lx=-2, bend=12.0, bow=-9, fist=(38.0, -18.0, 88.0), dir=(-60.0, 35.0),
+                       two=1.0, ck=4, cs=5, feet=piv)),
+        # carried on up over his left shoulder, arched back; held there (the opening)
+        (116, q3key(D=5, hx=19.0, ht=18, tw=34, lx=-8, bend=0.0, bow=-8, fist=(30.0, -14.0, 108.0), dir=(-108.0, 55.0),
+                    flat=FLAT_L, two=1.0, ck=3, cs=4, feet=piv)),
+        (QUICK3_TOP[0], q3key(D=4, hx=16.0, ht=16, tw=36, lx=-9, bow=-6, fist=(26.0, -10.0, 120.0), dir=(-150.0, 48.0),
+                              flat=FLAT_L, two=1.0, ck=1, cs=3, feet=flat)),
+        (QUICK3_TOP[1], q3key(D=4, hx=16.0, ht=16, tw=36, lx=-9, bow=-6, fist=(26.0, -10.0, 120.0), dir=(-150.0, 48.0),
+                              flat=FLAT_L, two=1.0, ck=0, cs=2, feet=flat)),
+        # down before him, upright, across to before the right shoulder (the weight back onto the left
+        # foot, the right foot stepping back under him), laid back on it; the left hand lets go
+        (134, q3key(D=7, hx=14.0, ht=8, tw=16, lx=0, bow=0, fist=(30.0, -2.0, 110.0), dir=(-60.0, 66.0),
+                    flat=A.unit((1.0, -0.6, 0.0)), two=1.0, swing=0.5, ck=0, feet=flat)),
+        (QUICK3_BACK[0], q3key(D=8, hx=12.0, ht=4, tw=4, lx=1, fist=(21.0, 12.0, 122.0), dir=(-18.0, 80.0), flat=FLAT_R,
+                               two=0.6, swing=0.3, lhand=(4.0, 2.0, 8.0), feet=flat)),
+        (146, q3key(D=4, hx=3.0, fist=(17.0, 20.0, 131.0), dir=(162.0, 40.0), roll=30.0, two=0.0, swing=0.0, lfree=0.5,
+                    lhand=(2.0, 0.0, 4.0), feet={'R': None, 'L': STAND})),
+        (154, carry_key(D=1)),
+        (QUICK3_END - 6, carry_key()),
+    ]
+    return with_body_poles(k, POLES_Q3)
+
+
+# where the elbows point after the second cut, in the upper body's frame (turned with it, attack3d.yaw)
+POLES_Q3 = {
+    76: ((-0.6, 1.0, -0.4), (0.6, -0.2, -1.0)),
+    84: ((-0.6, 1.0, -0.6), (0.6, 0.2, -1.0)),
+    QUICK3_LOW[0]: ((-0.6, 1.0, -0.6), (0.6, 0.2, -1.0)), QUICK3_LOW[1]: ((-0.6, 1.0, -0.6), (0.6, 0.2, -1.0)),
+    104: ((-0.3, 1.0, -0.8), (0.4, 0.0, -1.0)),
+    Q3: ((0.0, 0.6, -1.0), (0.0, -0.6, -1.0)), Q3 + 2: ((0.0, 0.6, -1.0), (0.0, -0.6, -1.0)),
+    Q3 + 3: ((0.0, 0.6, -1.0), (0.0, -0.6, -1.0)),
+    Q3 + 5: ((0.4, 0.6, -0.8), (-0.2, -1.0, -0.4)),
+    116: ((1.0, -0.1, -0.2), (-0.2, -1.0, 0.25)),
+    QUICK3_TOP[0]: ((1.0, -0.1, -0.2), (-0.2, -1.0, 0.25)), QUICK3_TOP[1]: ((1.0, -0.1, -0.2), (-0.2, -1.0, 0.25)),
+    134: ((0.0, 1.0, -0.8), (0.0, -1.0, -0.8)),
+    QUICK3_BACK[0]: ((-0.1, 1.0, -0.6), (0.6, -0.4, -1.0)),
+}
+
+
+def with_body_poles(keys, table):
+    """with_poles() for poles given in the upper body's frame: turned with each key's tw."""
+    out = []
+    for t, k in keys:
+        if t in table:
+            k = dict(k)
+            k['poleR'], k['poleL'] = (A.yaw(p, k['tw']) for p in table[t])
+        out.append((t, k))
+    return out
+
+
+def quick3_steps():
+    return {'R': [(QUICK_STEP_FROM, STAND), (Q1 + 3, RQ1), (54, RQ1), (Q2 + 3, RQ2), (QUICK3_BACK[0], RQ2),
+                  (QUICK3_BACK[1], STAND)]}
+
+
+def quick3():
+    """快斬連段 (three-hit version): the two quick slashes (hits 24, 60), then the upswing (hit 108),
+    recovery 54 -> 168 frames."""
+    # lead: the edge leads through the strokes; from the top over the left shoulder on, the keys' flat
+    # (put back on the shoulder fast the edge would lead, then flash flat as it slows)
+    return Clip('quick3', quick3_keys(), quick3_steps(), whole_turn=True, musts=tuple(range(Q3, Q3 + 7)),
+                lead=QUICK3_TOP[0] - 2, exact_cape=True)
+
+
+QUICK3_CONTACT = Q3 + 2       # the blade straight ahead (the bounce starts here)
+
+
+def quick3_bounce():
+    """The upswing parried (bounce_time 1.2: BOUNCED 72 frames) from its contact: two-handed, the
+    heavy bounce (the blade knocked up and back over his head onto the shoulder); the bend comes out
+    as he is jolted upright."""
+    c = contact_key(quick3(), QUICK3_CONTACT)
+    s = quick3().at(QUICK3_CONTACT)
+    c['bend'] = s['bend']
+    c['lfree'], c['lgrab'] = 0.0, 0.0          # both hands on the grip: the left is jarred off it, then hangs
+    keys, steps = bounce_keys(c)
+    keys = [(t, dict(k, bend={4: 8.0}.get(t, k.get('bend', 0.0)))) for t, k in keys]
+    return Clip('quick3_bounce', with_poles(keys, POLES_BOUNCE), steps, whole_turn=True, exact_cape=True)
 
 
 # ------------------------------------------------------------------ C3 墜誓下劈 (the oath cleave), two hands
@@ -1635,3 +1811,485 @@ def thrust_bounce():
     steps = {'L': [(12, fL), (28, STAND)], 'R': [(36, fR), (52, STAND)]}
     return Clip('thrust_bounce', with_poles(k, {4: (DOWN_R, None), 10: ((0.0, 1.0, -0.4), None),
                                                 20: ((-0.2, 1.0, 0.0), None)}), steps)
+
+
+# ------------------------------------------------------------------ C6 灰燼迴旋 (the ash spin), one hand, phase 2
+# veltharis_data ash_spin (user 2026-10-04: one turn, one hit - it was two): 起手 0.9 s (54 frames) -> 判定 0.25 s
+# (15: 54 .. 68), a circle of SPIN_RADIUS 165 all round him -> 收招 1.2 s (72; phase 2's own, not shortened): 141
+# frames. Heavy; parried it bounces him 1.2 s. The user: "迴旋用右手單手拿劍轉一圈的過程蹲下，所以轉完會是蹲下狀態" -
+# the sword in the right hand alone, one full turn, crouching down as he turns: he ends it crouched.
+# The windup (boss-veltharis §5.1: the greatsword dragging, the body twisting): the right hand takes the sword off the
+# shoulder down to his right side, the blade trailing behind him on his right, its tip on the ground; the left foot
+# steps in under him (it will be the pivot: the game does not move him, he turns about where he stands); the hips and
+# the chest coil round to his right, he sinks; the blade lifts off the ground as the turn starts.
+# The turn (the hit box, a frame each): round to his left, the whole body (hips leading the chest), 24 degrees a
+# frame - the blade, the straight right arm out on his right, sweeps the full circle at knee height (the tip 150+ px
+# out); he pivots on the ball of the left foot (heel up) and the right foot comes off the ground and round with him
+# (tucked behind the pivot), crouching and bending over as he goes; the free left arm flung out for balance, the
+# cape flying out behind the turn. Each view draws him with the facing he is nearest (Clip(spin=True),
+# anim_attack.render_spun). The turn runs on past the target: the right foot lands behind him (a wide crouch), the
+# arm whips the blade across his front to his left and it stops there, low; he holds the crouch (the opening).
+# Then he rises, the right foot steps up, the sword comes back before him, upright before the right shoulder, onto
+# it; the left foot steps back out to its place: the carry. Turned a full circle, the carry is at tw 360.
+SPIN_W = 54                   # the hit box (54 .. 68)
+SPIN_N = 15
+SPIN_END = SPIN_W + SPIN_N + 72      # 141
+SPIN_RATE = 24.0              # degrees a frame through the hit box
+SPIN_LIN = (32, 42)           # the left foot steps in under him (the pivot)
+SPIN_RUP = 52                 # the right foot leaves the ground
+SPIN_RLAND = SPIN_W + SPIN_N + 1     # ... and lands behind him (70)
+SPIN_HOLD = (76, 90)          # crouched, the blade stopped low on his left (the opening)
+SPIN_RBACK = (96, 108)        # the right foot steps up beside the pivot
+SPIN_LBACK = (118, 128)       # the left foot steps back out to its place
+SPIN_DRAG = (148.0, -31.0)    # the blade trailing behind him on his right, the tip on the ground
+LPIVOT = (0.0, -17.0, gait.ANKLE_H, 0.0)         # the left foot in under him (on the centre line): the pivot
+LPIVOT_UP = (0.0, -17.0, gait.ANKLE_H, -20.0)      # on the ball, the heel up
+RTUCK = (-12.0, -11.0, gait.ANKLE_H + 10.0, -25.0)  # the right foot in the air, behind the pivot (the hips' frame)
+RBEHIND = (-44.0, -13.0, gait.ANKLE_H, 0.0)         # landed behind him
+SPIN_ARM = 0.98               # the sword arm straight
+SPIN_BEND = 10.0              # degrees bent over by the end of the turn (more as it runs on)
+
+
+def spin_heading(t):
+    """The body's turn (degrees, + = to his left) through the hit box and the run-on: SPIN_RATE a frame from -20
+    at the hit box's first frame, easing to 360 three frames after it."""
+    if t <= SPIN_W + SPIN_N:
+        return -20.0 + SPIN_RATE * (t - SPIN_W)
+    run = {SPIN_W + SPIN_N + 1: 350.0, SPIN_W + SPIN_N + 2: 356.0, SPIN_W + SPIN_N + 3: 359.0}
+    return run.get(t, 360.0)
+
+
+def _spin_fist(k, arm_az, arm_el):
+    """The straight sword arm (its direction in the upper body's frame: azimuth + = his right, elevation) -> the
+    right fist, from where the shoulder goes with the arm (quick_arms)."""
+    st = dict(k, whole_turn=True)
+    u = A.yaw(A.direction(arm_az, arm_el), k['tw'])
+    sh = A.add(A.shoulder('R', st), A.sub(A._girdle('R', u, k['tw'], k['swing']), A.carry_girdle()))
+    return A.add(sh, A.mul(u, SPIN_ARM * A.ARM))
+
+
+def _drag(t, tw, ht, D, fx, fr, psi, **kw):
+    """A key of the drag: the right fist at (fx, fr) and the height that puts the tip on the ground (DRAG_TIP up),
+    the blade at azimuth psi."""
+    k = carry_key(D=D, tw=tw, ht=ht, roll=90.0, **kw)
+    k['fist'] = (fx, fr, DRAG_FIST_Z - 0.0)
+    el = -math.degrees(math.asin((DRAG_FIST_Z - D * 0.0 - DRAG_TIP) / A.SWORD_LEN))
+    k['dir'] = (psi, el)
+    return t, k
+
+
+DRAG_FIST_Z = 72.0            # the right fist at the hip, the arm hanging (the shoulder 112 up, the arm 36 long)
+DRAG_TIP = 2.5                # px: the tip on the ground (touching it; the curve between the keys dips a px)
+
+
+def spin_keys():
+    k = [(0, carry_key())]
+    # off the shoulder, out and down to his right side, the blade trailing back (the quick slash's way off it)
+    k.append((3, carry_key(D=1, tw=-6, lx=0.3, fist=(12.0, 27.0, 132.0), dir=(157.0, 10.0), flat=FLAT_R,
+                           lfree=0.25, lhand=(3.0, 3.0, 4.0))))
+    k.append((6, carry_key(D=1, tw=-9, ht=-2, lx=1, fist=(8.0, 32.0, 128.0), dir=(153.0, 12.0), flat=FLAT_R,
+                           lfree=0.5, lhand=(5.0, 2.0, 6.0))))
+    k.append((11, carry_key(D=2, tw=-11, ht=-4, lx=1, fist=(4.0, 34.0, 112.0), dir=(151.0, -6.0), roll=30.0,
+                            lfree=0.7, lhand=(7.0, 1.0, 7.0))))
+    k.append((17, carry_key(D=3, tw=-13, ht=-6, lx=2, fist=(1.0, 34.0, 90.0), dir=(150.0, -24.0), roll=70.0,
+                            lfree=0.85, lhand=(8.0, 0.0, 8.0))))
+    lh = dict(lfree=1.0, lhand=(10.0, -2.0, 10.0))
+    k.append(_drag(23, -15, -8, 4, -2.0, 34.0, 148.0, lx=3, bow=2, **lh))
+    k.append(_drag(30, -15, -8, 4, -2.0, 34.0, 148.0, lx=3, bow=2, **lh))
+    # the coil: hips and chest round to his right, sinking; the left foot steps in under him (SPIN_LIN), the
+    # blade dragged where it lies (the tip stays on the ground behind him on his right)
+    k.append(_drag(36, -30, -18, 5, -4.0, 33.0, 149.0, lx=3, bow=2, ck=-1, cs=-1, lfree=1.0, lhand=(12.0, 1.0, 12.0)))
+    k.append(_drag(43, -50, -32, 8, -8.0, 31.0, 150.0, lx=3, bow=2, ck=-2, cs=-3, lfree=1.0, lhand=(14.0, 4.0, 14.0),
+                   feet={'R': STAND, 'L': LPIVOT}))
+    k.append(_drag(50, -64, -46, 10, -11.0, 30.0, 148.0, lx=3, bow=3, ck=-3, cs=-4, lfree=1.0, lhand=(16.0, 6.0, 16.0),
+                   feet={'R': STAND, 'L': LPIVOT_UP}))
+    # the turn: the blade lifted off the ground as it starts (the edge turning from down to leading), then the hit
+    # box a frame each: crouching as he turns (bent only a little: bent over far, the side views' cape rides up over
+    # the head and the four drawings jump as the facing changes), then bending over as the turn runs on
+    k.append((SPIN_RUP, carry_key(D=11, tw=-54, ht=-40, lx=2, bow=3, fist=(-8.0, 33.0, 72.0), dir=(132.0, -24.0), roll=70.0,
+                                  lfree=1.0, lhand=(12.0, 0.0, 16.0), ck=-3, cs=-2, feet={'R': None, 'L': LPIVOT_UP})))
+    blade = {t: 90.0 - spin_heading(t) for t in range(SPIN_W, SPIN_W + SPIN_N + 1)}       # the blade's azimuth (world)
+    for t, psi in zip(range(SPIN_W + SPIN_N + 1, SPIN_HOLD[0] + 1), (-274.0, -298.0, -321.0, -342.0, -360.0, -374.0, -382.0)):
+        blade[t] = psi
+    for t in range(SPIN_W, SPIN_HOLD[0]):
+        H = spin_heading(t) if t <= SPIN_W + SPIN_N + 3 else 360.0
+        u2 = min(1.0, max(0.0, (t - SPIN_W) / SPIN_N))
+        run = t > SPIN_W + SPIN_N
+        j = t - SPIN_W - SPIN_N
+        D = round(12 + 14 * u2) if not run else 26
+        bend = SPIN_BEND * u2 if not run else min(32.0, SPIN_BEND + 4.0 * j)
+        tw = H - 8.0 if not run else H - 8.0 + 2.0 * j
+        b_az = blade[t] + tw                     # the blade in the upper body's frame
+        b_el = -20.0 + 6.0 * u2 if not run else -14.0 - 1.0 * j
+        arm_az = b_az + 6.0 if not run else b_az + 4.0
+        roll = max(0.0, 45.0 - 25.0 * (t - SPIN_W))
+        kk = carry_key(D=D, tw=tw, ht=H + 8.0 - (2.0 * j if run else 0.0), hx=-1.4 * j if run else 0.0, lx=0, bend=bend,
+                       bow=-8.0 * u2, swing=1.0, lfree=1.0,
+                       lhand=(-14.0, -10.0, 24.0), ck=-4, cs=7, feet={'R': None, 'L': LPIVOT_UP}, two=0.0, roll=roll)
+        kk['fist'] = _spin_fist(kk, arm_az, -38.0 if not run else -40.0)
+        kk['dir'] = (b_az - tw, b_el)
+        if run:
+            kk['feet'] = {'R': RBEHIND, 'L': LPIVOT_UP if t < SPIN_RLAND + 2 else LPIVOT}
+        k.append((t, kk))
+    # held crouched, the blade stopped low on his left before him, the left arm out (the opening)
+    hold = carry_key(D=26, tw=366.0, ht=358.0, hx=-8.0, bend=32.0, bow=-14, swing=1.0, lfree=1.0, lhand=(-8.0, -14.0, 22.0),
+                     ck=-1, cs=3, feet={'R': RBEHIND, 'L': LPIVOT})
+    hold['fist'] = _spin_fist(hold, -12.0, -40.0)
+    hold['dir'] = (-382.0, -20.0)
+    k.append((SPIN_HOLD[0], hold))
+    k.append((SPIN_HOLD[1], hold))
+    # the weight onto the left foot, the right foot steps up beside it while he rises; the blade back round before
+    # him and up, upright before the right shoulder, onto it; then the left foot back out to its place
+    k.append((94, carry_key(D=24, tw=362.0, ht=360.0, hx=-1.0, bend=24.0, bow=-8, fist=(30.0, -6.0, 66.0),
+                            dir=(-28.0 - 362.0, -6.0), roll=40.0, swing=0.6, lfree=0.8, lhand=(-6.0, -10.0, 16.0),
+                            feet={'R': RBEHIND, 'L': LPIVOT})))
+    k.append((SPIN_RBACK[0], carry_key(D=22, tw=360.0, ht=360.0, hx=0.5, bend=14.0, bow=-3, fist=(28.0, 0.0, 96.0),
+                                       dir=(-30.0 - 360.0, 50.0), roll=60.0, swing=0.3, lfree=0.6, lhand=(0.0, -4.0, 8.0),
+                                       feet={'R': None, 'L': LPIVOT})))
+    k.append((SPIN_RBACK[1], carry_key(D=6, tw=360.0, ht=360.0, hx=0.0, lx=1, fist=(21.0, 12.0, 122.0), dir=(-18.0 - 360.0, 80.0),
+                                       flat=FLAT_R, lfree=0.3, lhand=(0.0, -2.0, 4.0), feet={'R': STAND, 'L': LPIVOT})))
+    k.append((SPIN_LBACK[0], carry_key(D=3, tw=360.0, ht=360.0, hx=1.5, fist=(17.0, 20.0, 131.0), dir=(162.0 - 360.0, 40.0),
+                                       roll=30.0, lfree=0.0, feet={'R': STAND, 'L': LPIVOT})))
+    k.append((SPIN_LBACK[1], carry_key(D=1, tw=360.0, ht=360.0, dir=(CARRY_DIR[0] - 360.0, CARRY_DIR[1]))))
+    k.append((SPIN_END - 6, carry_key(tw=360.0, ht=360.0, dir=(CARRY_DIR[0] - 360.0, CARRY_DIR[1]))))
+    return k
+
+
+def spin_steps():
+    """The feet: the left steps in under him (the pivot) and back out at the end; the right comes off the ground
+    as the turn starts, round with him in the air (tucked behind the pivot in the hips' frame: a key a frame),
+    lands behind him, then steps up beside the pivot."""
+    R = [(SPIN_RUP, STAND)]
+    for t in range(SPIN_RUP + 1, SPIN_RLAND):
+        H = spin_heading(t) + 8.0 if t >= SPIN_W else -44.0 + 4.0 * (t - SPIN_RUP)
+        w = min(1.0, (t - SPIN_RUP) / 3.0)
+        # from its place to the tuck, carried round with the hips
+        bx = RTUCK[0] * w
+        br = AT_R(RTUCK[1]) * w + 17.0 * (1 - w)
+        x, r, _ = A.yaw((bx, br, 0.0), H)
+        R.append((t, (x, r - 17.0, RTUCK[2] * w + gait.ANKLE_H * (1 - w), RTUCK[3] * w)))
+    R += [(SPIN_RLAND, RBEHIND), (SPIN_RBACK[0], RBEHIND), (SPIN_RBACK[1], STAND)]
+    L = [(SPIN_LIN[0], STAND), (SPIN_LIN[1], LPIVOT), (SPIN_LBACK[0], LPIVOT), (SPIN_LBACK[1], STAND)]
+    return {'R': R, 'L': L}
+
+
+def AT_R(out):
+    """The right foot's sideways place (+ = his right) for an 'out' from its hip's line."""
+    return 17.0 + out
+
+
+POLES_SPIN = {
+    9: ((0.1, 1.0, -0.4), (0.0, -0.6, -1.0)), 24: ((-0.4, 1.0, -0.6), (0.4, -0.6, -1.0)),
+    30: ((-0.4, 1.0, -0.6), (0.4, -0.6, -1.0)), 50: ((-0.6, 1.0, -0.4), (0.6, -0.4, -1.0)),
+}
+
+
+def spin():
+    """灰燼迴旋 (phase 2; one turn, one hit since 2026-10-04): windup 54, the turn (hit box) 54 .. 68, recovery 72 ->
+    141 frames."""
+    keys = with_body_poles(spin_keys(), POLES_SPIN)
+    for t, kk in keys:
+        if SPIN_W <= t <= SPIN_HOLD[1]:
+            kk['poleR'] = A.yaw((-0.2, 1.0, -0.6), kk['tw'])
+            kk['poleL'] = A.yaw(POLE_L_BODY, kk['tw'])
+    # lead False: the keys' flat all through (the edge turns from down, dragging, to leading as the turn starts:
+    # with the edge led by the speed it turned 50 degrees in a pose as the blade lifted)
+    return Clip('spin', keys, spin_steps(), whole_turn=True, spin=True,
+                musts=tuple(range(SPIN_RUP, SPIN_HOLD[0] + 1)), lead=False, exact_cape=True)
+
+
+SPIN_CONTACT = SPIN_W + 5     # the blade straight ahead in the turn (the bounce starts here)
+
+
+def spin_bounce():
+    """The spin parried (BOUNCED 1.2 s) as the blade passes straight ahead: the turn is knocked back the way it came
+    (the body unwinds to face the target), the blade up over his head and down onto the shoulder; the right foot,
+    in the air, comes down under him, he rises out of the crouch, the left foot steps back out to its place."""
+    c = contact_key(spin(), SPIN_CONTACT)
+    s = spin().at(SPIN_CONTACT)
+    c['bend'] = s['bend']
+    c['feet'] = {'R': None, 'L': LPIVOT_UP}
+    tw, ht = c['tw'], c['ht']
+    k = [(0, c),
+         (4, carry_key(D=c['D'] - 1, tw=tw - 34.0, ht=ht - 34.0, bend=8.0, lx=2, bow=-8, fist=None, dir=(-30.0, 40.0),
+                       roll=60.0, swing=0.6, lfree=1.0, lhand=(-10.0, -12.0, 20.0), ck=3, cs=-4, feet={'R': None, 'L': LPIVOT})),
+         (10, carry_key(D=12, tw=16.0, ht=10.0, lx=-7, fist=(26.0, 6.0, 122.0), dir=(-12.0, 72.0), roll=90.0, bow=-13, ck=5,
+                        swing=0.3, lfree=0.6, lhand=(-4.0, -4.0, 8.0), feet={'R': STAND, 'L': LPIVOT})),
+         (20, carry_key(D=7, tw=4.0, ht=2.0, lx=-10, fist=(18.0, 14.0, 132.0), dir=(162.0, 58.0), roll=40.0, bow=-12, ck=4,
+                        lfree=0.2, lhand=(0.0, 0.0, 2.0), feet={'R': STAND, 'L': LPIVOT})),
+         (34, carry_key(D=3, lx=-6, fist=(16.0, 21.0, 134.0), dir=(162.0, 18.0), bow=-6, ck=2, feet={'R': STAND, 'L': LPIVOT})),
+         (52, carry_key(lx=-2, bow=-1)),
+         (66, carry_key())]
+    # the knocked blade at frame 4: up off his front, where the arm is swung back to
+    st = dict(k[1][1], whole_turn=True)
+    k[1][1]['fist'] = _spin_fist(st, 40.0, -10.0)
+    steps = {'R': [(0, spin().at(SPIN_CONTACT)['feet']['R'][:4]), (8, STAND)],
+             'L': [(36, LPIVOT), (50, STAND)]}
+    poles = {4: (A.yaw((0.0, 1.0, -0.4), k[1][1]['tw']), A.yaw(POLE_L_BODY, k[1][1]['tw'])),
+             10: ((0.0, 1.0, -0.4), A.yaw(POLE_L_BODY, 16.0)), 20: ((-0.2, 1.0, 0.0), None)}
+    return Clip('spin_bounce', with_poles(k, poles), steps, whole_turn=True, spin=True, exact_cape=True)
+
+
+# ------------------------------------------------------------------ C7 墜王之躍 (the king's leap), phase 2
+# veltharis_data kings_leap: 起手 0.7 s (42 frames, the crouch) -> in the air 0.8 s (frames 42 .. 89: the game moves him
+# in a straight line from where he took off to where he lands, the distance not fixed; the landing place follows the
+# player until 0.3 s before it lands, frame 72) -> the landing is the hit, 判定 0.1 s (90 .. 95), a circle of
+# LEAP_RADIUS 80 round him, launching -> 收招 1.0 s (60; phase 2's own): 156 frames. Heavy: parried, 1.2 s.
+# User 2026-10-04: "劍會收放在背上（斜掛著），然後蹲下蓄力準備起跳，起跳後落地用右手全頭砸向地面，之後再把劍從背上拿下來
+# 恢復正常姿勢" ("全頭" is 拳頭: the right fist). So: the right hand lifts the sword off the shoulder and slings it on his
+# back (attack3d.back_sword: the grip behind the right shoulder, the blade down across his back), lets go; he sinks
+# into a deep crouch, both arms swung back, and springs: the legs and the arms drive him up, he leaves the ground. In
+# the air (the height is drawn in the sprite: lift; the game moves him along the ground, the feet are off it) he
+# rises, the legs tucked, then as the landing place is locked he tips forward, the right fist drawn up and back, and
+# comes down: the left foot reaching ahead, the right knee down behind (the approved kneel's legs), the right fist
+# smashed into the ground before him on his right as he lands - the hit (the shockwave is the code's). With his short
+# arms (a helmet a third of his height) the fist reaches the ground only bent right over in the kneel and with the
+# arm drawn longer for the blow (arm_k, as the cleave's arms over the head; at most ARM_K_MAX). The fist stays down
+# through the impact; he rises, reaches back over the right shoulder for the hilt, draws the sword up out along its
+# line, swings it up over his head and forward, upright before the right shoulder and back onto it; the right foot,
+# then the left, step back under him: the carry.
+LEAP_UP = 42                  # off the ground (veltharis_data airborne_start 0.7 s)
+LEAP_LOCK = 72                # the landing place locked (lock_before 0.3 s)
+LEAP_W = 90                   # landed: the hit box (90 .. 95)
+LEAP_END = LEAP_W + 6 + 60    # 156
+LEAP_PEAK = 92.0              # px off the ground at the top of the leap
+LEAP_BACK = (16, 118)         # the sword on his back, the right hand free
+LEAP_CROUCH = (26, 37)        # down in the crouch, gathering himself for the leap
+LEAP_ENTRY = (tuple(range(0, LEAP_BACK[0], 2)), 8, LEAP_BACK[0])  # starting from a move: both feet under him before he sinks
+#   (ENTRY_*; a pose every 2 frames: the sling is quick)
+LEAP_SMASH = (LEAP_W, 110)    # the fist on the ground
+LEAP_RSTEP = (120, 130)       # the right foot (the knee down behind) steps up under him
+LEAP_LSTEP = (134, 144)       # then the left foot back from ahead
+SMASH_ARM_K = 1.48            # the right arm drawn this much longer for the blow (attack3d.arm_lengths)
+SMASH_FIST_Z = 7.4            # the fist's centre over the ground as it lands: the drawn fist (pointing down) reaches 6.4 px below it
+KNEEL_R = (-35.95, 0.0, 23.0, -70.0)       # anim_kneel.kneel_legs(41): the right knee down, toes tucked behind
+KNEEL_L = (26.09, 0.0, gait.ANKLE_H, 0.0)  # ... the left foot flat ahead
+KNEEL_D = 41
+
+
+def leap_lift(t):
+    """px off the ground at combat frame t: a throw up and down, from the frame before the take-off to the landing."""
+    if not (LEAP_UP - 1 < t < LEAP_W):
+        return 0.0
+    u = (t - (LEAP_UP - 1)) / (LEAP_W - (LEAP_UP - 1))
+    return 4.0 * LEAP_PEAK * u * (1.0 - u)
+
+
+def _slung(k):
+    """A key's right fist and blade where the slung sword is (attack3d.back_sword) for that key's body."""
+    st = dict(k, whole_turn=False)
+    st['back'] = True
+    g, ax, w = A.back_sword(st)
+    return g, A.angles(ax), w
+
+
+def _left_at(k, rel):
+    """Key k with the free left fist at `rel` from its shoulder (F, R, U px; lhand from where it hangs)."""
+    hang = A.free_left(dict(k, lhand=(0.0, 0.0, 0.0)))
+    return dict(k, lhand=A.yaw(A.sub(A.add(A.shoulder('L', k), rel), hang), -k.get('tw', 0.0)))
+
+
+LEFT_FLUNG = (-30.0, -8.0, 12.0)   # the landing: the free left arm flung back and up behind him, near straight
+
+
+def _arms_at(k, fist):
+    """Key k with the right fist at `fist` and the free left fist mirrored across him (lhand from where it hangs)."""
+    k = dict(k, fist=fist)
+    hang = A.free_left(dict(k, lhand=(0.0, 0.0, 0.0)))
+    k['lhand'] = A.sub((fist[0], -fist[1], fist[2]), hang)
+    return k
+
+
+LEAP_COCKED = (8.0, 5.0, 16.0)  # the cocked right fist from its shoulder (F, R, U px): before it, at the chin
+LEAP_POLE_COCKED = (-1.0, 0.4, 0.3)  # ... the elbow drawn back and up
+
+
+def _fist_cocked(k):
+    """Key k with the right arm cocked for the blow (LEAP_COCKED; its elbow by POLES_LEAP)."""
+    return dict(k, fist=A.add(A.shoulder('R', k), LEAP_COCKED))
+
+
+def leap_rel_keys():
+    """The leap's keys as if on the ground: the feet and the free fist relative to the body (leap() adds the lift)."""
+    k = [(0, carry_key())]
+    # the sword lifted off the shoulder, the hilt carried back over it, the blade swinging down behind him
+    # (quick: the crouch is the long part - user 2026-10-05 "起跳的蓄力久一點")
+    k.append((4, carry_key(D=1, tw=-4, fist=(13.0, 25.0, 142.0), dir=(170.0, 16.0), roll=20.0, lfree=0.2, lhand=(2.0, 0.0, 3.0))))
+    k.append((8, carry_key(D=1, tw=-6, fist=(2.0, 22.0, 149.0), dir=(-165.0, -18.0), roll=60.0, lfree=0.3, lhand=(2.0, 0.0, 4.0))))
+    k.append((12, carry_key(D=1, tw=-4, fist=(-12.0, 16.0, 145.0), dir=(-120.0, -48.0), roll=80.0, lfree=0.3, lhand=(2.0, 0.0, 4.0))))
+    at = carry_key(D=1, tw=0, lfree=0.3, lhand=(2.0, 0.0, 4.0))
+    g, d, w = _slung(at)
+    at.update(fist=g, dir=d, flat=w)
+    k.append((LEAP_BACK[0] - 2, at))
+    k.append((LEAP_BACK[0], at))
+    # the hand lets go and comes down; he sinks, both arms swung back (the wind-up), and stays down gathering
+    # himself - LEAP_CROUCH: still sinking a little, the arms drawing further back - then drives up off the legs
+    # (off the hilt the hand comes down outside the shoulder, the elbow dropping behind - straight down from the hilt it
+    # passed by the shoulder joint, the arm folded tight and the elbow flicked out before it)
+    off = carry_key(D=2, bend=2.0, lx=0.5, lfree=0.38, lhand=(2.5, 0.0, 4.5), bow=0.5)
+    k.append((LEAP_BACK[0] + 1, dict(off, fist=A.add(A.shoulder('R', off), (-12.0, 16.0, 8.0)))))
+    drop = carry_key(D=3, bend=4.0, lx=1, lfree=0.45, lhand=(3.0, 0.0, 5.0), bow=1)
+    k.append((LEAP_BACK[0] + 2, dict(drop, fist=A.add(A.shoulder('R', drop), (-8.0, 24.0, -14.0)))))
+    k.append((LEAP_BACK[0] + 4, carry_key(D=8, bend=10.0, lx=2, fist=(10.0, 26.0, 84.0), lfree=0.6, lhand=(4.0, 0.0, 6.0), bow=2)))
+    # (user 2026-10-05 "起跳的過程，手要往身後蓄力": both arms swung right back behind him, up over the shoulders' height,
+    # clear of the slung blade; then down past the hips and forward and up as he drives off)
+    k.append((LEAP_CROUCH[0], _arms_at(carry_key(D=30, bend=33.0, bow=-16, lfree=1.0, ck=-2), (-16.0, 28.0, 64.0))))
+    k.append((LEAP_CROUCH[0] + 6, _arms_at(carry_key(D=33, bend=40.0, bow=-18, lfree=1.0, ck=-2), (-22.0, 28.0, 80.0))))
+    k.append((LEAP_CROUCH[1], _arms_at(carry_key(D=33, bend=42.0, bow=-20, lfree=1.0, ck=-2), (-24.0, 27.0, 84.0))))
+    k.append((38, _arms_at(carry_key(D=28, bend=34.0, bow=-16, lfree=1.0, ck=-2), (-10.0, 29.0, 62.0))))
+    k.append((39, _arms_at(carry_key(D=20, bend=20.0, bow=-11, lfree=1.0, ck=-3,
+                                    feet={'R': (0.0, 0.0, gait.ANKLE_H, -15.0), 'L': (0.0, 0.0, gait.ANKLE_H, -15.0)}), (4.0, 28.0, 58.0))))
+    k.append((40, _arms_at(carry_key(D=13, bend=11.0, bow=-10, lfree=1.0, ck=-3,
+                                    feet={'R': (0.0, 0.0, gait.ANKLE_H, -20.0), 'L': (0.0, 0.0, gait.ANKLE_H, -20.0)}), (14.0, 27.0, 84.0))))
+    k.append((41, carry_key(D=7, bend=4.0, bow=-9, fist=(22.0, 25.0, 122.0), lfree=1.0, lhand=(16.0, 2.0, 40.0), ck=-4,
+                            feet={'R': (0.0, 0.0, gait.ANKLE_H, -25.0), 'L': (0.0, 0.0, gait.ANKLE_H, -25.0)})))
+    # off the ground: stretched out, the arms flung up; then the legs tucked as he rises
+    k.append((LEAP_UP, carry_key(D=6, lx=-2, bow=-8, fist=(24.0, 24.0, 131.0), lfree=1.0, lhand=(20.0, 2.0, 46.0), ck=-5,
+                                 feet={'R': (2.0, 0.0, 12.0, -45.0), 'L': (-2.0, 0.0, 12.0, -45.0)})))
+    k.append((50, carry_key(D=14, lx=0, bow=-6, fist=(24.0, 30.0, 120.0), lfree=1.0, lhand=(16.0, -2.0, 36.0), ck=-6,
+                            feet={'R': (4.0, 0.0, 18.0, -30.0), 'L': (-4.0, 0.0, 16.0, -35.0)})))
+    k.append((62, carry_key(D=20, lx=2, bow=-4, fist=(14.0, 30.0, 100.0), lfree=1.0, lhand=(10.0, -6.0, 22.0), ck=-3,
+                            feet={'R': (6.0, 0.0, 22.0, -20.0), 'L': (-6.0, 0.0, 20.0, -25.0)})))
+    # the landing place is locked: he tips forward, the right arm cocked - the elbow drawn back and up, the fist
+    # still before the shoulder at his chin (user 2026-10-05: "手肘往後，不是拳頭…拳頭一樣在前面": drawn up and back
+    # whole, the forearm turned over backwards) - the left hand forward
+    k.append((LEAP_LOCK, _fist_cocked(carry_key(D=22, bend=16.0, bow=-12, lfree=1.0, lhand=(22.0, 4.0, 26.0),
+                                           ck=0, feet={'R': (0.0, 0.0, 20.0, -25.0), 'L': (6.0, 0.0, 20.0, -15.0)}))))
+    k.append((80, _fist_cocked(carry_key(D=28, bend=42.0, bow=-26, lfree=1.0, lhand=(24.0, 2.0, 22.0), ck=2,
+                                    feet={'R': (-10.0, 0.0, 15.0, -45.0), 'L': (10.0, 0.0, 15.0, -5.0)}))))
+    k.append((84, _left_at(carry_key(D=36, bend=60.0, bow=-37, fist=(28.0, 27.0, 72.0), lfree=1.0, ck=3, arm_k=1.25,
+                                     feet={'R': (-30.0, 0.0, 24.0, -65.0), 'L': (24.0, 0.0, 18.0, 0.0)}), (-16.0, -8.0, -18.0))))
+    k.append((88, _left_at(carry_key(D=40, bend=68.0, bow=-42, tw=6.0, fist=(32.0, 25.0, 30.0), lfree=1.0, ck=4, arm_k=SMASH_ARM_K,
+                                     feet={'R': (-34.0, 0.0, 23.0, -68.0), 'L': (26.0, 0.0, 16.6, 0.0)}), (-26.0, -8.0, 4.0))))
+    # landed (the hit): the right knee down, the left foot ahead, bent right over, the right fist on the ground
+    land = _left_at(carry_key(D=KNEEL_D, bend=70.0, bow=-44, tw=8.0, fist=(32.0, 24.0, SMASH_FIST_Z), lfree=1.0,
+                              ck=4, arm_k=SMASH_ARM_K, feet={'R': KNEEL_R, 'L': KNEEL_L}), LEFT_FLUNG)
+    k.append((LEAP_W, land))
+    k.append((LEAP_SMASH[1], _left_at(dict(land, ck=1), (-26.0, -8.0, 4.0))))
+    # rising, the right hand back over the shoulder to the hilt
+    rise = carry_key(D=37, bend=50.0, bow=-26, tw=-2.0, lfree=0.8, lhand=(-8.0, -8.0, 16.0), arm_k=1.2, feet={'R': KNEEL_R, 'L': KNEEL_L})
+    rise['fist'] = (22.0, 26.0, 50.0)
+    k.append((114, rise))
+    grab = carry_key(D=30, bend=20.0, bow=-8, tw=-8.0, lfree=0.6, lhand=(-2.0, -4.0, 8.0), feet={'R': KNEEL_R, 'L': KNEEL_L})
+    g, d, w = _slung(grab)
+    grab.update(fist=g, dir=d, flat=w)
+    k.append((LEAP_BACK[1], grab))
+    # drawn up out along its line (rising), the blade swung out behind him to his right and up, over his head to
+    # upright before the right shoulder, laid back on it; the right foot, then the left, step back under him
+    pull = dict(grab)
+    pull['fist'] = A.add(g, (-4.0, 3.0, 14.0))          # up and back along the blade, clear of the shoulder plate
+    pull.update(D=22, bend=8.0, bow=-3, tw=-6.0, feet={'R': None, 'L': KNEEL_L})
+    k.append((123, pull))
+    k.append((128, carry_key(D=14, tw=-4, fist=(-16.0, 22.0, 132.0), dir=(176.0, -24.0), roll=70.0, lfree=0.3,
+                             lhand=(0.0, -2.0, 4.0), feet={'R': STAND, 'L': KNEEL_L})))
+    k.append((132, carry_key(D=10, tw=-2, fist=(-8.0, 22.0, 134.0), dir=(170.0, 48.0), roll=80.0, lfree=0.1, feet={'R': STAND, 'L': KNEEL_L})))
+    k.append((135, carry_key(D=8, tw=-1, fist=(6.0, 19.0, 131.0), dir=(176.0, 76.0), roll=85.0, feet={'R': STAND, 'L': KNEEL_L})))
+    k.append((139, carry_key(D=6, fist=(20.0, 14.0, 124.0), dir=(-18.0, 80.0), flat=FLAT_R, feet={'R': STAND, 'L': None})))
+    k.append((145, carry_key(D=2, fist=(17.0, 20.0, 131.0), dir=(162.0, 40.0), roll=30.0, feet={'R': STAND, 'L': STAND})))
+    k.append((LEAP_END - 6, carry_key()))
+    return k
+
+
+def leap_rel_steps():
+    return {'R': [(LEAP_RSTEP[0], KNEEL_R), (LEAP_RSTEP[1], STAND)], 'L': [(LEAP_LSTEP[0], KNEEL_L), (LEAP_LSTEP[1], STAND)]}
+
+
+def _snapshot(s, lift):
+    """Keys from a state: everything the keys carry, the fist and the feet put up `lift` px."""
+    # (rounded: a key read back off the curve at its own frame comes out a hair off, and two keys meant to be equal
+    # - a value held - would then be curved between)
+    k = carry_key(**{n: (s[n] if n == 'D' else round(s[n], 6)) for n in SCALARS if n in s})
+    k['fist'] = (round(s['fist'][0], 6), round(s['fist'][1], 6), round(s['fist'][2], 6) + lift)
+    r6 = lambda v: tuple(round(x, 6) for x in v)
+    k['dir'] = r6(A.angles(s['axis']))
+    k['flat'] = r6(s['flat'])
+    k['lhand'] = r6(s['lhand'])
+    k['poleR'], k['poleL'] = r6(s['poleR']), r6(s['poleL'])
+    k['feet'] = {n: (round(f[0], 6), round(f[1], 6), round(f[2], 6) + lift, round(f[3], 6)) for n, f in s['feet'].items()}
+    k['lift'] = lift
+    return k
+
+
+POLE_DOWN_BACK = (-1.0, 0.4, -0.3)      # the hanging arm's elbow: behind it
+POLE_SWUNG_BACK = (-0.6, 0.4, 0.8)      # the arm swung back behind him: the elbow behind and up
+POLE_L_FLUNG = (-0.6, -0.4, 0.8)        # the landing: the free left arm flung back for balance, its elbow behind and up
+
+
+def _mirror(p):
+    return (p[0], -p[1], p[2])
+
+
+POLES_LEAP = {
+    4: ((0.1, 1.0, -0.4), None), 8: ((-0.4, 1.0, 0.4), None), 12: ((-0.2, 1.0, 0.6), None), LEAP_BACK[0]: ((0.0, 1.0, 0.5), None),
+    # (the hand off the hilt down by his side and the arms swung back behind him: the elbows behind - pointing down they
+    # came out before the shoulder with the fist behind it, the forearm bent back the wrong way; user 2026-10-05
+    # "收劍後的幾貞手又後翻了")
+    LEAP_BACK[0] - 2: ((0.0, 1.0, 0.5), None), LEAP_BACK[0] + 1: ((-0.4, 0.2, 1.0), None), LEAP_BACK[0] + 2: ((-0.6, 0.6, -0.5), None), LEAP_BACK[0] + 4: (POLE_DOWN_BACK, None),
+    LEAP_CROUCH[0]: (POLE_SWUNG_BACK, _mirror(POLE_SWUNG_BACK)), LEAP_CROUCH[0] + 6: (POLE_SWUNG_BACK, _mirror(POLE_SWUNG_BACK)),
+    LEAP_CROUCH[1]: (POLE_SWUNG_BACK, _mirror(POLE_SWUNG_BACK)), 38: ((-0.6, 0.4, 0.6), (-0.6, -0.4, 0.6)),
+    39: ((-1.0, 0.4, 0.0), (-1.0, -0.4, 0.0)), 40: ((0.3, 0.8, -0.6), None),
+    LEAP_UP: ((0.3, 0.8, -0.6), None), LEAP_LOCK: (LEAP_POLE_COCKED, None), 80: (LEAP_POLE_COCKED, None),
+    84: ((0.2, 1.0, 0.0), POLE_L_FLUNG), 88: ((-0.2, 1.0, 0.2), POLE_L_FLUNG), LEAP_W: ((-0.6, 0.8, 0.2), POLE_L_FLUNG),
+    LEAP_SMASH[1]: ((-0.6, 0.8, 0.2), POLE_L_FLUNG),
+    114: ((-0.3, 1.0, -0.4), None), LEAP_BACK[1]: ((0.0, 1.0, 0.6), None), 123: ((0.0, 1.0, 0.6), None),
+    128: ((-0.2, 1.0, 0.2), None), 132: ((-0.2, 1.0, 0.4), None), 135: ((0.0, 1.0, 0.2), None), 139: ((-0.1, 1.0, -0.6), None),
+}
+
+
+def leap():
+    """墜王之躍 (phase 2): crouch 0 .. 41, in the air 42 .. 89 (the game moves him), landed - the hit box - 90 .. 95, the fist on
+    the ground to 110, recovery to 156. The sword slung on his back 16 .. 117."""
+    rel_keys = leap_rel_keys()
+    rel = Clip('leap_rel', [(t, dict(kk, poleL=kk.get('poleL') or A.yaw(POLE_L_BODY, kk.get('tw', 0.0))))
+                            for t, kk in with_poles(rel_keys, POLES_LEAP)], leap_rel_steps())
+    times = sorted(set(t for t, _ in rel_keys) | set(range(LEAP_UP - 1, LEAP_W + 1)))
+    keys = [(t, _snapshot(rel.at(t), leap_lift(t))) for t in times]
+    # the fist stays on the ground through the impact: the same key at both ends (exactly)
+    smash = dict(keys)[LEAP_SMASH[0]]
+    keys = [(t, dict(kk, fist=smash['fist'], feet=smash['feet'], dir=smash['dir'])) if t == LEAP_SMASH[1] else (t, kk)
+            for t, kk in keys]
+    return Clip('leap', keys, back=LEAP_BACK, musts=tuple(range(LEAP_UP - 4, LEAP_W + 3)), lead=False, still=True,
+                exact_cape=True, upwrap=True, behind=(LEAP_BACK[0], LEAP_UP), left_own=True)
+
+
+LEAP_CONTACT = LEAP_W + 2     # the landing's frame the bounce starts from (the fist on the ground)
+
+
+def leap_bounce():
+    """The landing parried (BOUNCED 1.2 s): the fist knocked up off the ground, he is thrown back up out of the kneel,
+    the right foot steps up under him, then the left; he reaches back over the right shoulder, draws the sword off his
+    back (up out along its line), swings it up over his head and forward and lays it on the shoulder: the carry."""
+    base = leap()
+    c = base.at(LEAP_CONTACT)
+    k0 = _snapshot(c, 0.0)
+    keys = [(0, k0)]
+    keys.append((4, carry_key(D=36, bend=40.0, bow=-30, tw=4.0, fist=(30.0, 26.0, 40.0), lfree=1.0, lhand=(-18.0, -12.0, 30.0),
+                              ck=5, arm_k=1.2, feet={'R': KNEEL_R, 'L': KNEEL_L})))
+    keys.append((10, carry_key(D=30, bend=14.0, lx=-8, bow=-14, tw=-4.0, fist=(14.0, 28.0, 84.0), lfree=0.8,
+                               lhand=(-6.0, -8.0, 14.0), ck=4, feet={'R': KNEEL_R, 'L': KNEEL_L})))
+    grab = carry_key(D=22, bend=10.0, lx=-4, bow=-6, tw=-6.0, lfree=0.5, lhand=(-2.0, -4.0, 8.0), feet={'R': STAND, 'L': KNEEL_L})
+    g, d, w = _slung(grab)
+    grab.update(fist=g, dir=d, flat=w)
+    keys.append((BOUNCE_GRAB, grab))
+    pull = dict(grab)
+    pull['fist'] = A.add(g, (-4.0, 3.0, 14.0))
+    pull.update(D=14, bend=4.0, lx=-2, feet={'R': STAND, 'L': None})
+    keys.append((BOUNCE_GRAB + 6, pull))
+    keys.append((BOUNCE_GRAB + 12, carry_key(D=8, tw=-4, fist=(-16.0, 22.0, 136.0), dir=(176.0, -24.0), roll=70.0, lfree=0.2,
+                                             feet={'R': STAND, 'L': STAND})))
+    keys.append((BOUNCE_GRAB + 17, carry_key(D=6, tw=-2, fist=(-8.0, 22.0, 136.0), dir=(170.0, 48.0), roll=80.0)))
+    keys.append((BOUNCE_GRAB + 21, carry_key(D=5, tw=-1, fist=(6.0, 19.0, 133.0), dir=(176.0, 76.0), roll=85.0)))
+    keys.append((BOUNCE_GRAB + 24, carry_key(D=4, fist=(20.0, 14.0, 124.0), dir=(-18.0, 80.0), flat=FLAT_R)))
+    keys.append((BOUNCE_GRAB + 30, carry_key(D=2, fist=(17.0, 20.0, 131.0), dir=(162.0, 40.0), roll=30.0)))
+    keys.append((66, carry_key()))
+    poles = {4: ((0.2, 1.0, -0.6), POLE_L_FLUNG), 10: ((-0.3, 1.0, -0.4), None), BOUNCE_GRAB: ((0.0, 1.0, 0.6), None),
+             BOUNCE_GRAB + 6: ((0.0, 1.0, 0.6), None), BOUNCE_GRAB + 12: ((-0.2, 1.0, 0.2), None),
+             BOUNCE_GRAB + 17: ((-0.2, 1.0, 0.4), None), BOUNCE_GRAB + 21: ((0.0, 1.0, 0.2), None),
+             BOUNCE_GRAB + 24: ((-0.1, 1.0, -0.6), None)}
+    # (the first key's left elbow is the leap's at the contact: the bounce's first pose is the leap's)
+    keys = [(t, dict(kk, poleL=kk.get('poleL') or A.yaw(POLE_L_BODY, kk.get('tw', 0.0)))) for t, kk in with_poles(keys, poles)]
+    steps = {'R': [(10, KNEEL_R), (BOUNCE_GRAB - 2, STAND)], 'L': [(BOUNCE_GRAB + 2, KNEEL_L), (BOUNCE_GRAB + 12, STAND)]}
+    return Clip('leap_bounce', keys, steps, back=(0, BOUNCE_GRAB), lead=False, exact_cape=True, upwrap=True, left_own=True)
+
+
+BOUNCE_GRAB = 24              # the bounce: the right hand takes the hilt off his back

@@ -40,7 +40,7 @@ def _sync():
 # ------------------------------------------------------------------ the 3D numbers
 def leg_ok(st):
     """(longest leg as a share of its length, lowest point of a boot (px), knee above the hip)."""
-    hip_z = gait.HIP_REST - st['D']
+    hip_z = gait.HIP_REST - st['D'] + st.get('lift', 0.0)      # lift: off the ground (the king's leap)
     worst, low, knee_hi = 0.0, 99.0, False
     for k in 'RL':
         x, out, z, pitch, down = st['feet'][k][:5]
@@ -452,10 +452,13 @@ def feet_below(m, d):
     return max(H.BELOW[d], min(2, math.ceil(A.DEPTH * max(lats) - 0.25)))
 
 
-def frame_checks(m, entry_feet=False):
+def frame_checks(m, entry_feet=False, below=None):
     """entry_feet: starting from a move the feet go straight to a stance that steps a foot back (the
     judgment thrust): the entry sheets get the main sheet's allowance for a foot towards the camera
-    (feet_below) too. Every earlier attack gathers the feet under him and keeps the allowance as was."""
+    (feet_below) too. Every earlier attack gathers the feet under him and keeps the allowance as was.
+    below: (m, d) -> the allowance in place of feet_below (the ash spin: its feet measured in the facing
+    each pose is drawn with)."""
+    below = below or feet_below
     fr = m.frames()
     carry = {d: E.carry_frame(d) for d in rig.DIRS}
     for d in rig.DIRS:
@@ -485,7 +488,7 @@ def frame_checks(m, entry_feet=False):
                 g = pl['grip']
                 grips[j] = (2 * rig.AX - g[0], g[1]) if d == 'left' else g
                 tips[j] = tip_xy(d, pl) if 'axis' in pl else None
-        H.technical(m.sheet, d, f, feet_below(m, d), low_frames=[H.body(f_, sw) for f_, sw in zip(f, swords)])
+        H.technical(m.sheet, d, f, below(m, d), low_frames=[H.body(f_, sw) for f_, sw in zip(f, swords)])
         arms = [joints(d, s['name'], s['i']) for s in m.states]
         arms[-1] = joints(d, 'carry', 0)
         if m.first:
@@ -526,7 +529,7 @@ def frame_checks(m, entry_feet=False):
             # comes from (+1: the same foot drawn with the knee bent another way)
             loop_low = max(q[1] for f in AW.frames(d, kind) for q in f) - rig.AY + 1
             H.technical(f'{m.sheet} from {kind} {e}', d, en[d], max(below_allowed(m, d), loop_low,
-                                                                     feet_below(m, d) if entry_feet else 0))
+                                                                     below(m, d) if entry_feet else 0))
             ar = [joints(d, nm, i) for nm, i in names]
             ar[0] = joints(d, kind, e)
             steps(f'{m.sheet} from {kind} {e}', d, seq, sw, gr, tp, ar)
@@ -551,7 +554,7 @@ def hands_checks(m):
         # the cleave's arms over the head are drawn longer (attack3d.arm_lengths, the pose's
         # arm_k); everywhere else the arm as it is
         st = m.states[key[2]] if key[2] < len(m.states) else {}
-        lim = A.arm_lengths(st)[3]
+        lim = A.arm_lengths(st, key[3])[3]
         if n > lim + 0.5:
             long_.append(f'{key[0]}:{key[2]}{key[3]} {n:.1f}/{lim:.1f}')
     check(f'{m.sheet}: no drawn arm longer than the arm (shoulder to fist {A.ARM:.1f} px; longer only where the pose '

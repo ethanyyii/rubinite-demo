@@ -259,7 +259,8 @@ func test_phase2_new_moves_match_doc() -> void:
 		&"triple_slash_delayed": [[0.8, 0.1, 26, 35, 20, 0.0, AT.HEAVY, FX.KNOCKDOWN], [0.9, 0.1, 28, 35, 20, 0.0, AT.HEAVY, FX.LAUNCH],
 			[1.6, 0.1, 32, 35, 20, 1.2, AT.HEAVY, FX.KNOCKDOWN]],
 		&"double_impact": [[1.1, 0.2, 35, 0, 0, 0.0, AT.UNBLOCKABLE, FX.LAUNCH], [0.9, 0.2, 35, 0, 0, 0.0, AT.UNBLOCKABLE, FX.LAUNCH]],
-		&"ash_spin": [[0.9, 0.1, 24, 35, 20, 0.0, AT.HEAVY, FX.LAUNCH], [0.7, 0.1, 24, 35, 20, 1.2, AT.HEAVY, FX.LAUNCH]],
+		# 灰燼迴旋：2026-10-04 使用者決定只轉一圈、只打一下（tuning-log）
+		&"ash_spin": [[0.9, 0.25, 24, 35, 20, 1.2, AT.HEAVY, FX.LAUNCH]],
 		&"kings_leap": [[1.5, 0.1, 30, 35, 20, 1.2, AT.HEAVY, FX.LAUNCH]],
 	}
 	for id: StringName in table:
