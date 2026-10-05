@@ -367,7 +367,8 @@ def exec_start(view, k):
 
 # the thrust's frames; the execution plays its two starts, then the thrust's f2 onward on its
 # own timing (appendix B)
-THRUST_FRAMES = [('f1 蹬地', 2, thrust_push), ('f2 前撲', 10, _thrust),
+# 2026-10-05 重擊加強：突刺 0.2 → 0.25 秒（120px），前撲多停 3 幀（位移由程式做，同一張滑過去，和原本一樣）
+THRUST_FRAMES = [('f1 蹬地', 2, thrust_push), ('f2 前撲', 13, _thrust),
                  ('f3 保持 1', 4, lambda v: thrust_hold(v, 0)), ('f3 保持 2', 5, lambda v: thrust_hold(v, 1)),
                  ('f4 收劍 1', 5, lambda v: thrust_back(v, THRUST_BACK_T[0])), ('f4 收劍 2', 6, lambda v: thrust_back(v, THRUST_BACK_T[1])),
                  ('f5 回站姿 1', 5, lambda v: thrust_back(v, THRUST_BACK_T[2])), ('f5 回站姿 2', 5, lambda v: thrust_back(v, THRUST_BACK_T[3]))]

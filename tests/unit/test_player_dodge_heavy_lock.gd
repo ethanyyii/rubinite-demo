@@ -137,12 +137,12 @@ func test_heavy_full_charge_then_thrust() -> void:
 	advance(1)
 	assert_eq(player().state, S.THRUST, "放開即出招")
 	advance(20)
-	assert_eq(boss().hp, VeltharisData.MAX_HP - 42, "重擊傷害 60（tuning-log：42）")
+	assert_eq(boss().hp, VeltharisData.MAX_HP - 49, "重擊傷害 70（2026-10-05 加強，原 60；tuning-log × 0.7：49）")
 	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS - PlayerData.heavy_thrust().toughness, 0.001, "削韌 15（tuning-log：10.5）")
 
 
 func test_thrust_distance_and_stops_on_contact() -> void:
-	# 沒碰到 Boss：前進 72px / 12 幀，收招 30 幀
+	# 沒碰到 Boss：前進 120px / 15 幀，收招 30 幀（2026-10-05 重擊加強：原本 72px / 12 幀）
 	sim.player.pos = Vector2(0, 60)
 	sim.boss.pos = Vector2(0, -170)
 	sim.player.facing = Vector2.RIGHT
@@ -152,24 +152,67 @@ func test_thrust_distance_and_stops_on_contact() -> void:
 	var x0 := sim.player.pos.x
 	advance(1)
 	var start := sim.combat_frame
-	advance(11)
-	assert_near(sim.player.pos.x - x0, 72.0, 0.01, "0.2 秒前進 72px")
+	advance(14)
+	assert_near(sim.player.pos.x - x0, 120.0, 0.01, "0.25 秒前進 120px")
 	advance(30)
 	assert_eq(player().state, S.THRUST, "收招 0.5 秒")
 	advance(1)
 	assert_eq(player().state, S.IDLE)
-	assert_eq(sim.combat_frame - start, 42)
-	# 碰到 Boss 就停下
+	assert_eq(sim.combat_frame - start, 45)
+	# 遠的時候碰到 Boss 就停在他面前（剩下的距離不夠穿過去）
 	sim = CombatSim.new(1)
 	place_near_boss(110.0)
 	press(&"heavy")
 	advance(54)
 	held["heavy"] = false
 	var y0 := sim.player.pos.y
-	advance(13)
+	advance(16)
 	var moved := y0 - sim.player.pos.y
-	assert_true(moved < 72.0 - 1.0, "命中後停下（前進 %.1f）" % moved)
+	assert_true(moved < 120.0 - 1.0, "命中後停下（前進 %.1f）" % moved)
+	assert_true(sim.player.pos.y > boss().pos.y, "停在 Boss 面前")
 	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.heavy_thrust().damage)
+
+
+## 2026-10-05 重擊加強：近的時候蓄力，突刺穿過 Boss、落到他背後；Boss 不被推開，主角不會卡在他身體裡
+func test_close_thrust_passes_through_the_boss() -> void:
+	place_near_boss(60.0)
+	var b0 := boss().pos
+	press(&"heavy")
+	advance(54)
+	held["heavy"] = false
+	event_log.clear()
+	advance(16)
+	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.heavy_thrust().damage, "穿過時打中一次")
+	assert_true(logged(&"thrust_through"), "穿過去的事件")
+	assert_true(boss().pos.is_equal_approx(b0), "Boss 沒有被推開")
+	var behind := b0.y - sim.player.pos.y
+	assert_true(behind > VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS, "落在 Boss 背後（%.1fpx）" % behind)
+	assert_near(behind, 120.0 - 60.0, 0.5, "走完整段 120px")
+
+
+## 穿過去的落點出了場地（Boss 靠牆）：停在他面前
+func test_thrust_does_not_pass_through_into_a_wall() -> void:
+	sim.boss.pos = Vector2(0, -ArenaGeometry.HALF_SIZE.y + 45.0)
+	sim.player.pos = sim.boss.pos + Vector2(0, 60)
+	sim.player.facing = Vector2.UP
+	press(&"heavy")
+	advance(54)
+	held["heavy"] = false
+	advance(16)
+	assert_true(sim.player.pos.y > boss().pos.y, "停在 Boss 面前")
+	assert_eq(boss().hp, VeltharisData.MAX_HP - PlayerData.heavy_thrust().damage)
+
+
+## 使用者 2026-09-30：突刺全程沒有無敵
+func test_thrust_has_no_invulnerability() -> void:
+	place_near_boss(60.0)
+	press(&"heavy")
+	advance(54)
+	held["heavy"] = false
+	advance(1)
+	while player().state == S.THRUST:
+		assert_false(player().is_invulnerable(), "突刺第 %d 幀不能無敵" % player().state_elapsed())
+		advance(1)
 
 
 func test_charge_moves_slowly_and_cannot_run() -> void:

@@ -6,7 +6,10 @@ extends RefCounted
 const MAX_HP := 72  # tuning-log：文件 100
 const MAX_POSTURE := 100.0
 const HEAL_CHARGES := 3
-const HEAL_AMOUNT := 25  # tuning-log：文件 35
+## 每次治療回最大 HP 的這個比例（2026-10-05 使用者：先「加到回三分之二的血」，再改成五分之三「比較平衡一點」；之後
+## 升級最大 HP 會變多，治療量跟著比例走）。現在最大 HP 72：三分之一 24（原本的治療量 25 約等於這個）、五分之三 43。
+## tuning-log 2026-10-05
+const HEAL_RATIO := 0.6
 const HEAL_TIME := 1.17  # tuning-log：文件 0.9
 const POSTURE_REGEN_DELAY := 1.0
 const POSTURE_REGEN_PER_SEC := 20.0
@@ -57,10 +60,14 @@ const COMBO_INTERVAL := 0.25
 ## 第 4 段收招之後的停頓：不能出招、不能移動，可以格擋或閃身（§8.1、§8.3，2026-09-29 新增；見 tuning-log）
 const FINISHER_END_LAG := 0.2
 
-# §8.2 蓄力重擊
+# §8.2 蓄力重擊（2026-10-05 加強，使用者 2026-09-30 拍板：近距離穿過 Boss 落到背後、遠距離停在他面前；全程沒有無敵；
+# 距離有上限。原本 72px／0.2 秒。tuning-log 2026-10-05）
 const CHARGE_TIME := 0.9
-const THRUST_DISTANCE := 72.0
-const THRUST_TIME := 0.2
+## 120px：在輕攻擊打得到的距離（Boss 中心 75px 內）蓄力就穿得過去（穿過要再走「到 Boss 中心 + 兩個受擊圓 + 1」）
+const THRUST_DISTANCE := 120.0
+const THRUST_TIME := 0.25
+## 穿過去時落點離 Boss 身體至少多遠（兩個受擊圓之外再多這麼多）
+const THRUST_PASS_MARGIN := 1.0
 ## 突刺判定：從腳底往前的劍長與寬度（文件未定，取與輕攻擊相同的 40px 攻擊距離）
 const THRUST_REACH := 40.0
 const THRUST_WIDTH := 16.0
@@ -128,10 +135,11 @@ static func chain_frame(stage: int) -> int:
 	return maxi(a.active_end_frame(), a.startup_frames() + Frames.of(COMBO_INTERVAL) - b.startup_frames())
 
 
-## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手；依 tuning-log：傷害 60 → 42、削韌 15 → 10.5）
+## §8.2 蓄力重擊的突刺（起手 = 0：蓄力本身就是起手）。文件值 傷害 70、削韌 22（2026-10-05 加強，原 60、15），
+## 依 tuning-log × 0.7：49、15.4
 static func heavy_thrust() -> PlayerAttackData:
 	if _heavy == null:
-		_heavy = _atk(&"heavy", 0.0, THRUST_TIME, 0.5, 42, 10.5, THRUST_DISTANCE, false, true, &"heavy_hit")
+		_heavy = _atk(&"heavy", 0.0, THRUST_TIME, 0.5, 49, 15.4, THRUST_DISTANCE, false, true, &"heavy_hit")
 	return _heavy
 
 
@@ -151,3 +159,8 @@ static func _atk(id: StringName, startup: float, active: float, recovery: float,
 	a.can_short_stagger = stagger
 	a.feedback = feedback
 	return a
+
+
+## 一次治療回多少 HP（最大 HP 的 HEAL_RATIO，四捨五入）
+static func heal_amount(max_hp: int = MAX_HP) -> int:
+	return roundi(max_hp * HEAL_RATIO)

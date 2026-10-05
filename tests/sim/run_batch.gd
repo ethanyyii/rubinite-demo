@@ -1,9 +1,11 @@
 extends SceneTree
 ## 批次模擬（plan §7）：godot --headless --path . -s res://tests/sim/run_batch.gd -- --bot=perfect --games=5 --stop-hp=780
+## [--heavy-chance=0]（擬人機器人不用蓄力重擊，和 2026-10-05 以前的機器人一樣）
 ## 結果印在標準輸出，並寫到 docs/evidence/sim/<name>.json。
 
 func _initialize() -> void:
-	var opts := {"bot": "perfect", "games": "5", "seed": "1", "stop-hp": "0", "max-seconds": "600", "name": ""}
+	var opts := {"bot": "perfect", "games": "5", "seed": "1", "stop-hp": "0", "max-seconds": "600", "name": "",
+		"heavy-chance": ""}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--") and "=" in a:
 			var kv := a.substr(2).split("=", true, 1)
@@ -18,6 +20,8 @@ func _initialize() -> void:
 		else:
 			var hb := HumanBot.new(int(opts["seed"]) * 7919 + g)
 			hb.cautious = opts["bot"] == "human_cautious"
+			if opts["heavy-chance"] != "":
+				hb.heavy_chance = float(opts["heavy-chance"])  # 0：不用蓄力重擊（2026-10-05 以前的機器人）
 			bot = hb
 		var r := FightRunner.run(int(opts["seed"]) + g, bot, float(opts["max-seconds"]), int(opts["stop-hp"]))
 		results.append(r)

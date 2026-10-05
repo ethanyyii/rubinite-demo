@@ -85,7 +85,7 @@ const SHEETS := {
 		"anchor": Vector2i(44, 61),
 		"rows": ["south", "east", "north", "west"],
 		"names": ["f1 蹬地", "f2 前撲", "f3 保持 1", "f3 保持 2", "f4 收劍 1", "f4 收劍 2", "f5 回站姿 1", "f5 回站姿 2"],
-		"durs": [2, 10, 4, 5, 5, 6, 5, 5],
+		"durs": [2, 13, 4, 5, 5, 6, 5, 5],
 	},
 	"execute": {
 		"path": "res://assets/sprites/player/knight_execute.png",

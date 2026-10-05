@@ -14,6 +14,7 @@ static func run(seed_value: int, bot: BotController, max_seconds: float = 600.0,
 		"damage_taken": 0, "player_hp": 0, "boss_hp": 0, "hits_taken": 0,
 		"perfect": 0, "blocked": 0, "hit_by_blockable": 0, "hit_by_unblockable": 0,
 		"dodges": 0, "executions": 0, "boss_breaks": 0, "heals": 0, "posture_breaks": 0,
+		"thrusts": 0, "thrust_hits": 0, "thrust_through": 0,
 		"moves": {}, "per_move": {},
 	}
 	var hp_prev := sim.player.hp
@@ -44,6 +45,13 @@ static func run(seed_value: int, bot: BotController, max_seconds: float = 600.0,
 					m["per_move"][g] = pm
 				&"dodge":
 					m["dodges"] += 1
+				&"player_thrust":
+					m["thrusts"] += 1
+				&"boss_hit":
+					if e["attack"] == &"heavy":
+						m["thrust_hits"] += 1
+				&"thrust_through":
+					m["thrust_through"] += 1
 				&"execution_hit":
 					m["executions"] += 1
 				&"boss_break":

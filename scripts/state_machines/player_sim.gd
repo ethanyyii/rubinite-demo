@@ -91,6 +91,9 @@ var _dodge_interval := Frames.of(PlayerData.DODGE_INTERVAL)
 var _charge_frames := Frames.of(PlayerData.CHARGE_TIME)
 var _thrust_frames := Frames.of(PlayerData.THRUST_TIME)
 var _thrust_stopped := false
+## 突刺還剩多少距離；打中 Boss 時剩下的夠穿過他的身體，就穿過去（身體不互相推開）
+var _thrust_left := 0.0
+var _thrust_through := false
 
 ## §5：加速 5 幀、減速 4 幀
 var _accel_frames := Frames.of(PlayerData.ACCEL_TIME)
@@ -187,7 +190,29 @@ func attack_hitbox() -> Dictionary:
 func on_attack_connected() -> void:
 	attack_connected = true
 	if state == State.THRUST:
-		_thrust_stopped = true
+		if _can_pass_through():
+			_thrust_through = true
+			sim.emit(&"thrust_through", {"pos": pos, "dir": facing})
+		else:
+			_thrust_stopped = true
+
+
+## §8.2（2026-10-05 重擊加強）：打中 Boss 的這一刻，剩下的突刺距離夠不夠穿過他的身體（落點離他的身體至少
+## THRUST_PASS_MARGIN），而且落點在場地裡、不在柱子裡。近的時候穿過去落到背後；遠的時候停在他面前。
+func _can_pass_through() -> bool:
+	var to := sim.boss.pos - pos
+	var along := to.dot(facing)
+	var side := absf(to.cross(facing))
+	var r := VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS + PlayerData.THRUST_PASS_MARGIN
+	if side < r and along + sqrt(r * r - side * side) > _thrust_left:
+		return false
+	var land := pos + facing * _thrust_left
+	return ArenaGeometry.resolve(land, PlayerData.HURT_RADIUS).is_equal_approx(land)
+
+
+## 突刺正在穿過 Boss（CombatSim 這時不把兩個身體推開）
+func passing_through() -> bool:
+	return state == State.THRUST and _thrust_through and state_elapsed() < _thrust_frames
 
 
 # --- 輸入與動作 -------------------------------------------------------------------
@@ -227,7 +252,7 @@ func _advance_state(input: InputFrame) -> void:
 				enter_state(State.IDLE)
 		State.HEAL:
 			if e >= _heal_frames:
-				hp = mini(hp + PlayerData.HEAL_AMOUNT, PlayerData.MAX_HP)
+				hp = mini(hp + PlayerData.heal_amount(), PlayerData.MAX_HP)
 				sim.emit(&"heal_done", {"pos": pos, "hp": hp})
 				enter_state(State.IDLE)
 		State.STAGGER:
@@ -364,6 +389,8 @@ func _start_thrust(input: InputFrame) -> void:
 	attack = PlayerData.heavy_thrust()
 	attack_connected = false
 	_thrust_stopped = false
+	_thrust_through = false
+	_thrust_left = PlayerData.THRUST_DISTANCE
 	vel = Vector2.ZERO
 	_face_for_attack(input)
 	enter_state(State.THRUST)
@@ -419,7 +446,9 @@ func _run_state_frame(input: InputFrame) -> void:
 				pos += facing * (attack.advance / a_frames)
 		State.THRUST:
 			if e < _thrust_frames and not _thrust_stopped:
-				pos += facing * (PlayerData.THRUST_DISTANCE / _thrust_frames)
+				var step := PlayerData.THRUST_DISTANCE / _thrust_frames
+				pos += facing * step
+				_thrust_left -= step
 		State.DODGE:
 			if e < _dodge_frames:
 				pos += dodge_dir * (PlayerData.DODGE_DISTANCE / _dodge_frames)

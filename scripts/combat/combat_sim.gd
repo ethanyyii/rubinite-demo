@@ -167,10 +167,12 @@ func apply_boss_hit(hit: BossHitData, from: Vector2) -> int:
 ## 先把玩家推出 Boss 再夾回場內；如果玩家被夾在 Boss 與牆（或柱子）之間仍然重疊，改把 Boss 往外推。
 func _resolve_bodies() -> void:
 	var min_d := PlayerData.HURT_RADIUS + VeltharisData.HURT_RADIUS
-	if boss.has_body():
+	# 蓄力突刺穿過 Boss 的那幾幀（§8.2，2026-10-05）不推開
+	var bodies := boss.has_body() and not player.passing_through()
+	if bodies:
 		player.pos = _push_apart(player.pos, boss.pos, min_d)
 	player.pos = ArenaGeometry.resolve(player.pos, PlayerData.HURT_RADIUS)
-	if boss.has_body() and player.pos.distance_to(boss.pos) < min_d - 0.01:
+	if bodies and player.pos.distance_to(boss.pos) < min_d - 0.01:
 		boss.pos = _push_apart(boss.pos, player.pos, min_d)
 	boss.pos = ArenaGeometry.resolve(boss.pos, VeltharisData.HURT_RADIUS)
 

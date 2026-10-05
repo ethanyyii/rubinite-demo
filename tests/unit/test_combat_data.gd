@@ -8,9 +8,9 @@ const TUNED_BOSS_DAMAGE_SCALE := 1.3
 ## tuning-log：完美彈返的削韌 12 → 15、20 → 26
 const TUNED_PARRY_TOUGHNESS := {0: 0, 12: 15, 20: 26}
 ## tuning-log：主角傷害
-const TUNED_PLAYER_DAMAGE := {15: 11, 25: 18, 60: 42}
+const TUNED_PLAYER_DAMAGE := {15: 11, 25: 18, 60: 42, 70: 49}
 ## tuning-log：主角攻擊的削韌 × 0.7
-const TUNED_PLAYER_TOUGHNESS := {2: 1.4, 6: 4.2, 15: 10.5}
+const TUNED_PLAYER_TOUGHNESS := {2: 1.4, 6: 4.2, 15: 10.5, 22: 15.4}
 ## tuning-log：單一常數 [文件值, 調整後]
 const TUNED_CONSTANTS := {
 	"VeltharisData.MAX_HP": [1200, 1560],
@@ -20,7 +20,6 @@ const TUNED_CONSTANTS := {
 	"VeltharisData.EXECUTE_DAMAGE_RATIO": [0.15, 0.105],
 	"PlayerData.MAX_HP": [100, 72],
 	"PlayerData.HEAL_TIME": [0.9, 1.17],
-	"PlayerData.HEAL_AMOUNT": [35, 25],
 }
 
 
@@ -213,10 +212,13 @@ func test_player_attack_table_matches_doc() -> void:
 		# §8.1（2026-09-29）：只有第 4 段收招後有停頓
 		assert_near(a.end_lag, PlayerData.FINISHER_END_LAG if i == 3 else 0.0)
 	var heavy := PlayerData.heavy_thrust()
-	assert_eq(heavy.damage, TUNED_PLAYER_DAMAGE[60], "重擊傷害（tuning-log）")
-	assert_near(heavy.toughness, TUNED_PLAYER_TOUGHNESS[15], 0.0001, "重擊削韌（tuning-log）")
+	# 2026-10-05 重擊加強（使用者 2026-09-30 拍板）：文件值 傷害 60 → 70、削韌 15 → 22、突刺 72 → 120px、0.2 → 0.25 秒
+	assert_eq(heavy.damage, TUNED_PLAYER_DAMAGE[70], "重擊傷害（tuning-log）")
+	assert_near(heavy.toughness, TUNED_PLAYER_TOUGHNESS[22], 0.0001, "重擊削韌（tuning-log）")
 	assert_near(heavy.recovery, 0.5)
-	assert_near(heavy.advance, 72.0)
+	assert_near(heavy.advance, 120.0)
+	assert_near(PlayerData.THRUST_DISTANCE, 120.0)
+	assert_eq(Frames.of(PlayerData.THRUST_TIME), 15)
 	assert_false(heavy.cancelable)
 	assert_true(heavy.can_short_stagger)
 
@@ -328,7 +330,12 @@ func test_player_constants_match_doc() -> void:
 	assert_eq(PlayerData.MAX_HP, _tuned("PlayerData.MAX_HP"))
 	assert_near(PlayerData.MAX_POSTURE, 100.0)
 	assert_eq(PlayerData.HEAL_CHARGES, 3)
-	assert_eq(PlayerData.HEAL_AMOUNT, _tuned("PlayerData.HEAL_AMOUNT"))
+	# 2026-10-05 使用者：每次治療回最大 HP 的五分之三（先試三分之二，使用者改成五分之三「比較平衡」；之後升級最大 HP
+	# 會變多，跟著比例走）。現在最大 HP 72：三分之一 24（原本的治療量 25 約等於這個）、五分之三 43.2 → 43
+	assert_near(PlayerData.HEAL_RATIO, 0.6)
+	assert_eq(PlayerData.heal_amount(), 43)
+	assert_eq(PlayerData.heal_amount(PlayerData.MAX_HP), 43)
+	assert_eq(PlayerData.heal_amount(120), 72, "最大 HP 變多時跟著比例")
 	assert_near(PlayerData.HEAL_TIME, _tuned("PlayerData.HEAL_TIME"))
 	assert_near(PlayerData.POSTURE_REGEN_DELAY, 1.0)
 	assert_near(PlayerData.POSTURE_REGEN_PER_SEC, 20.0)
@@ -361,8 +368,8 @@ func test_player_constants_match_doc() -> void:
 	assert_near(PlayerData.COMBO_GRACE, 0.2)
 	assert_near(PlayerData.FINISHER_END_LAG, 0.2)
 	assert_near(PlayerData.CHARGE_TIME, 0.9)
-	assert_near(PlayerData.THRUST_DISTANCE, 72.0)
-	assert_near(PlayerData.THRUST_TIME, 0.2)
+	assert_near(PlayerData.THRUST_DISTANCE, 120.0)  # 2026-10-05 重擊加強（原 72）
+	assert_near(PlayerData.THRUST_TIME, 0.25)  # 原 0.2
 	# §9
 	# 2026-09-30 畫面拉遠到 960×540，鎖定距離 ×1.5（半個畫面寬）；tuning-log
 	assert_near(PlayerData.LOCK_ACQUIRE_RANGE, 480.0)

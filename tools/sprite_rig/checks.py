@@ -1829,10 +1829,10 @@ def batch3_checks():
                         f'off by at most {max(sl):.2f} px')
     # ---- thrust and execution (decision 5)
     if 'thrust' in B3.ACTIONS:
-        print('-- thrust, execution (appendix C, batch 3; appendix A: thrust 42 sim frames, execution 60, hit on 12)')
+        print('-- thrust, execution (appendix C, batch 3; appendix A: thrust 45 sim frames (2026-10-05: 15 of lunge), execution 60, hit on 12)')
         tt = sum(f.dur for f in B3.frames('thrust', 'south'))
         rec = sum(f.dur for f in B3.frames('thrust', 'south')[2:])
-        out(tt == 42 and rec == 30, 'thrust: 42 sim frames, back to the stance within the 30 of recovery', f'{tt} / {rec}')
+        out(tt == 45 and rec == 30, 'thrust: 45 sim frames, back to the stance within the 30 of recovery', f'{tt} / {rec}')
         ex = B3.frames('execute', 'south')
         t_, at12 = 0, None
         for f in ex:

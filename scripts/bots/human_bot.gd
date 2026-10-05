@@ -22,6 +22,10 @@ var greed_finisher := 0.2
 ## 治療門檻：HP ≤ Boss 單擊最大傷害 + 這個餘裕
 var heal_margin := 0
 var hits_per_opening_weights := [0.2, 0.35, 0.25, 0.2]
+## 蓄力重擊（2026-10-05 起，重擊加強之後）：空檔夠蓄滿再突刺（蓄力 + 突刺 + 一點餘裕；收招不可取消，有被打的風險，
+## 和第 4 段貪刀一樣）時，這個機率改用蓄力突刺代替輕攻擊連段
+var heavy_chance := 0.35
+const HEAVY_MARGIN := 6
 ## 謹慎型（只用於報告的敏感度分析，不是 plan §7 的指標設定）：只在彈開、短僵直、起身時進攻，不打喘息與收招
 var cautious := false
 ## 治療前要求的安全幀數 = 治療時間 + 這個餘裕（原本治療 54 幀時寫死 70 = 54 + 16）
@@ -37,6 +41,8 @@ var _state_seen := 0
 ## 這個空檔打算打幾下、已經打了幾下
 var _chain_budget := 0
 var _chain_used := 0
+## 正在蓄力（按住重擊）
+var _charging := false
 var stats := {"fooled": 0, "plans": 0}
 ## 每個階段 Boss 單擊的最大傷害（治療門檻用）
 var _worst_hit := {}
@@ -53,6 +59,7 @@ func reset() -> void:
 	_state_seen = 0
 	_chain_budget = 0
 	_chain_used = 0
+	_charging = false
 
 
 func decide(sim: CombatSim) -> InputFrame:
@@ -67,6 +74,10 @@ func decide(sim: CombatSim) -> InputFrame:
 		_state_seen = sim.combat_frame
 	if not p.locked and b.is_targetable() and dist <= PlayerData.LOCK_ACQUIRE_RANGE:
 		f.lock_pressed = true
+	# 蓄力中照舊按住（格擋、閃身會取消蓄力；蓄滿後也可以一直按著等）
+	if _charging and p.state != PlayerSim.State.CHARGE:
+		_charging = false
+	f.heavy = _charging
 
 	var t := BotController.next_threat(sim)
 	if not t.is_empty():
@@ -101,6 +112,14 @@ func decide(sim: CombatSim) -> InputFrame:
 			return f
 		if overlap - now1 <= 14:
 			return f
+
+	# 蓄滿了、眼前沒有威脅：放開出突刺（鎖定中朝向 Boss）
+	if _charging:
+		if p.charge_full:
+			f.heavy = false
+			f.move = to_boss.normalized()
+			_charging = false
+		return f
 
 	# 失衡：走近處決（看到之後才反應）
 	if b.state == BossSim.State.BROKEN:
@@ -137,6 +156,14 @@ func decide(sim: CombatSim) -> InputFrame:
 			# 開新的連段：要是看得懂的空檔、看到之後過了反應時間、沒有起手預兆
 			if not _is_opening(b) or sim.combat_frame - _state_seen < reaction_frames \
 					or b.telegraph() != CombatTypes.Telegraph.NONE:
+				return f
+			# 空檔夠長：有時改用蓄力突刺
+			var heavy_need := Frames.of(PlayerData.CHARGE_TIME) + Frames.of(PlayerData.THRUST_TIME) + HEAVY_MARGIN
+			if p.can_start(&"heavy") and safe >= heavy_need and rng.randf() < heavy_chance:
+				f.heavy_pressed = true
+				f.heavy = true
+				_charging = true
+				stats["heavy"] = int(stats.get("heavy", 0)) + 1
 				return f
 			_chain_budget = _pick_budget()
 			_chain_used = 0

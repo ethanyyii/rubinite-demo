@@ -13,7 +13,7 @@ const FEET_AT := Vector2i(200, 250)
 
 ## 每個場景：[名字, 第幾階段, Boss 相對主角的位置, 時間表 [[幀數, {...}], ...], 要存全畫面的幀]
 ## 時間表的動作（那一段的第一幀做）：move: 出哪一招（招式 id）；engage: AI 出這一招（打不到先走過去，2026-10-05）；
-## walk: 喘息走幾幀；player: 主角移到 Boss 的哪裡；
+## walk: 喘息走幾幀；player: 主角移到 Boss 的哪裡；thrust: 主角蓄力這麼多幀後朝 Boss 放開（蓄力重擊，2026-10-05）；
 ## parry: 等判定開始時完美彈返；break: 韌性削光；die: 打死；stagger: 收招中短僵直；hp_half: HP 降到一半（轉場）；
 ## execute: 主角處決（按攻擊）
 func scenes() -> Array:
@@ -34,6 +34,8 @@ func scenes() -> Array:
 			[260, {}], [1, {"walk": 100}], [100, {}]], [80]],
 		["engage_sweep", 1, Vector2(0, -210), [[10, {}], [1, {"engage": &"royal_sweep"}], [200, {}]], []],
 		["engage_cleave", 1, Vector2(0, -285), [[10, {}], [1, {"engage": &"oath_cleave"}], [200, {}]], []],
+		["thrust_through", 1, Vector2(0, -60), [[10, {}], [1, {"thrust": 58}], [110, {}]], []],
+		["thrust_stop", 1, Vector2(0, -130), [[10, {}], [1, {"thrust": 58}], [110, {}]], []],
 		["short_breather", 2, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [102, {}], [1, {"walk": 24}],
 			[24, {}], [1, {"move": &"quick_combo_2"}], [120, {}]], []],
 		["sweep_staggered", 1, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [75, {}], [1, {"stagger": true}],
@@ -77,12 +79,20 @@ func _run(arena: CombatArena, out: String, only: String) -> void:
 
 class Idle extends BotController:
 	var press_attack_at := -1
+	var heavy_at := -1
+	var heavy_len := 0
+	var heavy_dir := Vector2.ZERO
 	var frame := 0
 
 	func decide(_sim: CombatSim) -> InputFrame:
 		var f := InputFrame.new()
 		if frame == press_attack_at:
 			f.attack_pressed = true
+		if heavy_at >= 0 and frame >= heavy_at and frame < heavy_at + heavy_len:
+			f.heavy = true
+			f.heavy_pressed = frame == heavy_at
+		elif heavy_at >= 0 and frame == heavy_at + heavy_len:
+			f.move = heavy_dir      # 放開的那一幀朝 Boss 推：突刺朝這個方向
 		frame += 1
 		return f
 
@@ -184,6 +194,11 @@ func _act(arena: CombatArena, o: Dictionary, bot: Idle) -> void:
 		b.enter_state(BossSim.State.STAGGER)
 	if o.get("hp_half", false):
 		b.hp = roundi(VeltharisData.MAX_HP * VeltharisData.PHASE2_HP_RATIO) - 1
+	if o.has("thrust"):
+		bot.heavy_at = bot.frame
+		bot.heavy_len = int(o["thrust"])
+		bot.heavy_dir = (b.pos - sim.player.pos).normalized()
+		sim.player.facing = bot.heavy_dir
 	if o.get("execute", false):
 		sim.player.pos = b.pos + Vector2(0, 40)
 		bot.press_attack_at = bot.frame

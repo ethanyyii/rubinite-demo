@@ -154,18 +154,25 @@ func test_god_mode_ignores_hits() -> void:
 # --- 治療（§4） -------------------------------------------------------------------
 
 func test_heal_takes_heal_time_restores_amount_and_consumes_charge() -> void:
-	sim.player.hp = 40
+	sim.player.hp = 20
 	press(&"heal")
 	assert_eq(player().state, S.HEAL)
 	assert_eq(player().heals, PlayerData.HEAL_CHARGES - 1, "開始時就消耗一次")
 	var n := Frames.of(PlayerData.HEAL_TIME)
 	assert_eq(n, 70, "1.17 秒 = 70.2 幀 → 70（tuning-log：文件 0.9 秒 = 54 幀）")
 	advance(n - 1)
-	assert_eq(player().hp, 40, "治療時間結束時才回血")
+	assert_eq(player().hp, 20, "治療時間結束時才回血")
 	assert_eq(player().state, S.HEAL)
 	advance(1)
-	assert_eq(player().hp, 40 + PlayerData.HEAL_AMOUNT, "最後一幀回 35（tuning-log：25）")
+	assert_eq(player().hp, 20 + 43, "最後一幀回最大 HP 的五分之三：43（2026-10-05；文件原本 35、調過 25）")
 	assert_eq(player().state, S.IDLE)
+
+
+func test_heal_does_not_go_over_max_hp() -> void:
+	sim.player.hp = 40
+	press(&"heal")
+	advance(Frames.of(PlayerData.HEAL_TIME))
+	assert_eq(player().hp, PlayerData.MAX_HP, "40 + 43 超過最大 HP：補滿為止")
 
 
 func test_heal_caps_at_max_hp() -> void:
