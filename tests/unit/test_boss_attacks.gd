@@ -346,3 +346,55 @@ func test_twin_first_hit_does_not_step() -> void:
 	var p0 := boss().pos
 	_to_move_frame(start1 + Frames.of(0.1) - 1)  # 到第一刀判定結束（之後是第二刀的起手，照常逼近）
 	assert_true(boss().pos.is_equal_approx(p0), "第一刀原地（右腳踏出是畫面上的動作，位置不動）")
+
+
+## 2026-10-05 使用者：起手時不再往玩家挪（畫面上兩腳站定、腳會滑；而且躲不掉）。出招期間 Boss 只有
+## 雙斬／三斬第二刀前的踏步、突刺的突進、墜王之躍的騰空會移動，其他每一幀位置都不變。
+func test_no_move_creeps_toward_the_player_in_its_windup() -> void:
+	for phase in [1, 2]:
+		for id: StringName in VeltharisData.moves(phase):
+			var m := VeltharisData.move(phase, id)
+			if m.airborne_start >= 0.0:
+				continue
+			sim = CombatSim.new(1)
+			sim.god_mode = true
+			sim.boss.phase = phase
+			sim.boss.pos = Vector2(0, -150)
+			sim.player.pos = Vector2(0, 150)   # 300px：以前起手時會一路往前挪
+			sim.boss.start_move(m)
+			var last := boss().pos
+			while boss().state == BS.ATTACK:
+				advance(1)
+				var e := boss().state_elapsed()
+				var allowed := false
+				for i in m.hits.size():
+					var h: BossHitData = m.hits[i]
+					var s := boss().hit_start_frame(i)
+					if h.step_distance > 0.0 and e >= s - Frames.of(h.step_time) and e < s:
+						allowed = true
+					if h.lunge_distance > 0.0 and e >= s and e < s + Frames.of(h.active):
+						allowed = true
+				if not allowed:
+					assert_true(boss().pos.is_equal_approx(last), "%s（%d 階段）第 %d 幀不該移動" % [id, phase, e])
+					if not boss().pos.is_equal_approx(last):
+						break
+				last = boss().pos
+
+
+## 起手不追之後，AI 要先走到這一招打得到的距離才出手（engage_range）：站著不動的玩家在這個距離一定被打中
+func test_every_move_hits_a_still_player_from_its_engage_range() -> void:
+	for phase in [1, 2]:
+		for id: StringName in VeltharisData.moves(phase):
+			var m := VeltharisData.move(phase, id)
+			if m.engage_range <= 0.0:
+				continue
+			sim = CombatSim.new(1)
+			sim.boss.phase = phase
+			sim.boss.pos = Vector2(0, -100)
+			sim.player.pos = Vector2(0, -100 + m.engage_range)
+			sim.player.facing = Vector2.UP
+			sim.boss.start_move(m)
+			event_log.clear()
+			while boss().state == BS.ATTACK and boss().state_elapsed() <= boss().hit_start_frame(0) + Frames.of(m.hits[0].active):
+				advance(1)
+			assert_true(logged(&"player_hit"), "%s（%d 階段）：%.0fpx 外站著不動的玩家被第一擊打中" % [id, phase, m.engage_range])

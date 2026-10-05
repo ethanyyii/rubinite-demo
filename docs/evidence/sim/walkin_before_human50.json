@@ -1,0 +1,3218 @@
+{
+  "games": [
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3443,
+      "damage_taken": 0,
+      "dodges": 6,
+      "executions": 5,
+      "frames": 3774,
+      "heals": 0,
+      "hit_by_blockable": 0,
+      "hit_by_unblockable": 0,
+      "hits_taken": 0,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 1,
+        "double_impact": 2,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 3,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 8
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 15,
+      "player_hp": 72,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 62.9,
+      "seed": 1
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3017,
+      "damage_taken": 0,
+      "dodges": 2,
+      "executions": 6,
+      "frames": 3343,
+      "heals": 0,
+      "hit_by_blockable": 0,
+      "hit_by_unblockable": 0,
+      "hits_taken": 0,
+      "moves": {
+        "ash_spin": 1,
+        "double_impact": 1,
+        "oath_cleave": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 3,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 9
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 19,
+      "player_hp": 72,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 55.72,
+      "seed": 2
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 3,
+      "boss_hp": 705,
+      "combat_frames": 2404,
+      "damage_taken": 97,
+      "dodges": 0,
+      "executions": 3,
+      "frames": 2604,
+      "heals": 1,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 0,
+      "hits_taken": 3,
+      "moves": {
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 3,
+        "royal_sweep": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 8
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 11,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 43.4,
+      "seed": 3
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 70,
+      "combat_frames": 4178,
+      "damage_taken": 147,
+      "dodges": 6,
+      "executions": 5,
+      "frames": 4515,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 2,
+      "hits_taken": 5,
+      "moves": {
+        "double_impact": 3,
+        "judgment_thrust": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 3,
+        "quick_combo_2": 1,
+        "quick_combo_3": 5,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 3,
+          "perfect": 10
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 18,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 75.25,
+      "seed": 4
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 154,
+      "combat_frames": 3686,
+      "damage_taken": 147,
+      "dodges": 3,
+      "executions": 5,
+      "frames": 3992,
+      "heals": 3,
+      "hit_by_blockable": 4,
+      "hit_by_unblockable": 1,
+      "hits_taken": 5,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 1,
+        "judgment_thrust": 2,
+        "oath_cleave": 2,
+        "quick_combo_3": 3,
+        "royal_sweep": 3,
+        "triple_slash": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 2,
+          "hit": 2,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 14,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 66.53,
+      "seed": 5
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 260,
+      "combat_frames": 3650,
+      "damage_taken": 147,
+      "dodges": 1,
+      "executions": 5,
+      "frames": 3946,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 2,
+      "hits_taken": 5,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 1,
+        "judgment_thrust": 2,
+        "oath_cleave": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 3,
+        "royal_sweep": 4,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 9
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        }
+      },
+      "perfect": 17,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 65.77,
+      "seed": 6
+    },
+    {
+      "blocked": 5,
+      "boss_breaks": 3,
+      "boss_hp": 738,
+      "combat_frames": 2902,
+      "damage_taken": 147,
+      "dodges": 2,
+      "executions": 3,
+      "frames": 3107,
+      "heals": 3,
+      "hit_by_blockable": 4,
+      "hit_by_unblockable": 1,
+      "hits_taken": 5,
+      "moves": {
+        "double_impact": 1,
+        "judgment_thrust": 3,
+        "oath_cleave": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 4,
+        "royal_sweep": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 3,
+          "hit": 2,
+          "perfect": 9
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 1
+        }
+      },
+      "perfect": 12,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 51.78,
+      "seed": 7
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 4,
+      "boss_hp": 476,
+      "combat_frames": 3062,
+      "damage_taken": 147,
+      "dodges": 0,
+      "executions": 4,
+      "frames": 3318,
+      "heals": 3,
+      "hit_by_blockable": 6,
+      "hit_by_unblockable": 0,
+      "hits_taken": 6,
+      "moves": {
+        "ash_spin": 1,
+        "judgment_thrust": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 2,
+        "quick_combo_3": 1,
+        "royal_sweep": 3,
+        "triple_slash_delayed": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 2,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        }
+      },
+      "perfect": 13,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 55.3,
+      "seed": 8
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3163,
+      "damage_taken": 33,
+      "dodges": 0,
+      "executions": 5,
+      "frames": 3494,
+      "heals": 1,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 0,
+      "hits_taken": 1,
+      "moves": {
+        "ash_spin": 2,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        }
+      },
+      "perfect": 17,
+      "player_hp": 64,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 58.23,
+      "seed": 9
+    },
+    {
+      "blocked": 4,
+      "boss_breaks": 5,
+      "boss_hp": 33,
+      "combat_frames": 4155,
+      "damage_taken": 147,
+      "dodges": 0,
+      "executions": 5,
+      "frames": 4494,
+      "heals": 3,
+      "hit_by_blockable": 5,
+      "hit_by_unblockable": 0,
+      "hits_taken": 5,
+      "moves": {
+        "ash_spin": 3,
+        "judgment_thrust": 1,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 5,
+        "triple_slash": 2,
+        "triple_slash_delayed": 2,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 3
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 3,
+          "perfect": 4
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 17,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 74.9,
+      "seed": 10
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 5,
+      "boss_hp": 143,
+      "combat_frames": 4192,
+      "damage_taken": 147,
+      "dodges": 4,
+      "executions": 5,
+      "frames": 4514,
+      "heals": 3,
+      "hit_by_blockable": 5,
+      "hit_by_unblockable": 1,
+      "hits_taken": 6,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 2,
+        "judgment_thrust": 2,
+        "oath_cleave": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 3,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        }
+      },
+      "perfect": 17,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 75.23,
+      "seed": 11
+    },
+    {
+      "blocked": 7,
+      "boss_breaks": 5,
+      "boss_hp": 18,
+      "combat_frames": 5090,
+      "damage_taken": 147,
+      "dodges": 1,
+      "executions": 5,
+      "frames": 5437,
+      "heals": 3,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 3,
+      "hits_taken": 5,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 1,
+        "double_impact": 1,
+        "judgment_thrust": 3,
+        "oath_cleave": 4,
+        "quick_combo_2": 2,
+        "quick_combo_3": 1,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 3,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 2,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 3,
+          "hit": 0,
+          "perfect": 3
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 18,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 90.62,
+      "seed": 12
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 4006,
+      "damage_taken": 90,
+      "dodges": 2,
+      "executions": 6,
+      "frames": 4339,
+      "heals": 3,
+      "hit_by_blockable": 0,
+      "hit_by_unblockable": 2,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 1,
+        "judgment_thrust": 3,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "triple_slash": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 18,
+      "player_hp": 57,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 72.32,
+      "seed": 13
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 3,
+      "boss_hp": 731,
+      "combat_frames": 1768,
+      "damage_taken": 72,
+      "dodges": 0,
+      "executions": 3,
+      "frames": 1949,
+      "heals": 1,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 0,
+      "hits_taken": 3,
+      "moves": {
+        "oath_cleave": 2,
+        "quick_combo_2": 2,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 2,
+          "hit": 2,
+          "perfect": 6
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 9,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 32.48,
+      "seed": 14
+    },
+    {
+      "blocked": 0,
+      "boss_breaks": 1,
+      "boss_hp": 1169,
+      "combat_frames": 2109,
+      "damage_taken": 147,
+      "dodges": 1,
+      "executions": 1,
+      "frames": 2220,
+      "heals": 3,
+      "hit_by_blockable": 5,
+      "hit_by_unblockable": 0,
+      "hits_taken": 5,
+      "moves": {
+        "ash_impact": 1,
+        "judgment_thrust": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "royal_sweep": 3,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 1
+        }
+      },
+      "perfect": 6,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 37.0,
+      "seed": 15
+    },
+    {
+      "blocked": 4,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3430,
+      "damage_taken": 60,
+      "dodges": 2,
+      "executions": 5,
+      "frames": 3766,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 2,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 1,
+        "quick_combo_3": 5,
+        "royal_sweep": 2,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 3,
+          "hit": 1,
+          "perfect": 10
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 16,
+      "player_hp": 62,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 62.77,
+      "seed": 16
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 4623,
+      "damage_taken": 117,
+      "dodges": 2,
+      "executions": 5,
+      "frames": 4964,
+      "heals": 3,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 3,
+        "ash_spin": 3,
+        "judgment_thrust": 3,
+        "oath_cleave": 3,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 8
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 17,
+      "player_hp": 30,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 82.73,
+      "seed": 17
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 4,
+      "boss_hp": 88,
+      "combat_frames": 4723,
+      "damage_taken": 147,
+      "dodges": 4,
+      "executions": 4,
+      "frames": 5051,
+      "heals": 3,
+      "hit_by_blockable": 5,
+      "hit_by_unblockable": 0,
+      "hits_taken": 5,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 3,
+        "double_impact": 1,
+        "judgment_thrust": 2,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 6,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 3,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        }
+      },
+      "perfect": 14,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 84.18,
+      "seed": 18
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 4,
+      "boss_hp": 362,
+      "combat_frames": 3258,
+      "damage_taken": 147,
+      "dodges": 4,
+      "executions": 4,
+      "frames": 3534,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 2,
+      "hits_taken": 5,
+      "moves": {
+        "ash_spin": 1,
+        "double_impact": 3,
+        "judgment_thrust": 1,
+        "kings_leap": 1,
+        "oath_cleave": 1,
+        "quick_combo_2": 3,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "kings_leap": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 3,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        }
+      },
+      "perfect": 14,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 58.9,
+      "seed": 19
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3337,
+      "damage_taken": 74,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 3671,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "judgment_thrust": 1,
+        "oath_cleave": 4,
+        "oath_cleave_delayed": 1,
+        "quick_combo_3": 4,
+        "royal_sweep": 1,
+        "triple_slash": 3
+      },
+      "per_move": {
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        },
+        "quick_combo": {
+          "blocked": 3,
+          "hit": 0,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 6
+        }
+      },
+      "perfect": 19,
+      "player_hp": 48,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 61.18,
+      "seed": 20
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 4,
+      "boss_hp": 387,
+      "combat_frames": 3373,
+      "damage_taken": 147,
+      "dodges": 2,
+      "executions": 4,
+      "frames": 3632,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 1,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 2,
+        "double_impact": 1,
+        "judgment_thrust": 3,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 6
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 1
+        }
+      },
+      "perfect": 13,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 60.53,
+      "seed": 21
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3650,
+      "damage_taken": 66,
+      "dodges": 2,
+      "executions": 5,
+      "frames": 3962,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_spin": 2,
+        "double_impact": 2,
+        "judgment_thrust": 1,
+        "oath_cleave_delayed": 1,
+        "royal_sweep": 3,
+        "triple_slash": 1,
+        "twin_slash": 5
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 5
+        }
+      },
+      "perfect": 12,
+      "player_hp": 56,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 66.03,
+      "seed": 22
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 4461,
+      "damage_taken": 126,
+      "dodges": 6,
+      "executions": 5,
+      "frames": 4807,
+      "heals": 3,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 2,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 6,
+        "ash_spin": 3,
+        "judgment_thrust": 1,
+        "oath_cleave": 5,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "triple_slash_delayed": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 4
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 15,
+      "player_hp": 21,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 80.12,
+      "seed": 23
+    },
+    {
+      "blocked": 4,
+      "boss_breaks": 4,
+      "boss_hp": 395,
+      "combat_frames": 3676,
+      "damage_taken": 147,
+      "dodges": 3,
+      "executions": 4,
+      "frames": 3943,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 2,
+      "hits_taken": 5,
+      "moves": {
+        "ash_spin": 1,
+        "double_impact": 2,
+        "judgment_thrust": 2,
+        "oath_cleave_delayed": 3,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "triple_slash": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 7
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 2,
+          "hit": 1,
+          "perfect": 2
+        }
+      },
+      "perfect": 13,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 65.72,
+      "seed": 24
+    },
+    {
+      "blocked": 5,
+      "boss_breaks": 4,
+      "boss_hp": 402,
+      "combat_frames": 3942,
+      "damage_taken": 122,
+      "dodges": 4,
+      "executions": 4,
+      "frames": 4200,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 1,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 1,
+        "double_impact": 2,
+        "judgment_thrust": 1,
+        "kings_leap": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 2,
+        "triple_slash_delayed": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 2,
+          "hit": 1,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 3
+        }
+      },
+      "perfect": 12,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 70.0,
+      "seed": 25
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 95,
+      "combat_frames": 4134,
+      "damage_taken": 147,
+      "dodges": 6,
+      "executions": 5,
+      "frames": 4445,
+      "heals": 3,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 2,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 3,
+        "kings_leap": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 15,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 74.08,
+      "seed": 26
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3149,
+      "damage_taken": 60,
+      "dodges": 1,
+      "executions": 5,
+      "frames": 3482,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 1,
+        "kings_leap": 1,
+        "quick_combo_2": 2,
+        "quick_combo_3": 3,
+        "royal_sweep": 3,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 9
+        },
+        "royal_sweep": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 16,
+      "player_hp": 62,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 58.03,
+      "seed": 27
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 0,
+      "boss_hp": 1509,
+      "combat_frames": 850,
+      "damage_taken": 72,
+      "dodges": 2,
+      "executions": 0,
+      "frames": 870,
+      "heals": 1,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 1,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 2,
+        "judgment_thrust": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 1,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 14.5,
+      "seed": 28
+    },
+    {
+      "blocked": 0,
+      "boss_breaks": 3,
+      "boss_hp": 749,
+      "combat_frames": 1953,
+      "damage_taken": 97,
+      "dodges": 0,
+      "executions": 3,
+      "frames": 2143,
+      "heals": 2,
+      "hit_by_blockable": 4,
+      "hit_by_unblockable": 0,
+      "hits_taken": 4,
+      "moves": {
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 2,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 8
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 10,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 35.72,
+      "seed": 29
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 1,
+      "boss_hp": 1114,
+      "combat_frames": 1764,
+      "damage_taken": 122,
+      "dodges": 3,
+      "executions": 1,
+      "frames": 1872,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 1,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 3,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 2,
+          "perfect": 2
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 4,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 31.2,
+      "seed": 30
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 0,
+      "boss_hp": 1560,
+      "combat_frames": 658,
+      "damage_taken": 72,
+      "dodges": 0,
+      "executions": 0,
+      "frames": 673,
+      "heals": 1,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 1,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 1,
+        "judgment_thrust": 1,
+        "quick_combo_3": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 2,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 11.22,
+      "seed": 31
+    },
+    {
+      "blocked": 0,
+      "boss_breaks": 2,
+      "boss_hp": 877,
+      "combat_frames": 1968,
+      "damage_taken": 97,
+      "dodges": 1,
+      "executions": 2,
+      "frames": 2123,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 2,
+        "judgment_thrust": 1,
+        "oath_cleave": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        }
+      },
+      "perfect": 7,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 35.38,
+      "seed": 32
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3205,
+      "damage_taken": 0,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 3534,
+      "heals": 0,
+      "hit_by_blockable": 0,
+      "hit_by_unblockable": 0,
+      "hits_taken": 0,
+      "moves": {
+        "ash_spin": 1,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 4,
+        "royal_sweep": 2,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 11
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 20,
+      "player_hp": 72,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 58.9,
+      "seed": 33
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 2841,
+      "damage_taken": 19,
+      "dodges": 1,
+      "executions": 6,
+      "frames": 3163,
+      "heals": 0,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 0,
+      "hits_taken": 1,
+      "moves": {
+        "ash_impact": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 1,
+        "quick_combo_3": 4,
+        "royal_sweep": 1,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 9
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 5
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 18,
+      "player_hp": 53,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 52.72,
+      "seed": 34
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3458,
+      "damage_taken": 33,
+      "dodges": 2,
+      "executions": 5,
+      "frames": 3791,
+      "heals": 1,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 0,
+      "hits_taken": 1,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 1,
+        "judgment_thrust": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 2,
+        "quick_combo_3": 2,
+        "royal_sweep": 3,
+        "triple_slash": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        }
+      },
+      "perfect": 17,
+      "player_hp": 64,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 63.18,
+      "seed": 35
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3416,
+      "damage_taken": 74,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 3747,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_spin": 2,
+        "judgment_thrust": 2,
+        "oath_cleave": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 4
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 17,
+      "player_hp": 48,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 62.45,
+      "seed": 36
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3854,
+      "damage_taken": 52,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 4180,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_spin": 1,
+        "judgment_thrust": 2,
+        "oath_cleave": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 3,
+        "triple_slash_delayed": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 6
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 3
+        }
+      },
+      "perfect": 18,
+      "player_hp": 70,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 69.67,
+      "seed": 37
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 4129,
+      "damage_taken": 136,
+      "dodges": 6,
+      "executions": 5,
+      "frames": 4450,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 1,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 3,
+        "judgment_thrust": 2,
+        "kings_leap": 1,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "triple_slash": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 6
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        }
+      },
+      "perfect": 15,
+      "player_hp": 11,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 74.17,
+      "seed": 38
+    },
+    {
+      "blocked": 3,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3014,
+      "damage_taken": 19,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 3344,
+      "heals": 0,
+      "hit_by_blockable": 1,
+      "hit_by_unblockable": 0,
+      "hits_taken": 1,
+      "moves": {
+        "ash_spin": 2,
+        "oath_cleave_delayed": 3,
+        "quick_combo_3": 3,
+        "royal_sweep": 1,
+        "triple_slash": 2,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "oath_cleave": {
+          "blocked": 3,
+          "hit": 0,
+          "perfect": 0
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 8
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 5
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 17,
+      "player_hp": 53,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 55.73,
+      "seed": 39
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 4,
+      "boss_hp": 384,
+      "combat_frames": 2994,
+      "damage_taken": 97,
+      "dodges": 1,
+      "executions": 4,
+      "frames": 3250,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_spin": 1,
+        "double_impact": 1,
+        "judgment_thrust": 1,
+        "oath_cleave": 4,
+        "quick_combo_2": 2,
+        "quick_combo_3": 1,
+        "royal_sweep": 2,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 3
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 3
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        }
+      },
+      "perfect": 13,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 54.17,
+      "seed": 40
+    },
+    {
+      "blocked": 0,
+      "boss_breaks": 0,
+      "boss_hp": 1560,
+      "combat_frames": 360,
+      "damage_taken": 72,
+      "dodges": 0,
+      "executions": 0,
+      "frames": 365,
+      "heals": 1,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "oath_cleave": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        }
+      },
+      "perfect": 0,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 6.08,
+      "seed": 41
+    },
+    {
+      "blocked": 5,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3912,
+      "damage_taken": 91,
+      "dodges": 4,
+      "executions": 5,
+      "frames": 4237,
+      "heals": 3,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 0,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 3,
+        "double_impact": 1,
+        "kings_leap": 1,
+        "oath_cleave": 1,
+        "oath_cleave_delayed": 2,
+        "quick_combo_3": 4,
+        "royal_sweep": 2,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 4,
+          "hit": 1,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 4
+        }
+      },
+      "perfect": 14,
+      "player_hp": 56,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 70.62,
+      "seed": 42
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 2,
+      "boss_hp": 690,
+      "combat_frames": 3372,
+      "damage_taken": 147,
+      "dodges": 1,
+      "executions": 2,
+      "frames": 3592,
+      "heals": 3,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 2,
+      "hits_taken": 4,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 1,
+        "judgment_thrust": 2,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 3,
+        "royal_sweep": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 2,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 2,
+          "hit": 1,
+          "perfect": 6
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 11,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 59.87,
+      "seed": 43
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 3,
+      "boss_hp": 705,
+      "combat_frames": 2395,
+      "damage_taken": 97,
+      "dodges": 2,
+      "executions": 3,
+      "frames": 2588,
+      "heals": 1,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 2,
+        "judgment_thrust": 2,
+        "oath_cleave": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 1,
+        "triple_slash_delayed": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 3
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 9,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 43.13,
+      "seed": 44
+    },
+    {
+      "blocked": 7,
+      "boss_breaks": 4,
+      "boss_hp": 0,
+      "combat_frames": 4516,
+      "damage_taken": 97,
+      "dodges": 6,
+      "executions": 4,
+      "frames": 4841,
+      "heals": 3,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 2,
+        "ash_spin": 3,
+        "double_impact": 2,
+        "judgment_thrust": 2,
+        "kings_leap": 1,
+        "oath_cleave": 2,
+        "oath_cleave_delayed": 2,
+        "quick_combo_2": 1,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "twin_slash": 3
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "ash_spin": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 3,
+          "hit": 0,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "royal_sweep": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 3
+        }
+      },
+      "perfect": 12,
+      "player_hp": 50,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 80.68,
+      "seed": 45
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3528,
+      "damage_taken": 64,
+      "dodges": 2,
+      "executions": 5,
+      "frames": 3853,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 2,
+        "double_impact": 1,
+        "judgment_thrust": 1,
+        "kings_leap": 1,
+        "oath_cleave": 2,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "triple_slash": 1,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "kings_leap": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 6
+        },
+        "royal_sweep": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 0
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 2
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        }
+      },
+      "perfect": 14,
+      "player_hp": 58,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 64.22,
+      "seed": 46
+    },
+    {
+      "blocked": 2,
+      "boss_breaks": 1,
+      "boss_hp": 1176,
+      "combat_frames": 1822,
+      "damage_taken": 97,
+      "dodges": 1,
+      "executions": 1,
+      "frames": 1926,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 1,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 1,
+        "judgment_thrust": 1,
+        "oath_cleave": 2,
+        "quick_combo_3": 2,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_impact": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 1,
+          "perfect": 4
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 7,
+      "player_hp": 0,
+      "posture_breaks": 0,
+      "result": "loss",
+      "seconds": 32.1,
+      "seed": 47
+    },
+    {
+      "blocked": 5,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3453,
+      "damage_taken": 38,
+      "dodges": 0,
+      "executions": 6,
+      "frames": 3784,
+      "heals": 1,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_spin": 2,
+        "judgment_thrust": 1,
+        "oath_cleave_delayed": 4,
+        "quick_combo_2": 1,
+        "quick_combo_3": 2,
+        "royal_sweep": 2,
+        "triple_slash": 2,
+        "twin_slash": 2
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 2,
+          "hit": 0,
+          "perfect": 2
+        },
+        "quick_combo": {
+          "blocked": 1,
+          "hit": 2,
+          "perfect": 5
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        },
+        "twin_slash": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 3
+        }
+      },
+      "perfect": 18,
+      "player_hp": 59,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 63.07,
+      "seed": 48
+    },
+    {
+      "blocked": 1,
+      "boss_breaks": 5,
+      "boss_hp": 0,
+      "combat_frames": 3410,
+      "damage_taken": 83,
+      "dodges": 3,
+      "executions": 5,
+      "frames": 3722,
+      "heals": 1,
+      "hit_by_blockable": 3,
+      "hit_by_unblockable": 0,
+      "hits_taken": 3,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 1,
+        "double_impact": 1,
+        "judgment_thrust": 1,
+        "oath_cleave": 4,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 1,
+        "quick_combo_3": 1,
+        "royal_sweep": 2,
+        "triple_slash": 1,
+        "twin_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 0
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 1,
+          "hit": 0,
+          "perfect": 4
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 4
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 1
+        },
+        "twin_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        }
+      },
+      "perfect": 13,
+      "player_hp": 14,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 62.03,
+      "seed": 49
+    },
+    {
+      "blocked": 0,
+      "boss_breaks": 6,
+      "boss_hp": 0,
+      "combat_frames": 3448,
+      "damage_taken": 60,
+      "dodges": 1,
+      "executions": 6,
+      "frames": 3788,
+      "heals": 2,
+      "hit_by_blockable": 2,
+      "hit_by_unblockable": 0,
+      "hits_taken": 2,
+      "moves": {
+        "ash_impact": 1,
+        "ash_spin": 1,
+        "judgment_thrust": 1,
+        "oath_cleave": 5,
+        "oath_cleave_delayed": 1,
+        "quick_combo_2": 2,
+        "quick_combo_3": 2,
+        "royal_sweep": 1,
+        "triple_slash": 1
+      },
+      "per_move": {
+        "ash_spin": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "judgment_thrust": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "oath_cleave": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 5
+        },
+        "quick_combo": {
+          "blocked": 0,
+          "hit": 1,
+          "perfect": 7
+        },
+        "royal_sweep": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 1
+        },
+        "triple_slash": {
+          "blocked": 0,
+          "hit": 0,
+          "perfect": 2
+        }
+      },
+      "perfect": 17,
+      "player_hp": 62,
+      "posture_breaks": 0,
+      "result": "win",
+      "seconds": 63.13,
+      "seed": 50
+    }
+  ],
+  "summary": {
+    "bot": "human",
+    "games": 50,
+    "parry_rate_by_move": {
+      "ash_spin": 0.807,
+      "judgment_thrust": 0.732,
+      "kings_leap": 0.625,
+      "oath_cleave": 0.626,
+      "quick_combo": 0.771,
+      "royal_sweep": 0.787,
+      "triple_slash": 0.699,
+      "twin_slash": 0.737
+    },
+    "parry_rate_overall": 0.74,
+    "per_move": {
+      "ash_impact": {
+        "blocked": 0,
+        "hit": 34,
+        "perfect": 0
+      },
+      "ash_spin": {
+        "blocked": 5,
+        "hit": 6,
+        "perfect": 46
+      },
+      "judgment_thrust": {
+        "blocked": 8,
+        "hit": 7,
+        "perfect": 41
+      },
+      "kings_leap": {
+        "blocked": 1,
+        "hit": 2,
+        "perfect": 5
+      },
+      "oath_cleave": {
+        "blocked": 29,
+        "hit": 17,
+        "perfect": 77
+      },
+      "quick_combo": {
+        "blocked": 39,
+        "hit": 44,
+        "perfect": 280
+      },
+      "royal_sweep": {
+        "blocked": 7,
+        "hit": 12,
+        "perfect": 70
+      },
+      "triple_slash": {
+        "blocked": 15,
+        "hit": 13,
+        "perfect": 65
+      },
+      "twin_slash": {
+        "blocked": 13,
+        "hit": 18,
+        "perfect": 87
+      }
+    },
+    "wall_ms": 5949,
+    "win_rate": 0.46,
+    "win_seconds_avg": 65.2,
+    "win_seconds_max": 82.7,
+    "win_seconds_min": 52.7,
+    "wins": 23,
+    "zero_damage_wins": 3
+  }
+}

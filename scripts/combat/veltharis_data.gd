@@ -41,9 +41,6 @@ const RING_THICKNESS := 21.0
 const SPIN_RADIUS := 165.0
 ## §5.2 墜王之躍的落地半徑
 const LEAP_RADIUS := 80.0
-## 近距離招式起手時往前踏到離主角多遠停（文件未定）；下劈起手時的快步速度（文件未定）
-const STEP_STOP_DISTANCE := 80.0
-const CLEAVE_STEP_SPEED := 120.0
 
 # combat-design §11.2–11.5
 const MAX_TOUGHNESS := 70.0  # tuning-log：文件 100
@@ -217,18 +214,21 @@ static func _quick_light(interval: float, anim: StringName, is_last: bool) -> Bo
 static func _build(phase: int) -> Dictionary:
 	var rec := 1.0 if phase == 1 else PHASE2_RECOVERY_SCALE
 	var out := {}
-	var near_step := {"startup_advance_speed": WALK_SPEED, "advance_stop_distance": STEP_STOP_DISTANCE}
+	# 2026-10-05 使用者：起手時不再往玩家挪（原本近距離招式起手時緩步、下劈快步逼近到 80px）；
+	# AI 先走到第一擊打得到的距離（站著不動一定被打中）才出招。tuning-log 2026-10-05
+	var sweep_in := {"engage_range": SWEEP_RADIUS}
+	var quick_in := {"engage_range": QUICK_SWEEP_RADIUS}
 
 	# §4.1 王權橫掃（單發重擊）
 	out[&"royal_sweep"] = _move(&"royal_sweep", "王權橫掃", [_sweep_hit()], 0.9 * rec,
-		near_step.merged({"debug_key": 1}))
+		sweep_in.merged({"debug_key": 1}))
 
-	# §4.3 墜誓下劈（近到中距離使用：起手期間快步逼近，文件未定速度，取 CLEAVE_STEP_SPEED）
-	var cleave_step := {"startup_advance_speed": CLEAVE_STEP_SPEED, "advance_stop_distance": STEP_STOP_DISTANCE}
+	# §4.3 墜誓下劈（近到中距離使用：中距離被選到時快步走到 CLEAVE_LENGTH 內再起手）
+	var cleave_in := {"engage_range": CLEAVE_LENGTH, "engage_speed": FAST_SPEED}
 	out[&"oath_cleave"] = _move(&"oath_cleave", "墜誓下劈", [_cleave_hit(1.0, false)], 1.2 * rec,
-		cleave_step.merged({"debug_key": 3}))
+		cleave_in.merged({"debug_key": 3}))
 	out[&"oath_cleave_delayed"] = _move(&"oath_cleave_delayed", "墜誓下劈（延遲）", [_cleave_hit(1.0, true)], 1.2 * rec,
-		cleave_step.merged({"debug_key": 4}))
+		cleave_in.merged({"debug_key": 4}))
 
 	# §4.4 裁決突刺（懲罰技）：起手 0.6 → 突進 LUNGE_DISTANCE / 0.2 秒，整段判定 → 收招 0.8
 	out[&"judgment_thrust"] = _move(&"judgment_thrust", "裁決突刺", [_hit({"attack_type": AT.HEAVY,
@@ -243,28 +243,29 @@ static func _build(phase: int) -> Dictionary:
 		_hit({"attack_type": AT.HEAVY, "interval": 0.8, "active": 0.1, "damage": 26, "posture_damage": 35,
 			"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.SECTOR,
 			"radius": SWEEP_RADIUS, "angle_deg": 120.0, "anim": &"C5"}),
-	], 0.9 * rec, near_step.merged({"debug_key": 6}))
+	], 0.9 * rec, quick_in.merged({"debug_key": 6}))
 	out[&"quick_combo_2"] = _move(&"quick_combo_2", "快斬連段（二連）", [
 		_quick_light(0.4, &"C2", false),
 		_quick_light(0.6, &"C1", true),
-	], 0.9 * rec, near_step.merged({"debug_key": 7}))
+	], 0.9 * rec, quick_in.merged({"debug_key": 7}))
 
 	if phase == 1:
 		# §4.2 雙斬
 		out[&"twin_slash"] = _move(&"twin_slash", "雙斬", [_twin_first(), _twin_second(true)], 1.0,
-			near_step.merged({"debug_key": 2}))
+			sweep_in.merged({"debug_key": 2}))
 		# §4.6 灰燼衝擊
-		out[&"ash_impact"] = _move(&"ash_impact", "灰燼衝擊", [_impact_ring(1.1)], 1.4, {"debug_key": 8})
+		out[&"ash_impact"] = _move(&"ash_impact", "灰燼衝擊", [_impact_ring(1.1)], 1.4,
+			{"engage_range": RING_RADIUS, "debug_key": 8})
 	else:
 		# §5 三斬：C1 → C2 → C3 下劈（與第二擊間隔 1.0 秒，可能是延遲版）。
 		# 最後一擊是下劈，收招沿用下劈 1.2 秒 × 0.75。
 		out[&"triple_slash"] = _move(&"triple_slash", "三斬", [_twin_first(), _twin_second(false),
-			_cleave_hit(1.0, false)], 1.2 * rec, near_step.merged({"debug_key": 2}))
+			_cleave_hit(1.0, false)], 1.2 * rec, sweep_in.merged({"debug_key": 2}))
 		out[&"triple_slash_delayed"] = _move(&"triple_slash_delayed", "三斬（延遲）", [_twin_first(),
-			_twin_second(false), _cleave_hit(1.0, true)], 1.2 * rec, near_step)
+			_twin_second(false), _cleave_hit(1.0, true)], 1.2 * rec, sweep_in)
 		# §5 雙重衝擊：第一個環之後 0.9 秒再擴張第二個環；兩個環都有 0.6 秒危險預兆
 		out[&"double_impact"] = _move(&"double_impact", "雙重衝擊", [_impact_ring(1.1), _impact_ring(0.9)],
-			1.4 * rec, {"debug_key": 8})
+			1.4 * rec, {"engage_range": RING_RADIUS, "debug_key": 8})
 		# §5.1 灰燼迴旋（新招，文件列出的收招 1.2 秒即為二階段數值，不再縮短）。
 		# 2026-10-04 使用者決定只轉一圈、只打一下（原本兩圈兩擊）：判定 0.25 秒內轉完一整圈（美術：右手單手、
 		# 劍尖一幀最多走 80px，0.1 秒轉一圈做不到），被完美彈返彈開 1.2 秒（原本第二擊的）。tuning-log 2026-10-04
@@ -272,7 +273,7 @@ static func _build(phase: int) -> Dictionary:
 			_hit({"attack_type": AT.HEAVY, "interval": 0.9, "active": 0.25, "damage": 24, "posture_damage": 35,
 				"toughness_damage": PARRY_TOUGHNESS, "bounce_time": 1.2, "hit_effect": FX.LAUNCH, "shape": SH.CIRCLE,
 				"radius": SPIN_RADIUS, "anim": &"C6"}),
-		], 1.2, near_step.merged({"debug_key": 9}))
+		], 1.2, {"engage_range": SPIN_RADIUS, "debug_key": 9})
 		# §5.2 墜王之躍：起手 0.7 → 騰空 0.8（落地前 0.3 秒鎖定落點）→ 落地半徑 LEAP_RADIUS → 收招 1.0
 		out[&"kings_leap"] = _move(&"kings_leap", "墜王之躍", [_hit({"attack_type": AT.HEAVY,
 			"interval": 1.5, "active": 0.1, "damage": 30, "posture_damage": 35, "toughness_damage": PARRY_TOUGHNESS,

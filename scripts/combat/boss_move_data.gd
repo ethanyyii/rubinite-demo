@@ -7,10 +7,11 @@ extends Resource
 @export var hits: Array[BossHitData] = []
 ## 最後一擊判定結束後的收招秒數
 @export var recovery := 1.0
-## 起手期間朝玩家逼近的速度（px/s）；0 = 原地出招。方向鎖定後停止移動。
-@export var startup_advance_speed := 0.0
-## 逼近到這個距離（中心距）就停下
-@export var advance_stop_distance := 70.0
+## AI 出這一招的最遠距離（中心距）：比這遠就先走到這個距離再出招；0 = 不限（突刺、墜王之躍自己會移動）。
+## 起手期間不會往玩家挪（2026-10-05 使用者：起手時腳會滑，而且躲不掉）。
+@export var engage_range := 0.0
+## 走過去的速度（px/s）
+@export var engage_speed := 60.0
 ## 懲罰技（combat-design §11.6 ★2）
 @export var is_punish := false
 ## 騰空開始時間（秒，從出招開始算）。負數表示不會騰空。墜王之躍用。

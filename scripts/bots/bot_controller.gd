@@ -34,15 +34,10 @@ static func predict_threats(sim: CombatSim) -> Array[Dictionary]:
 		var origin := b.pos
 		var dir := b.facing
 		if e < lock_at:
-			# 鎖定前：Boss 會轉向玩家；起手逼近會停在 advance_stop_distance
+			# 鎖定前：Boss 會原地轉向玩家
 			var to := p - origin
 			if to.length_squared() > 0.01:
 				dir = to.normalized()
-			if b.move.startup_advance_speed > 0.0:
-				var d := to.length()
-				var can_move := b.move.startup_advance_speed / Frames.FPS * maxi(lock_at - e, 0)
-				var target := maxf(b.move.advance_stop_distance, d - can_move)
-				origin = p - dir * target
 		if b.move.airborne_start >= 0.0:
 			origin = b.landing_target  # 墜王之躍：在落點落地（落點追蹤玩家，玩家不動時就是現在的落點）
 		var overlap := -1

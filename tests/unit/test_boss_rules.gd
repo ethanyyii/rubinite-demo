@@ -92,8 +92,24 @@ func test_break_at_zero_toughness() -> void:
 	advance(Frames.of(VeltharisData.BREAK_TIME) - 1)
 	assert_eq(boss().state, BS.BROKEN, "失衡 3 秒")
 	advance(1)
-	assert_true(boss().state != BS.BROKEN, "3 秒沒有處決：自行恢復")
+	assert_eq(boss().state, BS.RISING, "3 秒沒有處決：自行恢復，先起身（2026-10-05 使用者：和處決後一樣花 1 秒）")
 	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS, 0.001, "韌性回滿")
+	assert_false(boss().can_be_executed(sim.player.pos), "起身時不能處決")
+	advance(Frames.of(VeltharisData.RISE_TIME) - 1)
+	assert_eq(boss().state, BS.RISING, "起身 1 秒")
+	advance(1)
+	assert_true(boss().state in [BS.IDLE, BS.WALK], "起身完才行動")
+
+
+## 自己站起來和處決後的起身一樣是霸體：重擊打中也不會短僵直
+func test_rising_after_a_break_is_super_armored() -> void:
+	sim.boss.toughness = 1.0
+	sim.boss.receive_player_hit(PlayerData.light_attacks()[0])
+	advance(Frames.of(VeltharisData.BREAK_TIME))
+	assert_eq(boss().state, BS.RISING)
+	sim.boss.last_short_stagger = -100000
+	sim.boss.receive_player_hit(PlayerData.light_attacks()[3])
+	assert_eq(boss().state, BS.RISING, "第 4 段打中：不短僵直")
 
 
 func test_break_interrupts_attack() -> void:

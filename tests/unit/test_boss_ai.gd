@@ -203,3 +203,45 @@ func tick(presses: Array = []) -> void:
 		var to := sim.boss.pos - sim.player.pos
 		move = to.normalized() if to.length() > 40.0 else Vector2.ZERO
 	super.tick(presses)
+
+
+## 2026-10-05 使用者：起手不再往前挪，改成先走到打得到的距離才出招。
+## 墜誓下劈在中距離被選到：快步（FAST_SPEED）走到 engage_range 內，到了立刻出這一招
+func test_ai_walks_into_range_before_a_move_it_cannot_reach() -> void:
+	sim.god_mode = true
+	sim.boss.pos = Vector2(0, -150)
+	sim.player.pos = Vector2(0, 100)   # 250px：中距離
+	var m := VeltharisData.move(1, &"oath_cleave")
+	sim.boss.engage(m)
+	assert_eq(boss().state, BS.WALK, "打不到：先走")
+	assert_near(boss().walk_speed, m.engage_speed, 0.001, "下劈快步逼近")
+	var guard := 0
+	while boss().state == BS.WALK and guard < Frames.of(VeltharisData.APPROACH_MAX_TIME):
+		guard += 1
+		advance(1)
+	assert_eq(boss().state, BS.ATTACK, "走到了就出招")
+	assert_eq(boss().move.id, &"oath_cleave", "出的是選到的那一招")
+	var d := boss().pos.distance_to(sim.player.pos)
+	assert_between(d, m.engage_range - 2.5, m.engage_range + 0.001, "停在打得到的距離（%.1f）" % d)
+
+
+func test_ai_starts_a_move_in_place_when_in_range() -> void:
+	sim.boss.pos = Vector2(0, -20)
+	sim.player.pos = Vector2(0, 100)
+	sim.boss.engage(VeltharisData.move(1, &"royal_sweep"))
+	assert_eq(boss().state, BS.ATTACK, "打得到：原地出招")
+
+
+## 玩家一直往後跑：走滿 APPROACH_MAX_TIME 還走不到就放棄這一招，重新決定
+func test_ai_gives_up_a_move_it_cannot_walk_into_range_of() -> void:
+	sim.god_mode = true
+	sim.boss.pos = Vector2(0, -250)
+	sim.player.pos = Vector2(0, 0)
+	sim.boss.engage(VeltharisData.move(1, &"oath_cleave"))
+	event_log.clear()
+	for f in Frames.of(VeltharisData.APPROACH_MAX_TIME):
+		sim.player.pos = boss().pos + Vector2(0, 250)
+		advance(1)
+	assert_false(_started_moves().has(&"oath_cleave"), "走不到就沒有出這一招")
+	assert_true(boss().state != BS.WALK or boss().walk_mode != &"approach" or boss().state_elapsed() < 2,
+		"時間到就停下來重新決定")

@@ -3,7 +3,8 @@ extends RefCounted
 ## Boss 的狀態機（combat-design §11、boss-veltharis.md）。
 ##
 ## 出招引擎：每招是一串 BossHitData，各擊的判定開始幀 = 各段間隔換算後相加（BossMoveData.hit_start_frames）。
-## 起手期間追蹤玩家，命中前 lock_before 秒鎖定方向（boss §3）。延遲版在停住期間姿勢與位置靜止（★8）。
+## 起手期間追蹤玩家方向（原地轉身，不往前挪），命中前 lock_before 秒鎖定方向（boss §3）。延遲版在停住期間姿勢與位置靜止（★8）。
+## AI 選到打不到的招，先走到 engage_range 內再出（engage）。
 ## 控制模式：DUMMY（木樁，不出招）、TRAINING（訓練木樁，定時出同一招）、MANUAL（F3，數字鍵指定）、AI（M4）。
 
 enum State { IDLE, WALK, ATTACK, BOUNCED, STAGGER, BROKEN, EXECUTED, RISING, TRANSITION, DEAD }
@@ -57,6 +58,8 @@ var _walk_stop := 0.0
 var _strafe_sign := 1.0
 ## 這次走路是不是喘息（§6.2 規則 5）：喘息一定走滿時間；逼近（AI 選到的動作）走到距離就立刻決定下一招
 var _walk_is_breather := false
+## 走過去要出的招（engage）：走到 engage_range 內就出；時間到還沒走到就放棄、重新決定
+var _engage_move: BossMoveData
 ## 待執行的懲罰技（架勢崩潰、治療）：在這一幀開始；-1 表示沒有
 var _punish_at := -1
 var _punish_move := &""
@@ -111,10 +114,11 @@ func _tick_state() -> void:
 				_end_action(false)
 		State.BROKEN:
 			if e >= Frames.of(VeltharisData.BREAK_TIME):
-				# 3 秒內沒有處決：自行恢復，韌性回滿（§11.4）
+				# 3 秒內沒有處決：自行恢復，韌性回滿（§11.4），和處決後一樣花 RISE_TIME 起身（2026-10-05 使用者）
 				toughness = VeltharisData.MAX_TOUGHNESS
 				sim.emit(&"boss_recover", {"pos": pos})
-				_end_action(true)
+				enter_state(State.RISING)
+				_check_phase_transition()  # 失衡期間 HP 被打到一半以下：起身直接換成轉場
 		State.EXECUTED:
 			if e >= Frames.of(PlayerData.EXECUTE_TIME):
 				toughness = VeltharisData.MAX_TOUGHNESS
@@ -301,11 +305,22 @@ func _ai_decide() -> void:
 		&"approach_fast":
 			_start_walk(&"approach", VeltharisData.FAST_SPEED, Frames.of(VeltharisData.APPROACH_MAX_TIME), VeltharisData.MID_RANGE - 20.0)
 		_:
-			start_move(VeltharisData.move(phase, choice))
+			engage(VeltharisData.move(phase, choice))
+
+
+## AI 出招：打得到（engage_range 內）就原地出；打不到先以 engage_speed 走到 engage_range，到了立刻出，
+## 走滿 APPROACH_MAX_TIME 還沒到就放棄、重新決定（2026-10-05 使用者：起手不再往前挪，先走到夠近才出招）
+func engage(m: BossMoveData) -> void:
+	if m.engage_range <= 0.0 or pos.distance_to(sim.player.pos) <= m.engage_range:
+		start_move(m)
+		return
+	_start_walk(&"approach", m.engage_speed, Frames.of(VeltharisData.APPROACH_MAX_TIME), m.engage_range)
+	_engage_move = m
 
 
 func _start_walk(mode_name: StringName, speed: float, frames: int, stop_distance: float) -> void:
 	_walk_is_breather = false
+	_engage_move = null
 	walk_mode = mode_name
 	walk_speed = speed
 	_walk_until = sim.combat_frame + frames
@@ -328,6 +343,11 @@ func _tick_walk() -> void:
 			if dist <= _walk_stop:
 				if _walk_is_breather:
 					walk_mode = &"strafe"
+				elif _engage_move != null:
+					var m := _engage_move
+					_engage_move = null
+					start_move(m)
+					return
 				else:
 					enter_state(State.IDLE)
 					return
@@ -347,6 +367,7 @@ func _tick_walk() -> void:
 			else:
 				walk_mode = &"strafe"
 	if sim.combat_frame >= _walk_until:
+		_engage_move = null
 		enter_state(State.IDLE)
 
 
@@ -372,6 +393,7 @@ func on_player_heal() -> void:
 
 func _schedule_punish(move_id: StringName) -> void:
 	move = null
+	_engage_move = null
 	enter_state(State.IDLE)
 	_punish_move = move_id
 	_punish_at = sim.combat_frame + Frames.of(VeltharisData.PUNISH_REACTION)
@@ -428,11 +450,9 @@ func _tick_attack() -> void:
 	if e < start:
 		if move.airborne_start >= 0.0:
 			_tick_leap(e, start, lock_at)
-		# 起手：鎖定前追蹤玩家方向；延遲停住期間不移動（姿勢靜止），但方向照常追蹤到鎖定點
+		# 起手：鎖定前追蹤玩家方向（原地轉，不往前挪）；延遲停住期間姿勢靜止，但方向照常追蹤到鎖定點
 		elif e < lock_at:
 			_face_player()
-			if not in_hold(i, e):
-				_advance_toward_player()
 		# 命中前踏步（雙斬第二刀）：方向已鎖定，判定開始時踏完
 		if hit.step_distance > 0.0 and e >= start - Frames.of(hit.step_time):
 			pos += facing * (hit.step_distance / Frames.of(hit.step_time))
@@ -467,17 +487,6 @@ func in_hold(i: int, e: int) -> bool:
 		return false
 	var hold_from := windup_start(i) + Frames.of(hit.hold_start)
 	return e >= hold_from and e < hold_from + Frames.of(hit.delay_hold)
-
-
-func _advance_toward_player() -> void:
-	if move.startup_advance_speed <= 0.0:
-		return
-	var to := sim.player.pos - pos
-	var dist := to.length()
-	if dist <= move.advance_stop_distance:
-		return
-	var step := minf(move.startup_advance_speed / Frames.FPS, dist - move.advance_stop_distance)
-	pos += to / dist * step
 
 
 func _face_player() -> void:
@@ -572,6 +581,17 @@ func remaining_frames() -> int:
 		State.RISING:
 			return Frames.of(VeltharisData.RISE_TIME) - e
 	return 0
+
+
+## 走路還要走幾幀（畫面用：起步要不要加快）：喘息走滿時間；逼近走到停下距離為止（玩家不動的話）
+func walk_frames_left() -> int:
+	if state != State.WALK:
+		return 0
+	var left := _walk_until - sim.combat_frame
+	if walk_mode == &"approach" and not _walk_is_breather:
+		var dist := pos.distance_to(sim.player.pos) - _walk_stop
+		left = mini(left, ceili(maxf(dist, 0.0) / maxf(walk_speed / Frames.FPS, 0.001)))
+	return left
 
 
 # --- 被彈返、被格擋、命中 --------------------------------------------------------------
