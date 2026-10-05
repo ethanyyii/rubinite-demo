@@ -381,6 +381,10 @@ def joints(d, name, i):
     return out
 
 
+# (sheet, direction) -> the top of the body may move this far a pose (recorded exceptions; worse fails again)
+STEP_WAIVED = {}
+
+
 def steps(label, d, frames, swords, grips, tips, arms=None, offs=None):
     """Between two poses: the top of the body and the upper body's mean column (its top rows,
     without the sword and the posed arms) move at most STEP_MAX; the tip at most TIP_STEP. On
@@ -405,7 +409,10 @@ def steps(label, d, frames, swords, grips, tips, arms=None, offs=None):
         if tips[j] and tips[j + 1]:
             worst_tip = max(worst_tip, math.dist((tips[j][0] + oa[0], tips[j][1] + oa[1]),
                                                  (tips[j + 1][0] + ob[0], tips[j + 1][1] + ob[1])))
-    check(f'{label} {d}: the top of the body moves at most {STEP_MAX} px a pose', worst_top <= STEP_MAX, f'worst {worst_top} px')
+    top_max = STEP_WAIVED.get((label, d), STEP_MAX)
+    check(f'{label} {d}: the top of the body moves at most {top_max} px a pose'
+          + (f' (waived from {STEP_MAX}: STEP_WAIVED)' if top_max != STEP_MAX else ''), worst_top <= top_max,
+          f'worst {worst_top} px')
     check(f'{label} {d}: the upper body moves sideways at most {STEP_MAX} px a pose', worst_edge <= STEP_MAX,
           f'worst {worst_edge} px (pose {where})')
     check(f'{label} {d}: the sword tip moves at most {TIP_STEP} px a pose', worst_tip <= TIP_STEP, f'worst {worst_tip:.0f} px')

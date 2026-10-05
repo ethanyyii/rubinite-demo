@@ -7,9 +7,12 @@ extends RefCounted
 ## 站著有兩種：劍立在地上（planted：待機、停步之後、起身之後）和扛劍（carry：出招、被彈開、收招中短僵直之後）。
 ## - 走路：從劍立在地上起步播 <移動>_start、從扛劍播 <移動>_cstart，播完照走的距離前進循環（每 4px 一張）。
 ##   往前走、後退、往他的右手邊／左手邊側移各一組；換組時欄不變。
-## - 走路 → 待機：遊戲常常從走路直接出招（WALK → IDLE → ATTACK 隔一幀），所以待機的前 STOP_PENDING 幀
-##   循環照舊；之後才播停步（從最近的一組），停完是劍立在地上的待機。
-## - 出招：從走路（含停步前那兩幀）出招播「從移動出招」的開頭（循環最近的一欄那組），之後接攻擊本身；
+## - 走路 → 待機：遊戲常常從走路直接出招（WALK → IDLE → ATTACK 隔一幀；懲罰技等 0.1 秒），所以待機的前
+##   STOP_PENDING 幀循環照舊；之後才播停步（從最近的一組），停完是劍立在地上的待機。
+## - 起步、停步還沒播完就換狀態（喘息很短、走到就出招）：照正在顯示的那一張換算成循環的那一欄、扛劍或劍立在地上
+##   （_settle），出招、短僵直、跪下才接得上對的那一組。起步照這次預計走多久加快（每張 2–4 幀）。
+## - 出招：從走路（含停步前那幾幀）出招播「從移動出招」的開頭（循環最近的一欄那組），之後接攻擊本身；
+##   劍立在地上時播「劍立在地上出招」的開頭（<圖名>_planted_entry：劍尖先往前離開地面，接上這一招的起手）；
 ##   第二階段有自己的收招（holds_phase2）；延遲版在最高點那張多停。精靈圖畫在遊戲移動前的位置的（雙斬的踏步、
 ##   突刺），偏移＝−面向 ×（遊戲現在的前進量 − 這一張的 advance）。
 ## - 被彈開：這一招的被彈開（第一張就是砍到的那一張）；被打斷（失衡、死亡、收招中短僵直）：
@@ -20,14 +23,20 @@ extends RefCounted
 const BS := BossSim.State
 const S := preload("res://scripts/view/boss_sprites.gd")
 const ROW_HYSTERESIS_DEG := 6.0
-const STOP_PENDING := 2
+## 懲罰技的反應時間（0.1 秒）也在這裡面：等著出突刺時不先播停步
+const STOP_PENDING := 7
+## 起步：從劍立在地上起步的第幾張起，劍已經過了一半、腿是循環的姿勢（之前的換算成劍立在地上）；扛劍起步的第幾張起
+## 腿踏出去了（之前的換算成扛劍站著）
+const START_LOOP_FROM := 5
+const CSTART_LOOP_FROM := 2
+## 停步：前一半換算成循環（劍還在肩上附近），後一半換算成劍立在地上
+const STOP_HALF := 5
 const LOOP_POSES := 20
 const STOP_FROM := [0, 5, 10, 15]
 const KNEEL_TAIL := [4, 5, 6, 7, 8]
 const KNEEL_TAIL_HOLDS := [4, 4, 4, 2, 2]
 const DEATH_TAIL := [9, 10, 11]
 const DEATH_TAIL_HOLDS := [6, 4, 4]
-const RISE_SPEED := 2.0          # 失衡自己站起來時（遊戲已經開始走）起身播兩倍速
 const ROW_ANGLE := {"right": 0.0, "down": 90.0, "left": 180.0, "up": -90.0}
 
 var clip := "idle"
@@ -50,7 +59,6 @@ var _loop_pos := 0.0
 var _last_pos := Vector2.ZERO
 var _pending := 0
 var _intro_done := true
-var _rise_pending := false
 var _move_id := StringName()
 var _sheet := ""
 var _pose := -1
@@ -77,6 +85,9 @@ func _enter(b: BossSim, prev: int) -> void:
 	offset = Vector2.ZERO
 	lift = 0.0
 	done_at = -1
+	if prev in [BS.ATTACK, BS.BOUNCED] and b.state in [BS.IDLE, BS.WALK]:
+		visual = "carry"            # 出招、被彈開都停在扛劍站著（AI 出招結束常常同一幀就開始喘息走路）
+	_settle()
 	match b.state:
 		BS.IDLE:
 			_enter_idle(prev)
@@ -107,8 +118,14 @@ func _enter_idle(prev: int) -> void:
 	_pending = 0
 	match prev:
 		BS.WALK:
-			_pending = STOP_PENDING                 # 循環照舊；可能下一幀就出招
-			_seq = []
+			match visual:
+				"carry":                            # 扛劍起步才剛開始就停（_settle）
+					_show_carry()
+				"planted":                          # 起步才剛開始、劍還沒離開地面多少就停
+					_play([["idle", null, null]], true, "planted")
+				_:
+					_pending = STOP_PENDING         # 循環照舊；可能下一幀就出招
+					_seq = []
 		BS.ATTACK, BS.BOUNCED:
 			_show_carry()
 		BS.STAGGER:
@@ -121,10 +138,6 @@ func _enter_idle(prev: int) -> void:
 					_show_carry()
 				_:
 					_play([["idle", null, null]], true, "planted")
-		BS.BROKEN:
-			# 失衡 3 秒自己站起來（遊戲接著就走）：起身加快
-			_rise_pending = true
-			_play([["rise", null, _scaled(S.clip("rise")["holds"], 1.0 / RISE_SPEED)]], false, "planted")
 		_:
 			_play([["idle", null, null]], true, "planted")
 
@@ -134,23 +147,46 @@ func _show_carry() -> void:
 	visual = "carry"
 
 
+## 起步、停步播到一半就換狀態：照正在顯示的那一張，換算成循環的那一欄（腿是循環的姿勢、劍在肩上附近）、
+## 扛劍站著或劍立在地上，之後選格照那個樣子接
+func _settle() -> void:
+	if visual != "other" or clip == "":
+		return
+	var n: int = S.clip(clip)["holds"].size()
+	# 起步那一段的移動（走的方向在起步中可能換了：_kind 是現在的，段名是起步時的）
+	var cstart := clip.ends_with("_cstart")
+	if cstart or clip.ends_with("_start"):
+		var kind := clip.trim_suffix("_cstart") if cstart else clip.trim_suffix("_start")
+		if cstart and col < CSTART_LOOP_FROM:
+			visual = "carry"
+		elif not cstart and col < START_LOOP_FROM:
+			visual = "planted"
+		else:
+			# 起步的後幾張就是循環的那幾欄（播完接 joins）；換方向時欄不變
+			var joins := int(S.clip(kind + "_start").get("joins", 0))
+			_loop_pos = float(posmod(joins - (n - col), LOOP_POSES))
+			visual = "loop"
+		_intro_done = true
+	elif clip.contains("_stop_"):
+		visual = "loop" if col < STOP_HALF else "planted"   # 前一半：_loop_pos 還是停下來那一欄
+
+
 func _enter_walk(b: BossSim) -> void:
 	_kind = _walk_kind(b, Vector2.ZERO)
+	var n: int = S.clip(_kind + "_start")["holds"].size()
+	# 每張 4 幀（快步 2 幀）；這次走不了那麼久（喘息短、快走到了）就加快到最少 2 幀，讓劍扛上肩、腿接上循環
 	var hold := maxi(1, roundi(4.0 * VeltharisData.WALK_SPEED / maxf(b.walk_speed, 1.0)))
+	hold = clampi(mini(hold, floori(b.walk_frames_left() / float(n))), mini(hold, 2), hold)
 	_intro_done = false
-	if _rise_pending:
-		_rise_pending = false
-		var rise := _scaled(S.clip("rise")["holds"], 1.0 / RISE_SPEED)
-		_play([["rise", null, rise], [_kind + "_start", null, _filled(S.clip(_kind + "_start")["holds"].size(), hold)]],
-			false, "loop")
-	elif visual == "loop":
+	if visual == "loop":
 		_intro_done = true
 		_seq = []
 	elif visual == "carry" and S.has_clip(_kind + "_cstart"):
-		_play([[_kind + "_cstart", null, null]], false, "loop")
+		_play([[_kind + "_cstart", null, _filled(S.clip(_kind + "_cstart")["holds"].size(), hold)]], false, "loop")
 	else:
-		_play([[_kind + "_start", null, _filled(S.clip(_kind + "_start")["holds"].size(), hold)]], false, "loop")
+		_play([[_kind + "_start", null, _filled(n, hold)]], false, "loop")
 	visual = "loop" if _intro_done else "other"
+
 
 
 func _enter_attack(b: BossSim) -> void:
@@ -169,6 +205,12 @@ func _enter_attack(b: BossSim) -> void:
 		if S.has_clip(name):
 			_entry = name
 			_entry_end = int(S.clip(name)["end"])
+	elif (visual == "planted" or (visual == "other" and _seq_end == "planted")) and mv.get("entries") != null:
+		# 劍立在地上（待機、停步的後一半、站著被打僵直之後）：劍尖先往前離開地面，接上這一招的起手
+		var name := "%s_planted_entry" % mv["entries"]
+		if S.has_clip(name):
+			_entry = name
+			_entry_end = int(S.clip(name)["end"])
 	visual = "attack"
 
 
@@ -178,6 +220,11 @@ func _enter_stagger(prev: int) -> void:
 		if start != "":
 			_play([[start, null, null]], false, "carry")
 			return
+	if visual == "carry":
+		# 扛劍站著：往前走第 0 欄那組（和跪下一樣）
+		_kind = "walk"
+		_loop_pos = 0.0
+		visual = "loop"
 	if visual == "loop":
 		_play([["%s_stagger_%d" % [_kind, _nearest_from(int(_loop_pos) % LOOP_POSES)], null, null]], false, "loop")
 		return
@@ -419,13 +466,6 @@ func _filled(n: int, h: int) -> Array:
 	var out := []
 	for i in n:
 		out.append(h)
-	return out
-
-
-func _scaled(holds: Array, k: float) -> Array:
-	var out := []
-	for h in holds:
-		out.append(maxi(1, roundi(float(h) * k)))
 	return out
 
 

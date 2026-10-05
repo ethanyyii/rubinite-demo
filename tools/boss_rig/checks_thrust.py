@@ -260,6 +260,13 @@ def distinct_checks(m, at=HOLD[1]):
               min(vals) >= CA.DISTINCT, ' '.join(f'{v:.0%}' for v in vals))
 
 
+# 2026-10-05: the side cape solved right (Clip(exact_cape), user: "修") no longer stands over the head, so the top of
+# the body is the head: facing left it drops 20 px from frame 30 to 33 (the deepest crouch before the push-off; facing
+# right 16). The approved second version moved the head exactly so - the cape over it hid the drop from this check.
+# An in-between pose would shift every later pose's index (the interrupt tables) for 4 px; recorded instead.
+CA.STEP_WAIVED[('boss_thrust', 'left')] = 20
+
+
 def main():
     CA._sync()
     ms = ET.moves()

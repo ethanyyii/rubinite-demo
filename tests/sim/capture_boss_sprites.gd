@@ -12,7 +12,8 @@ const CROP := Vector2i(400, 300)
 const FEET_AT := Vector2i(200, 250)
 
 ## 每個場景：[名字, 第幾階段, Boss 相對主角的位置, 時間表 [[幀數, {...}], ...], 要存全畫面的幀]
-## 時間表的動作（那一段的第一幀做）：move: 出哪一招（招式 id）；walk: 喘息走幾幀；player: 主角移到 Boss 的哪裡；
+## 時間表的動作（那一段的第一幀做）：move: 出哪一招（招式 id）；engage: AI 出這一招（打不到先走過去，2026-10-05）；
+## walk: 喘息走幾幀；player: 主角移到 Boss 的哪裡；
 ## parry: 等判定開始時完美彈返；break: 韌性削光；die: 打死；stagger: 收招中短僵直；hp_half: HP 降到一半（轉場）；
 ## execute: 主角處決（按攻擊）
 func scenes() -> Array:
@@ -30,7 +31,11 @@ func scenes() -> Array:
 		["walk_into_sweep", 1, Vector2(0, -260), [[10, {}], [1, {"walk": 150}], [70, {}], [1, {"move": &"royal_sweep"}], [130, {}]], []],
 		["sweep_parried", 1, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep", "parry": true}], [140, {}]], []],
 		["sweep_broken", 1, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [30, {}], [1, {"break": true}],
-			[200, {}], [1, {"walk": 100}], [100, {}]], [80]],
+			[260, {}], [1, {"walk": 100}], [100, {}]], [80]],
+		["engage_sweep", 1, Vector2(0, -210), [[10, {}], [1, {"engage": &"royal_sweep"}], [200, {}]], []],
+		["engage_cleave", 1, Vector2(0, -285), [[10, {}], [1, {"engage": &"oath_cleave"}], [200, {}]], []],
+		["short_breather", 2, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [102, {}], [1, {"walk": 24}],
+			[24, {}], [1, {"move": &"quick_combo_2"}], [120, {}]], []],
 		["sweep_staggered", 1, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [75, {}], [1, {"stagger": true}],
 			[60, {}]], []],
 		["thrust_dies", 1, Vector2(-200, 0), [[10, {}], [1, {"move": &"judgment_thrust"}], [25, {}], [1, {"die": true}], [200, {}]], []],
@@ -165,6 +170,9 @@ func _act(arena: CombatArena, o: Dictionary, bot: Idle) -> void:
 	if o.has("move"):
 		b.move = null
 		b.start_move(VeltharisData.move(b.phase, o["move"]))
+	if o.has("engage"):
+		b.move = null
+		b.engage(VeltharisData.move(b.phase, o["engage"]))
 	if o.get("break", false):
 		b._lose_toughness(9999.0)
 	if o.get("die", false):

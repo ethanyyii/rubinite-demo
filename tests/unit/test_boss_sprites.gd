@@ -135,10 +135,56 @@ func test_attack_from_walking_uses_its_start_from_a_move() -> void:
 	assert_eq(anim.clip, "boss_c1", "開頭播完接攻擊本身")
 
 
-func test_attack_from_standing_starts_on_the_carry() -> void:
+## 2026-10-05：劍立在地上直接出招，劍尖先往前離開地面接上起手（以前第一張就是扛劍，劍瞬間跳到肩上）
+func test_attack_from_standing_lifts_the_planted_sword_first() -> void:
+	_start(1, &"royal_sweep")
+	assert_eq(anim.clip, "boss_c1_planted_entry", "劍立在地上出招的開頭")
+	assert_eq(anim.frame_id, SP.frame_at(SP.clip("idle"), anim.row, 0), "第一張就是站姿")
+	_step(int(SP.clip("boss_c1_planted_entry")["end"]))
+	assert_eq(anim.clip, "boss_c1", "開頭播完接攻擊本身")
+
+
+func test_attack_from_the_carry_starts_on_the_carry() -> void:
+	sim.god_mode = true   # 主角被橫掃擊倒時 Boss 喘息改成側移（★7），這裡只看往前走
+	_start(1, &"royal_sweep")
+	_step(boss().move.total_frames() + 1)
+	assert_eq(boss().state, BS.IDLE)
+	assert_eq(anim.visual, "carry", "收招後扛劍站著")
 	_start(1, &"royal_sweep")
 	assert_eq(anim.clip, "boss_c1")
 	assert_eq(anim.col, 0)
+
+
+## 喘息很短（二階段最短 0.4 秒）：扛劍起步加快，走完前腿已經接上循環，出招接「從移動出招」
+func test_short_breather_from_the_carry_still_reaches_the_loop() -> void:
+	sim.god_mode = true   # 主角被橫掃擊倒時 Boss 喘息改成側移（★7），這裡只看往前走
+	_start(1, &"royal_sweep")
+	_step(boss().move.total_frames() + 1)
+	sim.player.pos = Vector2(0, 400)
+	boss().start_breather(24)
+	anim.update(boss())
+	assert_eq(anim.clip, "walk_cstart")
+	_step(23)
+	assert_eq(anim.col, int(SP.clip("walk_cstart")["holds"].size()) - 1, "24 幀內播到起步的最後一張")
+	_step(1)
+	sim.player.pos = Vector2(0, 40)
+	_start(1, &"royal_sweep")
+	assert_true(anim.clip.begins_with("boss_c1_walk_entry_"), "接從移動出招：%s" % anim.clip)
+
+
+## 起步還沒播完就出招：照正在顯示的那一張換算（腿已經是循環的姿勢：從移動出招）
+func test_attack_mid_walk_start_takes_the_start_from_a_move() -> void:
+	sim.god_mode = true   # 主角被橫掃擊倒時 Boss 喘息改成側移（★7），這裡只看往前走
+	_start(1, &"royal_sweep")
+	_step(boss().move.total_frames() + 1)
+	sim.player.pos = Vector2(0, 400)
+	boss().start_breather(120)
+	anim.update(boss())
+	_step(30)
+	assert_eq(anim.clip, "walk_cstart", "還在起步")
+	sim.player.pos = Vector2(0, 40)
+	_start(1, &"royal_sweep")
+	assert_true(anim.clip.begins_with("boss_c1_walk_entry_"), "接從移動出招：%s" % anim.clip)
 
 
 func test_perfect_parry_plays_the_moves_bounce() -> void:
@@ -210,3 +256,14 @@ func test_leap_lift_comes_from_the_sprites() -> void:
 		_step(1)
 		top = maxf(top, anim.lift)
 	assert_true(top > 80.0, "騰空最高 %.0f px（精靈圖畫的高度）" % top)
+
+
+## AI 出招結束同一幀就開始喘息走路（ATTACK → WALK）：劍在肩上，起步是扛劍起步，不是劍立在地上的起步
+func test_walk_right_after_an_attack_starts_from_the_carry() -> void:
+	sim.god_mode = true
+	_start(1, &"royal_sweep")
+	_step(boss().move.total_frames() - 1)
+	boss().mode = BossSim.Mode.AI       # 出招結束時接著喘息
+	_step(1)
+	assert_eq(boss().state, BS.WALK)
+	assert_true(anim.clip.ends_with("_cstart"), "扛劍起步：%s" % anim.clip)

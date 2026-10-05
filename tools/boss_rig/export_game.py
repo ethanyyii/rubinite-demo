@@ -177,6 +177,11 @@ def clips(cells):
                 for g, e in enumerate(AT.ENTRY_FROM):
                     out[f'{m.sheet}_{kind}_entry_{e}'] = {'dirs': grid(cells, name, cell, anchor, [4 * g], range(len(times))),
                                                           'holds': holds, 'end': end}
+    # the starts with the sword planted (export_planted): the first `end` frames of the attacks that open like that sheet
+    for key, e in data.items():
+        if key.endswith('_planted_entry'):
+            out[key] = {'dirs': grid(cells, key, tuple(e['cell']), tuple(e['anchor']), [0], range(len(e['holds']))),
+                        'holds': e['holds'], 'end': e['end']}
     # the carry, standing (every attack's first pose)
     out['carry'] = {'dirs': {d: v[:1] for d, v in out['boss_c1']['dirs'].items()}, 'holds': [1]}
     # the interrupted attacks (export_interrupt): every start's way

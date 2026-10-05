@@ -102,16 +102,16 @@ func _center_text(font: Font, text: String, font_size: int, y: float, color: Col
 
 
 ## Boss 在畫面外時（場地 600px 高、Boss 160px 高，玩家在最南端時 Boss 可能整個出畫面），
-## 在畫面上緣標出 Boss 的方向；危險預兆的頭頂星形在畫面外時也補畫在上緣（plan §7 預兆可讀）。
+## 在畫面上緣標出 Boss 的方向；危險預兆時頭盔（十字紅光）在畫面外，就在上緣畫星形（plan §7 預兆可讀）。
+## 頭頂的星形本身拿掉了（2026-10-05 使用者：有十字紅光就夠了），只剩看不到頭盔時的這個。
 func _draw_offscreen_danger(sim: CombatSim) -> void:
 	var ct := get_viewport().get_canvas_transform()
-	var top: float = BossView.body_rect(sim.boss).position.y  # 畫出來的這一格的頂端（與 boss_view 畫星形的位置一致）
+	var top: float = BossView.body_rect(sim.boss).position.y  # 畫出來的這一格的頂端
 	var head := ct * (sim.boss.pos + Vector2(0, top))
-	var star := ct * (sim.boss.pos + Vector2(0, top - 22 * BossView.K * 0.5))
 	var danger := sim.boss.telegraph() == CombatTypes.Telegraph.DANGER
 	var feet := ct * sim.boss.pos
 	var boss_offscreen := feet.y < 6.0
-	if not boss_offscreen and not (danger and star.y < 24.0):
+	if not boss_offscreen and not (danger and head.y < 12.0):
 		return
 	var c := Vector2(clampf(head.x, 30.0, size.x - 30.0), 21.0)
 	if boss_offscreen:

@@ -3,7 +3,7 @@ extends Node2D
 ## 精靈圖：BossAnim 每個戰鬥幀選格（CombatArena 在 sim.step() 之後呼叫 sim_stepped()），子節點用調色盤著色器
 ## 畫打包好的格子（BossSprites）。受擊閃白、失衡時紅火暗下、死亡後化為灰燼消散在著色器裡做。
 ## 程式畫的特效照舊：腳下的影子（墜王之躍騰空時變小）、落點陰影、起手預兆（劍變亮紅、延遲停住時劍閃爍和符文、
-## 灰燼衝擊的頭盔十字紅光＋頭頂星形）、第二階段劍上的火焰。劍的位置用幀表每一張記下的握柄、劍尖。
+## 灰燼衝擊的頭盔十字紅光）、第二階段劍上的火焰。頭頂的白色星形拿掉了（2026-10-05 使用者：有十字紅光就夠了）。劍的位置用幀表每一張記下的握柄、劍尖。
 ## 只讀取 BossSim 的狀態，不改動它。
 
 const R := VeltharisData.HURT_RADIUS
@@ -11,7 +11,7 @@ const H := VeltharisData.HEIGHT
 const BS := BossSim.State
 const TG := CombatTypes.Telegraph
 const S := preload("res://scripts/view/boss_sprites.gd")
-## 頭頂星形、畫面外指示用的倍率（舊的佔位圖形照 120px 的 Boss 寫的）
+## 影子的倍率（舊的佔位圖形照 120px 的 Boss 寫的）
 const K := VeltharisData.HEIGHT / 120.0
 const SHADER := preload("res://scripts/view/boss_palette.gdshader")
 const FADE_TIME := 1.6                    # 死亡：跪下、往前垂之後化為灰燼的時間（boss §8.2，程式做）
@@ -25,7 +25,7 @@ var _sprite: BossSprite
 var _over: Over
 var _mat: ShaderMaterial
 
-## 畫出來的身體（目前這一格）相對腳底的範圍：主角在 Boss 後面被擋住時畫剪影（player_view）、頭頂星形的位置
+## 畫出來的身體（目前這一格）相對腳底的範圍：主角在 Boss 後面被擋住時畫剪影（player_view）、畫面外指示的位置
 static var _live_rect := {}
 
 
@@ -153,8 +153,6 @@ func draw_over(node: Node2D) -> void:
 			var pt: Vector2 = (blade[0] + d * (0.15 + 0.17 * k)).round()
 			node.draw_rect(Rect2(pt - Vector2(1, 1), Vector2(3, 3)), Color(1, 1, 1) if k == lit else Color(1, 0.85, 0.8, 0.8))
 	_draw_flare(node, b)
-	if tg == TG.DANGER:
-		_draw_danger_star(node, b)
 	if (b.phase == 2 or b.state == BS.TRANSITION) and not blade.is_empty():
 		_draw_flames(node, blade)
 
@@ -191,18 +189,6 @@ func _cross(node: Node2D, c: Vector2, arms: Vector2, col: Color) -> void:
 		c + Vector2(0, h)]), col)
 	node.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -arms.y), c + Vector2(w, 0), c + Vector2(0, arms.y),
 		c + Vector2(-w, 0)]), col)
-
-
-## 危險預兆：頭頂的白色星形圖示（色盲也能辨識的形狀）
-func _draw_danger_star(node: Node2D, b: BossSim) -> void:
-	var top := body_rect(b).position.y
-	var c := Vector2(0, top - 22 * K * 0.5)
-	var pulse := 1.0 + 0.2 * sin(Time.get_ticks_msec() * 0.03)
-	DrawUtil.fill_ellipse(node, c, Vector2(15, 15) * pulse, Color(1, 1, 1, 0.25), 20)
-	node.draw_colored_polygon(DrawUtil.star_points(c, 11.0 * pulse, 4.5 * pulse), Palette.DANGER)
-	var pts := DrawUtil.star_points(c, 12.0 * pulse, 5.0 * pulse)
-	pts.append(pts[0])
-	node.draw_polyline(pts, Color(0.2, 0.2, 0.25), 1.0)
 
 
 ## 第二階段：大劍燃起更猛烈的火焰（boss §5）

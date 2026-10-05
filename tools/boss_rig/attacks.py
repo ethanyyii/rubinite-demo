@@ -1780,8 +1780,10 @@ def thrust():
     # musts: every frame of the lunge (the game moves him); every other frame as the weight comes back
     # off the front foot and he straightens; lead False: a thrust, not a cut - the edges stay up and
     # down while it drives out (with the edge leading the flat turned flat)
+    # exact_cape (2026-10-05, user: "修"): crouched 28 px the side cape no longer stands over his head
     return Clip('thrust', with_poles(thrust_keys(), POLES_THRUST), thrust_steps(), advance=lunge_advance,
-                musts=tuple(range(THRUST_W, THRUST_W + LUNGE_FRAMES + 1)) + THRUST_BACK_MUSTS, lead=False)
+                musts=tuple(range(THRUST_W, THRUST_W + LUNGE_FRAMES + 1)) + THRUST_BACK_MUSTS, lead=False,
+                exact_cape=True)
 
 
 THRUST_BACK_MUSTS = tuple(range(52, 74, 2))
@@ -1810,7 +1812,7 @@ def thrust_bounce():
          (66, carry_key())]
     steps = {'L': [(12, fL), (28, STAND)], 'R': [(36, fR), (52, STAND)]}
     return Clip('thrust_bounce', with_poles(k, {4: (DOWN_R, None), 10: ((0.0, 1.0, -0.4), None),
-                                                20: ((-0.2, 1.0, 0.0), None)}), steps)
+                                                20: ((-0.2, 1.0, 0.0), None)}), steps, exact_cape=True)
 
 
 # ------------------------------------------------------------------ C6 灰燼迴旋 (the ash spin), one hand, phase 2
