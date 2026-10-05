@@ -19,3 +19,6 @@ export_presets.cfg
 # Python bytecode from the sprite tools
 tools/sprite_rig/__pycache__/
 tools/boss_rig/__pycache__/
+
+# Work files of the Boss rig (plans, rendered pieces)
+tools/boss_rig/.work/

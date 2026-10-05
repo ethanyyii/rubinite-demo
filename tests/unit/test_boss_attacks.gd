@@ -234,30 +234,40 @@ func test_boss_faces_player_while_idle() -> void:
 
 
 func test_delayed_hold_pose_is_static_star8() -> void:
-	# ★8：延遲期間維持清楚的靜止姿勢。劍在停住開始時已舉到最高點，停住期間每一幀的姿勢都一樣。
-	var BossView: GDScript = load("res://scripts/view/boss_view.gd")
+	# ★8：延遲期間維持清楚的靜止姿勢。Boss 的精靈圖（BossAnim）：停住開始時是下劈舉到最高點那一張，
+	# 停住期間每一幀畫的都是同一格、方向不換。
+	var anim := BossAnim.new()
 	sim.player.pos = Vector2(0, 30)
 	_start(&"oath_cleave_delayed")
 	var hold_from := Frames.of(0.8)
 	var hold_to := hold_from + Frames.of(0.6)
-	_to_move_frame(hold_from)
-	var ref: Dictionary = BossView.compute_pose(boss())
-	var up_dir: Vector2 = ref["dir"]
-	assert_true(up_dir.y < -0.9, "停住時劍在最高點（朝上）：%s" % up_dir)
+	anim.update(boss())
+	while boss().state_elapsed() < hold_from:
+		advance(1)
+		anim.update(boss())
+	var c := BossSprites.clip("boss_cleave")
+	assert_eq(anim.clip, "boss_cleave")
+	assert_eq(anim.col, int(c["delayed"]["pose"]), "停住時是下劈的最高點那一張")
+	var ref := anim.frame_id
+	var row := anim.row
 	while boss().state_elapsed() < hold_to - 1:
 		advance(1)
-		var pose: Dictionary = BossView.compute_pose(boss())
+		anim.update(boss())
 		assert_eq(boss().telegraph(), TG.DELAYED)
-		assert_true((pose["dir"] as Vector2).is_equal_approx(up_dir), "第 %d 幀姿勢改變了" % boss().state_elapsed())
-		assert_eq(pose["hand"], ref["hand"])
+		assert_eq(anim.frame_id, ref, "第 %d 幀換了一格" % boss().state_elapsed())
+		assert_eq(anim.row, row)
 
 
-func test_normal_cleave_reaches_top_before_hit() -> void:
-	var BossView: GDScript = load("res://scripts/view/boss_view.gd")
+func test_cleave_sprite_strikes_on_the_hit_frame() -> void:
+	# 精靈圖配合判定：判定開始那一幀畫的是下劈砍到的那一張（幀表的第一擊）
+	var anim := BossAnim.new()
 	_start(&"oath_cleave")
-	_to_move_frame(Frames.of(1.0) - Frames.of(0.2))
-	var d: Vector2 = BossView.compute_pose(boss())["dir"]
-	assert_true(d.y < -0.9, "普通版在命中前 0.2 秒舉到最高點")
+	anim.update(boss())
+	_to_move_frame(Frames.of(1.0))
+	anim.update(boss())
+	var c := BossSprites.clip("boss_cleave")
+	assert_eq(int(c["t"][anim.col]), int(c["hits"][0]["start"]), "判定開始那一幀是砍到的那一張")
+	assert_eq(int(c["hits"][0]["start"]), boss().hit_start_frame(0))
 
 
 func test_thrust_lunges_along_locked_direction() -> void:
@@ -276,16 +286,21 @@ func test_thrust_lunges_along_locked_direction() -> void:
 
 
 func test_delayed_hold_pose_does_not_flip_when_player_crosses() -> void:
-	var BossView: GDScript = load("res://scripts/view/boss_view.gd")
+	var anim := BossAnim.new()
 	sim.player.pos = Vector2(30, 30)
 	_start(&"oath_cleave_delayed")
-	_to_move_frame(Frames.of(0.8) + 1)
-	var ref: Dictionary = BossView.compute_pose(boss())
+	anim.update(boss())
+	while boss().state_elapsed() < Frames.of(0.8) + 1:
+		advance(1)
+		anim.update(boss())
+	var ref := anim.frame_id
+	var row := anim.row
 	sim.player.pos = Vector2(-30, 30)  # 玩家繞到另一側
-	_to_move_frame(Frames.of(0.8) + 20)
-	var pose: Dictionary = BossView.compute_pose(boss())
-	assert_true((pose["dir"] as Vector2).is_equal_approx(ref["dir"]), "停住期間不翻面")
-	assert_eq(pose["hand"], ref["hand"])
+	while boss().state_elapsed() < Frames.of(0.8) + 20:
+		advance(1)
+		anim.update(boss())
+	assert_eq(anim.row, row, "停住期間不翻面")
+	assert_eq(anim.frame_id, ref)
 
 
 ## 雙斬第二刀左腳直接往前踏（2026-10-01 使用者：「揮第二下左腳直接向前踏好了，右腳不要收回了，這樣的代價是

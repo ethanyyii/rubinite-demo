@@ -44,6 +44,9 @@ python3 tools/boss_rig/checks.py
 | `checks_spin.py [--selftest]` | 迴旋的自動檢查：遊戲的時間（`ash_spin` 一擊）、3D 模型逐幀（腿照畫的面向量）、拖地（劍尖碰地不進地、在右後方）、往右扭、判定期間劍往左繞完 360°（每幀 30° 以內）、劍尖 0.9×165 以上且在主角高度、單手、整個身體不停地轉、邊轉邊蹲、每一列都出現四個面向、軸腳（踩到中線、不離開原位、腳掌轉）、右腳離地繞、落在後面、轉身時髖在原點、蹲著停住、劍面不閃、起手剪影分得出、成品逐張。`--selftest` 刻意弄壞九種 |
 | `export_leap.py [--no-video]` | C7 墜王之躍（二階段）、被彈開、從移動出招。精靈圖 `boss_leap*.png`，json 每張多了 `lift`、`boss_leap` 多了 `air`；預覽 `docs/art-preview/boss/leap/`（原地看、照遊戲的位置往前移 240px 兩種；地上的黑影是示意）。約 5 分鐘（不含影片） |
 | `checks_leap.py [--selftest]` | 墜王之躍的自動檢查：遊戲的時間（`kings_leap`：起跳、鎖定、落地＝判定、收招）、3D 模型逐幀（跪地那段照已核准的跪姿不查膝蓋）、劍掛在背上的時間與放手／握回不跳、空手時不碰劍柄、腳（起跳前在地上、騰空時兩腳都離地、落地兩腳著地、右膝跪地、其他時間一次一隻腳、髖的高度不跳）、最高 70px 以上、落地右拳碰地（3D 和側面畫出來的）且停住、手臂畫長不超過 1.5 倍、劍面不閃、起手剪影分得出、手肘不反折（前臂往後折）、成品逐張。`--selftest` 刻意弄壞十種 |
+| `export_interrupt.py all [--jobs 4]`（或 `plan`／`render I N [kind]`／`assemble`／`gifs`） | 被打斷（2026-10-05）：每一招、每個被彈開被打斷時的銜接——出招中失衡／死亡（跪下）、收招中短僵直（回扛劍）。`plan` 選起點、排路線（`interrupt.py`，暫存 `.work/interrupt_plan.json`，相近的起點跨招共用）；`render` 平行出圖（`.work/interrupt/<起點>.pkl`）；`assemble` 寫 `boss_<招>_break.png`／`_stagger.png`、json `boss_<招>_break`／`_stagger`、預覽 `docs/art-preview/boss/interrupt/`。全部約 25 分鐘（四個程式） |
+| `checks_interrupt.py [--selftest]` | 被打斷的自動檢查：每一張都有起點、跳到起點的距離、3D 逐幀（手、劍不穿身體、腿、劍尖插地前不碰地）、逐張的換圖上限、跪下的銜接接得上 `boss_kneel_down` 第 5 欄、短僵直最後是扛劍；`--selftest` 刻意弄壞六種 |
+| `export_game.py` | **遊戲用的 Boss 圖**（2026-10-05 接進遊戲）：每一格裁到內容、去重、打包成 L8 調色盤圖＋幀表 `assets/sprites/boss_game/boss_frames.json`。**重新輸出任何 Boss 精靈圖之後都要重跑**（約 5 分鐘），再 `godot --headless --path . --import` |
 | `compare_sheets.py 舊版資料夾 輸出.png 圖名 幀,幀,… [方向,…] [舊版名稱 新版名稱]` | 改版時新舊並排：同一個戰鬥幀，舊版和新版的格子上下並排（每個方向兩列）。`export_attack.py` 會清掉預覽資料夾，**重跑之前**先把舊的 `assets/sprites/boss/boss_*.png` 和 `boss_attacks.json` 複製出來，跑完再做並排、手動加進 `index.html` |
 | `labels.py <資料夾> [down right up]` | 零件分區的疊圖（檢查用）：站姿每個像素屬於哪個零件 |
 | `gait.py` | 印出走路每一張兩條腿的關節位置 |
@@ -52,7 +55,23 @@ python3 tools/boss_rig/checks.py
 
 > **2026-09-30**：使用者決定**所有移動（往前走、後退、側移）都把劍橫著扛在右肩上**，出招後也回到肩上（`carry.py`）。先前的「拖劍走」（已 commit 在 d291657）作廢，程式已拿掉。
 
-## 精靈圖格式（`assets/sprites/boss/`，還沒接進遊戲）
+## 接進遊戲（2026-10-05）
+
+- 遊戲不讀 `assets/sprites/boss/` 的精靈圖（`.gdignore`：12 億像素、有的寬過顯示卡上限）；讀 `export_game.py` 打包的 `assets/sprites/boss_game/`：14 張 4096² 的 L8 圖（每個像素是調色盤索引，0 透明；Boss 只用 48 色）、`boss_palette.png`（64×1）、`boss_frames.json`（`frames`：每格在哪張圖、裁切後相對腳底的位置；`clips`：每段四個方向的格與每張停幾幀，攻擊另有 t、holds_phase2、hits、advance、at（握柄、劍尖）、delayed、flash、air、lift、game_step；`moves`：遊戲的招式 id → 圖、從移動出招用哪一張、被彈開；`interrupt`：被打斷的對照表）。
+- 遊戲端：`scripts/view/boss_sprites.gd`（讀幀表）、`boss_anim.gd`（每個戰鬥幀依 `BossSim` 選格；規則寫在檔頭）、`boss_view.gd`（畫；`boss_palette.gdshader` 查調色盤、閃白、變暗、淡出）。
+- 段名：待機 `idle`、走路 `walk`／`back`／`strafe_r`／`strafe_l`（＋`_start`、`_cstart`、`_stop_<0|5|10|15>`、`_stagger_<…>`、`_kneel_<…>`）、`stagger`、`bounce`、`kneel_down`、`kneel_breathe`、`executed`、`rise`、`death`、`transition`、`transition_kneel`、`carry`（扛劍站著）、每一招的圖名（`boss_c1` …）、從移動出招 `<圖名>_<移動>_entry_<欄>`、被打斷的銜接 `start_<編號>`。
+- 遊戲裡錄影：`godot --path . -s res://tests/sim/capture_boss_sprites.gd -- --out=<資料夾> [--only=場景名]`（要有畫面，約 2 分鐘），再 `python3 tools/sprite_rig/ingame_preview.py <資料夾> docs/art-preview/boss/ingame --scale=2`（預覽頁的 `index.html` 是手寫的，場景改了要跟著改）。
+
+## 被打斷的精靈圖（2026-10-05，`interrupt.py`、`export_interrupt.py`）
+
+| 檔案 | 一格 | 排法 | 遊戲裡怎麼接 |
+|---|---|---|---|
+| `boss_<招>_break.png`（`_break2` …） | 384×(336＋top)，腳底 (192, 272＋top)（json `cell`、`anchor`） | 每個起點一組四列（朝下、朝右、朝上、朝左），欄＝那一段的每一張；一張圖最多 12 組 | `BROKEN`／`DEAD` 從出招或被彈開：照 json `boss_<招>_break` 的 `pose_start[被打斷時顯示的那一張]` 選起點（有的起點是別招做的：`from_sheet`），播完接 `boss_kneel_down` 第 5–9 欄、跪著喘；死亡再接 `boss_death` 第 10–12 欄。第一張是被打的一震 |
+| `boss_<招>_stagger.png` | 同上 | 同上（只有收招的起點） | `STAGGER` 從收招：0.3 秒，最後一張是扛劍站著 |
+
+做法：起點（畫面上跳最多 32px、劍尖 120px）、路線（3D 逐幀檢查，經過的位置照收劍路線 `carry.pose3`）、時間分配（`Even`：畫面上每張的移動量平均）、迴旋轉到一半先順著轉完、劍掛在背上先拔劍、短僵直照收招路線依移動量壓進 0.3 秒，見 `interrupt.py` 檔頭和 `docs/art-progress.md`「三種銜接動作」。
+
+## 精靈圖格式（`assets/sprites/boss/`；遊戲讀的是打包後的，見上面「接進遊戲」）
 
 列＝方向，由上到下朝下、朝右、朝上、朝左（**朝左不是朝右的鏡像**，見「朝左」）。腳底對齊點都是 (128, 208)。
 

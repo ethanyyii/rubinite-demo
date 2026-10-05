@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boss 精靈圖：遊戲裡的樣子</title>
+<style>
+  :root { --bg: #1b1d21; --card: #25282e; --text: #e8e6e1; --muted: #a3a09a; --accent: #7fa8f5; --warn: #f0b35a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(27,29,33,.95); border-bottom: 1px solid #333; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  header h1 { font-size: 17px; margin: 0; }
+  .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { background: #333842; color: var(--text); border: 1px solid #4a505c; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .intro { color: var(--muted); max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; }
+  .card.ask { outline: 2px solid var(--warn); }
+  .card h2 { font-size: 15px; margin: 0 0 6px; }
+  .card h2 .tag { font-size: 12px; color: #111; background: var(--warn); border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+  .card h2 .new { background: var(--accent); }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  video, .shot { width: 100%; image-rendering: pixelated; border-radius: 6px; background: #000; display: block; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 16px; }
+  @media (max-width: 460px) { .grid, .shots { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Boss 精靈圖：遊戲裡的樣子</h1>
+  <div class="controls">
+    <button data-rate="1" class="on">正常速度</button>
+    <button data-rate="0.5">半速</button>
+    <button data-rate="0.25">1/4 速</button>
+    <button id="pause">全部暫停</button>
+    <button id="back">◀ 一格</button>
+    <button id="step">一格 ▶</button>
+  </div>
+</header>
+<main>
+<p class="intro">這些是在真正的遊戲場景裡錄的：Boss 照腳本出每一招、被彈開、失衡、短僵直、死亡、被處決、轉場，每一格都是遊戲當下畫出來的畫面，60 格／秒，就是遊戲的速度（以 Boss 為中心裁切，放大 2 倍）。被打中時畫面會停一下（頓幀），那是遊戲本來的效果。劍上的紅光預兆、頭盔的十字紅光、頭上的星形、第二階段的火焰、影子、落點紅圈、灰燼淡出是程式畫的特效。主角這次不動（只看 Boss）。標橘色框的是這次新做的銜接，請特別看。</p>
+
+<div class="grid">
+  <div class="card"><h2>站著、走路、停下</h2><video src="stand_walk.mp4" autoplay loop muted playsinline></video>
+    <p>劍立在地上站著 → 走（起步時劍從身前往上繞、扛到肩上）→ 側移 → 停下（劍放回地上）→ 再起步、側移、停下。走路照實際走的距離換圖（每 4px 一張），所以腳不會滑。</p></div>
+  <div class="card"><h2>王權橫掃</h2><video src="sweep.mp4" autoplay loop muted playsinline></video>
+    <p>從扛劍站著出手，砍完回到扛劍站著。起手時劍上的紅光是預兆（程式畫的）。</p></div>
+  <div class="card"><h2>從走路直接出招</h2><video src="walk_into_sweep.mp4" autoplay loop muted playsinline></video>
+    <p>走到一半直接出招：先播「從移動出招」的開頭（腳收回、劍往上提），再接橫掃本身。遊戲裡 Boss 常常這樣出招。</p></div>
+  <div class="card"><h2>雙斬</h2><video src="twin.mp4" autoplay loop muted playsinline></video>
+    <p>第二刀前往前踏一步（遊戲把 Boss 往前移，精靈圖跟著對齊）。</p></div>
+  <div class="card"><h2>快斬二連</h2><video src="quick2.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>快斬三連（上挑）</h2><video src="quick3.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>墜誓下劈</h2><video src="cleave.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>墜誓下劈（延遲版）</h2><video src="cleave_delayed.mp4" autoplay loop muted playsinline></video>
+    <p>舉到最高點停住 0.6 秒：停住期間畫面完全不動（★8），劍紅白閃爍、符文輪流亮。</p></div>
+  <div class="card"><h2>裁決突刺</h2><video src="thrust.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>灰燼衝擊</h2><video src="impact.mp4" autoplay loop muted playsinline></video>
+    <p>插劍前頭盔十字閃一下紅光（淡入淡出、橫寬直窄），頭上出現危險預兆的星形。</p></div>
+  <div class="card"><h2>三斬（二階段）</h2><video src="triple.mp4" autoplay loop muted playsinline></video>
+    <p>劍上有第二階段的火焰（程式畫的）。</p></div>
+  <div class="card"><h2>雙重衝擊（二階段）</h2><video src="double_impact.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>灰燼迴旋（二階段）</h2><video src="spin.mp4" autoplay loop muted playsinline></video>
+  </div>
+  <div class="card"><h2>墜王之躍（二階段）</h2><video src="leap.mp4" autoplay loop muted playsinline></video>
+    <p>騰空的高度畫在圖裡，地上的影子變小；紅圈是落點。</p></div>
+  <div class="card"><h2>被完美彈返</h2><video src="sweep_parried.mp4" autoplay loop muted playsinline></video>
+    <p>砍到那一刻被彈開：播這一招自己的被彈開，最後回到扛劍站著。</p></div>
+  <div class="card ask"><h2>出招中失衡（新做的銜接）<span class="tag">新</span></h2><video src="sweep_broken.mp4" autoplay loop muted playsinline></video>
+    <p>起手時韌性被削光：被打的一震（畫面停一下、身體變暗）→ 劍插到右手邊、跪下 → 跪著喘 3 秒 → 自己站起來（遊戲接著就開始走，所以起身加快）→ 起步走。</p></div>
+  <div class="card ask"><h2>收招中短僵直（新做的銜接）<span class="tag">新</span></h2><video src="sweep_staggered.mp4" autoplay loop muted playsinline></video>
+    <p>收招時被重擊打中：往後一震，照這一招自己收劍的路線在 0.3 秒內回到扛劍站著。</p></div>
+  <div class="card ask"><h2>出招中死亡（新做的銜接）<span class="tag">新</span></h2><video src="thrust_dies.mp4" autoplay loop muted playsinline></video>
+    <p>突刺起手時被打死：一震 → 插劍跪下 → 往前垂 → 化為灰燼消散（程式做的淡出）。</p></div>
+  <div class="card ask"><h2>迴旋轉到一半失衡（新做的銜接）<span class="tag">新</span></h2><video src="spin_broken_turning.mp4" autoplay loop muted playsinline></video>
+    <p>順著原本的轉向把那一圈轉完才插劍跪下（倒轉回去劍會掃過身體）。這段比較長，請看會不會覺得他「被打斷了還在轉」。</p></div>
+  <div class="card ask"><h2>墜王之躍落地後失衡（新做的銜接）<span class="tag">新</span></h2><video src="leap_broken_landed.mp4" autoplay loop muted playsinline></video>
+    <p>劍在背上：先伸手到肩後拔劍、舉起、往前放下插地，再跪下。比一般的長。</p></div>
+  <div class="card"><h2>被處決、起身</h2><video src="executed.mp4" autoplay loop muted playsinline></video>
+    <p>失衡跪下 → 主角處決（白色閃光）→ 倒地的姿勢 → 起身，劍立在地上站著。</p></div>
+  <div class="card"><h2>階段轉場</h2><video src="transition.mp4" autoplay loop muted playsinline></video>
+    <p>HP 降到一半：快速跪下、披風翻飛、起身。</p></div>
+</div>
+
+<h2 style="margin-top:28px">整個畫面（遊戲的 1 倍）</h2>
+<div class="shots">
+  <img class="shot" src="executed_full_0060.png" alt="executed_full_0060">
+  <img class="shot" src="impact_full_0030.png" alt="impact_full_0030">
+  <img class="shot" src="leap_full_0070.png" alt="leap_full_0070">
+  <img class="shot" src="spin_full_0060.png" alt="spin_full_0060">
+  <img class="shot" src="stand_walk_full_0020.png" alt="stand_walk_full_0020">
+  <img class="shot" src="stand_walk_full_0120.png" alt="stand_walk_full_0120">
+  <img class="shot" src="sweep_broken_full_0080.png" alt="sweep_broken_full_0080">
+  <img class="shot" src="sweep_full_0058.png" alt="sweep_full_0058">
+  <img class="shot" src="thrust_full_0044.png" alt="thrust_full_0044">
+  <img class="shot" src="transition_full_0050.png" alt="transition_full_0050">
+</div>
+</main>
+<script>
+  const vids = () => [...document.querySelectorAll('video')];
+  document.querySelectorAll('[data-rate]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-rate]').forEach(x => x.classList.toggle('on', x === b));
+    vids().forEach(v => { v.playbackRate = +b.dataset.rate; v.play(); });
+    document.getElementById('pause').textContent = '全部暫停';
+  }));
+  document.getElementById('pause').addEventListener('click', e => {
+    const paused = vids().some(v => !v.paused);
+    vids().forEach(v => paused ? v.pause() : v.play());
+    e.target.textContent = paused ? '全部播放' : '全部暫停';
+  });
+  const nudge = d => { vids().forEach(v => { v.pause(); v.currentTime = Math.max(0, v.currentTime + d / 60); });
+    document.getElementById('pause').textContent = '全部播放'; };
+  document.getElementById('step').addEventListener('click', () => nudge(1));
+  document.getElementById('back').addEventListener('click', () => nudge(-1));
+</script>
+</body>
+</html>

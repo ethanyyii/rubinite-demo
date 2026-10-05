@@ -512,8 +512,14 @@ func test_silhouette_only_when_behind_the_boss() -> void:
 	assert_false(PV.hidden_by_boss(Vector2(0, 30), boss_feet, standing), "Boss 前方：主角畫在 Boss 上面")
 	assert_false(PV.hidden_by_boss(Vector2(60, -30), boss_feet, standing), "Boss 後方但錯開：看得到")
 	assert_false(PV.hidden_by_boss(Vector2(0, -200), boss_feet, standing), "遠在 Boss 後面：不重疊")
+	# 被處決時 Boss 跪著（美術的跪姿，2026-10-05 接進遊戲；之前的佔位圖形是橫躺）：畫出來的範圍比站著矮，
+	# 站在跪著的頭頂上方的主角看得到，Boss 站著時同一個位置會被擋住
 	sim.boss.enter_state(BossSim.State.EXECUTED)
-	assert_false(PV.hidden_by_boss(Vector2(0, -52), boss_feet, BV.body_rect(sim.boss)), "Boss 倒在地上：擋不住站著的主角")
+	var kneel: Rect2 = BV.body_rect(sim.boss)
+	assert_true(kneel.position.y > standing.position.y + 20, "跪著比站著矮：%s / %s" % [kneel, standing])
+	var behind := Vector2(0, kneel.position.y - 1)
+	assert_false(PV.hidden_by_boss(behind, boss_feet, kneel), "Boss 跪著：擋不住在他頭頂後方的主角")
+	assert_true(PV.hidden_by_boss(behind, boss_feet, standing), "同一個位置，Boss 站著時擋住")
 
 
 func test_view_draws_the_selected_cell() -> void:

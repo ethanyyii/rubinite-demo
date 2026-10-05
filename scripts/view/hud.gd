@@ -105,9 +105,9 @@ func _center_text(font: Font, text: String, font_size: int, y: float, color: Col
 ## 在畫面上緣標出 Boss 的方向；危險預兆的頭頂星形在畫面外時也補畫在上緣（plan §7 預兆可讀）。
 func _draw_offscreen_danger(sim: CombatSim) -> void:
 	var ct := get_viewport().get_canvas_transform()
-	var body_y: float = (BossView.compute_pose(sim.boss)["body"] as Vector2).y  # 蹲下、舉劍時的身體偏移（與 boss_view 畫星形的位置一致）
-	var head := ct * (sim.boss.pos + Vector2(0, -VeltharisData.HEIGHT + body_y))
-	var star := ct * (sim.boss.pos + Vector2(0, -VeltharisData.HEIGHT - 22 * BossView.K + body_y))
+	var top: float = BossView.body_rect(sim.boss).position.y  # 畫出來的這一格的頂端（與 boss_view 畫星形的位置一致）
+	var head := ct * (sim.boss.pos + Vector2(0, top))
+	var star := ct * (sim.boss.pos + Vector2(0, top - 22 * BossView.K * 0.5))
 	var danger := sim.boss.telegraph() == CombatTypes.Telegraph.DANGER
 	var feet := ct * sim.boss.pos
 	var boss_offscreen := feet.y < 6.0

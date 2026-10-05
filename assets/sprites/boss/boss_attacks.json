@@ -39909,5 +39909,8985 @@
    }
   ],
   "note": "墜王之躍被完美彈返（1.2 秒）：被震起來、站起來、從背上拔劍放回肩上；最後一張是扛劍站著"
+ },
+ "boss_c1_break": {
+  "source": "boss_c1",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 2,
+    "from_sheet": "boss_c1",
+    "from_pose": 19,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4,
+   1,
+   1,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_c1 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_c1 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_c1_stagger": {
+  "source": "boss_c1",
+  "starts": [
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 5,
+    "from_sheet": "boss_c1",
+    "from_pose": 25,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   2,
+   2,
+   2
+  ],
+  "note": "boss_c1 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_twin_break": {
+  "source": "boss_twin",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 2,
+    "from_sheet": "boss_c1",
+    "from_pose": 19,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 8,
+    "from_sheet": "boss_twin",
+    "from_pose": 22,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 9,
+    "from_sheet": "boss_twin",
+    "from_pose": 38,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 10,
+    "from_sheet": "boss_twin",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 11,
+    "from_sheet": "boss_twin",
+    "from_pose": 50,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 17
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   4,
+   5,
+   5,
+   5,
+   6,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   4,
+   7,
+   7,
+   7,
+   7,
+   7,
+   8,
+   8,
+   8,
+   8,
+   8,
+   8,
+   8,
+   0,
+   0,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_twin 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_twin 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_twin_stagger": {
+  "source": "boss_twin",
+  "starts": [
+   {
+    "sheet": "boss_twin_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 12,
+    "from_sheet": "boss_twin",
+    "from_pose": 50,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1
+  ],
+  "note": "boss_twin 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_c1_bounce_break": {
+  "source": "boss_c1_bounce",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 13,
+    "from_sheet": "boss_c1_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   2,
+   3,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_c1_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_c1_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_twin_bounce_break": {
+  "source": "boss_twin_bounce",
+  "starts": [
+   {
+    "sheet": "boss_twin_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 10,
+    "from_sheet": "boss_twin",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_twin_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 14,
+    "from_sheet": "boss_twin_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_twin_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_twin_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_quick_break": {
+  "source": "boss_quick",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 15,
+    "from_sheet": "boss_quick",
+    "from_pose": 11,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 5,
+    "rows": [
+     20,
+     21,
+     22,
+     23
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 20,
+    "from_sheet": "boss_quick",
+    "from_pose": 36,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 16,
+    "from_sheet": "boss_quick",
+    "from_pose": 15,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 19,
+    "from_sheet": "boss_quick",
+    "from_pose": 32,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 17,
+    "from_sheet": "boss_quick",
+    "from_pose": 20,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 18,
+    "from_sheet": "boss_quick",
+    "from_pose": 27,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 6,
+    "rows": [
+     24,
+     25,
+     26,
+     27
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 21,
+    "from_sheet": "boss_quick",
+    "from_pose": 42,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 19
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   5,
+   5,
+   5,
+   4,
+   4,
+   4,
+   3,
+   2,
+   2,
+   2,
+   2,
+   2,
+   7,
+   7,
+   7,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_quick 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_quick 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_quick_stagger": {
+  "source": "boss_quick",
+  "starts": [
+   {
+    "sheet": "boss_quick_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 22,
+    "from_sheet": "boss_quick",
+    "from_pose": 39,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "note": "boss_quick 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_quick_bounce_break": {
+  "source": "boss_quick_bounce",
+  "starts": [
+   {
+    "sheet": "boss_quick_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 19,
+    "from_sheet": "boss_quick",
+    "from_pose": 32,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 13,
+    "from_sheet": "boss_c1_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_quick_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 23,
+    "from_sheet": "boss_quick_bounce",
+    "from_pose": 6,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4,
+   4
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_quick_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_quick_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_cleave_break": {
+  "source": "boss_cleave",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 24,
+    "from_sheet": "boss_cleave",
+    "from_pose": 17,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 25,
+    "from_sheet": "boss_cleave",
+    "from_pose": 21,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 26,
+    "from_sheet": "boss_cleave",
+    "from_pose": 24,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   4,
+   4,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   4,
+   4,
+   4,
+   1,
+   1,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_cleave 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_cleave 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_cleave_stagger": {
+  "source": "boss_cleave",
+  "starts": [
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 27,
+    "from_sheet": "boss_cleave",
+    "from_pose": 37,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 28,
+    "from_sheet": "boss_cleave",
+    "from_pose": 40,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   2,
+   3,
+   3,
+   3,
+   3
+  ],
+  "note": "boss_cleave 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_cleave_bounce_break": {
+  "source": "boss_cleave_bounce",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 26,
+    "from_sheet": "boss_cleave",
+    "from_pose": 24,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 13,
+    "from_sheet": "boss_c1_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_quick_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 23,
+    "from_sheet": "boss_quick_bounce",
+    "from_pose": 6,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   1,
+   1,
+   2,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_cleave_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_cleave_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_impact_break": {
+  "source": "boss_impact",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 25,
+    "from_sheet": "boss_cleave",
+    "from_pose": 21,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_impact_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 30,
+    "from_sheet": "boss_impact",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_impact_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 29,
+    "from_sheet": "boss_impact",
+    "from_pose": 15,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   }
+  ],
+  "pose_start": [
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   4,
+   4,
+   4,
+   4,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   2,
+   2,
+   2,
+   2,
+   1,
+   1,
+   1,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_impact 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_impact 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_impact_stagger": {
+  "source": "boss_impact",
+  "starts": [
+   {
+    "sheet": "boss_impact_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 31,
+    "from_sheet": "boss_impact",
+    "from_pose": 43,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 28,
+    "from_sheet": "boss_cleave",
+    "from_pose": 40,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   2,
+   2,
+   3,
+   3,
+   3
+  ],
+  "note": "boss_impact 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_double_impact_break": {
+  "source": "boss_double_impact",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 25,
+    "from_sheet": "boss_cleave",
+    "from_pose": 21,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_impact_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 29,
+    "from_sheet": "boss_impact",
+    "from_pose": 15,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_impact_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 30,
+    "from_sheet": "boss_impact",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   }
+  ],
+  "pose_start": [
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   4,
+   5,
+   5,
+   5,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5,
+   2,
+   2,
+   2,
+   2,
+   1,
+   1,
+   1,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_double_impact 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_double_impact 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_double_impact_stagger": {
+  "source": "boss_double_impact",
+  "starts": [
+   {
+    "sheet": "boss_impact_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 31,
+    "from_sheet": "boss_impact",
+    "from_pose": 43,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 28,
+    "from_sheet": "boss_cleave",
+    "from_pose": 40,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   2,
+   2,
+   3,
+   3,
+   3
+  ],
+  "note": "boss_double_impact 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_triple_break": {
+  "source": "boss_triple",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 2,
+    "from_sheet": "boss_c1",
+    "from_pose": 19,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 8,
+    "from_sheet": "boss_twin",
+    "from_pose": 22,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 9,
+    "from_sheet": "boss_twin",
+    "from_pose": 38,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 10,
+    "from_sheet": "boss_twin",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 11,
+    "from_sheet": "boss_twin",
+    "from_pose": 50,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 17
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 24,
+    "from_sheet": "boss_cleave",
+    "from_pose": 17,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 25,
+    "from_sheet": "boss_cleave",
+    "from_pose": 21,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 26,
+    "from_sheet": "boss_cleave",
+    "from_pose": 24,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   3,
+   4,
+   4,
+   4,
+   5,
+   5,
+   6,
+   1,
+   1,
+   1,
+   1,
+   1,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   4,
+   7,
+   7,
+   7,
+   7,
+   7,
+   8,
+   8,
+   8,
+   8,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   9,
+   9,
+   9,
+   9,
+   9,
+   9,
+   9,
+   9,
+   10,
+   10,
+   10,
+   11,
+   11,
+   11,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   11,
+   11,
+   5,
+   5,
+   1,
+   1,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_triple 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_triple 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_triple_stagger": {
+  "source": "boss_triple",
+  "starts": [
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 27,
+    "from_sheet": "boss_cleave",
+    "from_pose": 37,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 28,
+    "from_sheet": "boss_cleave",
+    "from_pose": 40,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   2,
+   3,
+   3,
+   3,
+   3
+  ],
+  "note": "boss_triple 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_thrust_break": {
+  "source": "boss_thrust",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 35,
+    "from_sheet": "boss_thrust",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 32,
+    "from_sheet": "boss_thrust",
+    "from_pose": 10,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 34,
+    "from_sheet": "boss_thrust",
+    "from_pose": 37,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 33,
+    "from_sheet": "boss_thrust",
+    "from_pose": 17,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   3,
+   4,
+   4,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   5,
+   5,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   5,
+   5,
+   5,
+   4,
+   4,
+   4,
+   3,
+   3,
+   1,
+   1,
+   1,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_thrust 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_thrust 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_thrust_stagger": {
+  "source": "boss_thrust",
+  "starts": [
+   {
+    "sheet": "boss_thrust_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 36,
+    "from_sheet": "boss_thrust",
+    "from_pose": 37,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_thrust_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 37,
+    "from_sheet": "boss_thrust",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2
+  ],
+  "note": "boss_thrust 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_thrust_bounce_break": {
+  "source": "boss_thrust_bounce",
+  "starts": [
+   {
+    "sheet": "boss_thrust_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 33,
+    "from_sheet": "boss_thrust",
+    "from_pose": 17,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 34,
+    "from_sheet": "boss_thrust",
+    "from_pose": 37,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 32,
+    "from_sheet": "boss_thrust",
+    "from_pose": 10,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_thrust_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 38,
+    "from_sheet": "boss_thrust_bounce",
+    "from_pose": 5,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_thrust_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 35,
+    "from_sheet": "boss_thrust",
+    "from_pose": 43,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_bounce_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 39,
+    "from_sheet": "boss_thrust_bounce",
+    "from_pose": 10,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   1,
+   1,
+   1,
+   2,
+   3,
+   3,
+   4,
+   4,
+   5,
+   5,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_thrust_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_thrust_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_quick3_break": {
+  "source": "boss_quick3",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 15,
+    "from_sheet": "boss_quick",
+    "from_pose": 11,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 5,
+    "rows": [
+     20,
+     21,
+     22,
+     23
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 20,
+    "from_sheet": "boss_quick",
+    "from_pose": 36,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 16,
+    "from_sheet": "boss_quick",
+    "from_pose": 15,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 19,
+    "from_sheet": "boss_quick",
+    "from_pose": 32,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 17,
+    "from_sheet": "boss_quick",
+    "from_pose": 20,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 18,
+    "from_sheet": "boss_quick",
+    "from_pose": 27,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_quick3_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 40,
+    "from_sheet": "boss_quick3",
+    "from_pose": 39,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 33
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_twin_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 8,
+    "from_sheet": "boss_twin",
+    "from_pose": 22,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 3,
+    "from_sheet": "boss_c1",
+    "from_pose": 28,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_quick3_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 41,
+    "from_sheet": "boss_quick3",
+    "from_pose": 54,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_quick_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 23,
+    "from_sheet": "boss_quick_bounce",
+    "from_pose": 6,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   5,
+   5,
+   5,
+   4,
+   4,
+   4,
+   3,
+   2,
+   2,
+   2,
+   7,
+   7,
+   7,
+   7,
+   7,
+   7,
+   8,
+   8,
+   8,
+   8,
+   4,
+   9,
+   9,
+   9,
+   9,
+   10,
+   11,
+   10,
+   10,
+   10,
+   10,
+   12,
+   13,
+   0,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_quick3 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_quick3 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_quick3_stagger": {
+  "source": "boss_quick3",
+  "starts": [
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 5,
+    "from_sheet": "boss_c1",
+    "from_pose": 25,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_cleave_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 28,
+    "from_sheet": "boss_cleave",
+    "from_pose": 40,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_quick3_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 42,
+    "from_sheet": "boss_quick3",
+    "from_pose": 54,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   1,
+   2,
+   2,
+   1,
+   1,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4
+  ],
+  "note": "boss_quick3 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_quick3_bounce_break": {
+  "source": "boss_quick3_bounce",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 1,
+    "from_sheet": "boss_c1",
+    "from_pose": 14,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 25
+   },
+   {
+    "sheet": "boss_cleave_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     352
+    ],
+    "anchor": [
+     192,
+     288
+    ],
+    "start": 26,
+    "from_sheet": "boss_cleave",
+    "from_pose": 24,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 13,
+    "from_sheet": "boss_c1_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_quick_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 23,
+    "from_sheet": "boss_quick_bounce",
+    "from_pose": 6,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   1,
+   2,
+   3,
+   3,
+   3,
+   4,
+   4,
+   5,
+   5,
+   5,
+   5,
+   5,
+   5
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_quick3_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_quick3_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_spin_break": {
+  "source": "boss_spin",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_quick_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 15,
+    "from_sheet": "boss_quick",
+    "from_pose": 11,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 43,
+    "from_sheet": "boss_spin",
+    "from_pose": 17,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 61
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 44,
+    "from_sheet": "boss_spin",
+    "from_pose": 20,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 53
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 45,
+    "from_sheet": "boss_spin",
+    "from_pose": 23,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 47
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 46,
+    "from_sheet": "boss_spin",
+    "from_pose": 26,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 39
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 47,
+    "from_sheet": "boss_spin",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 5,
+    "rows": [
+     20,
+     21,
+     22,
+     23
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 48,
+    "from_sheet": "boss_spin",
+    "from_pose": 34,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 6,
+    "rows": [
+     24,
+     25,
+     26,
+     27
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 49,
+    "from_sheet": "boss_spin",
+    "from_pose": 41,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_thrust_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 38,
+    "from_sheet": "boss_thrust_bounce",
+    "from_pose": 5,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 21
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 7,
+    "rows": [
+     28,
+     29,
+     30,
+     31
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 50,
+    "from_sheet": "boss_spin",
+    "from_pose": 46,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   4,
+   4,
+   4,
+   5,
+   5,
+   5,
+   6,
+   6,
+   6,
+   1,
+   2,
+   7,
+   7,
+   7,
+   8,
+   8,
+   8,
+   8,
+   8,
+   8,
+   8,
+   9,
+   9,
+   9,
+   10,
+   11,
+   11,
+   11,
+   0,
+   0,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_spin 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_spin 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_spin_stagger": {
+  "source": "boss_spin",
+  "starts": [
+   {
+    "sheet": "boss_spin_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 51,
+    "from_sheet": "boss_spin",
+    "from_pose": 31,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_spin_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 52,
+    "from_sheet": "boss_spin",
+    "from_pose": 34,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_spin_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 53,
+    "from_sheet": "boss_spin",
+    "from_pose": 42,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_spin_stagger",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 54,
+    "from_sheet": "boss_spin",
+    "from_pose": 45,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   4,
+   5,
+   5,
+   5,
+   5,
+   5
+  ],
+  "note": "boss_spin 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_spin_bounce_break": {
+  "source": "boss_spin_bounce",
+  "starts": [
+   {
+    "sheet": "boss_spin_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 44,
+    "from_sheet": "boss_spin",
+    "from_pose": 20,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 53
+   },
+   {
+    "sheet": "boss_spin_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 55,
+    "from_sheet": "boss_spin_bounce",
+    "from_pose": 4,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 55
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 7,
+    "rows": [
+     28,
+     29,
+     30,
+     31
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 50,
+    "from_sheet": "boss_spin",
+    "from_pose": 46,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_spin_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_spin_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_leap_break": {
+  "source": "boss_leap",
+  "starts": [
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 56,
+    "from_sheet": "boss_leap",
+    "from_pose": 7,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 37
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 57,
+    "from_sheet": "boss_leap",
+    "from_pose": 10,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 45
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 3,
+    "rows": [
+     12,
+     13,
+     14,
+     15
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 59,
+    "from_sheet": "boss_leap",
+    "from_pose": 21,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 45
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 58,
+    "from_sheet": "boss_leap",
+    "from_pose": 15,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 45
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 60,
+    "from_sheet": "boss_leap",
+    "from_pose": 22,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 43
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 5,
+    "rows": [
+     20,
+     21,
+     22,
+     23
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 61,
+    "from_sheet": "boss_leap",
+    "from_pose": 79,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 49
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 6,
+    "rows": [
+     24,
+     25,
+     26,
+     27
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 62,
+    "from_sheet": "boss_leap",
+    "from_pose": 83,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 41
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 7,
+    "rows": [
+     28,
+     29,
+     30,
+     31
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 63,
+    "from_sheet": "boss_leap",
+    "from_pose": 86,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   },
+   {
+    "sheet": "boss_spin_break",
+    "group": 7,
+    "rows": [
+     28,
+     29,
+     30,
+     31
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 50,
+    "from_sheet": "boss_spin",
+    "from_pose": 46,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 23
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   3,
+   3,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   4,
+   3,
+   5,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   6,
+   7,
+   7,
+   7,
+   8,
+   8,
+   0,
+   0,
+   0,
+   9,
+   9,
+   9,
+   10,
+   9,
+   9,
+   0
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_leap 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_leap 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
+ },
+ "boss_leap_stagger": {
+  "source": "boss_leap",
+  "starts": [
+   {
+    "sheet": "boss_leap_stagger",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 64,
+    "from_sheet": "boss_leap",
+    "from_pose": 79,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_leap_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 65,
+    "from_sheet": "boss_leap",
+    "from_pose": 83,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_leap_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 66,
+    "from_sheet": "boss_leap",
+    "from_pose": 87,
+    "holds": [
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2,
+     1,
+     1,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 2,
+    "rows": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 7,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   },
+   {
+    "sheet": "boss_c1_stagger",
+    "group": 1,
+    "rows": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 6,
+    "from_sheet": "boss_c1",
+    "from_pose": 29,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     1,
+     2
+    ],
+    "frames": 18
+   }
+  ],
+  "pose_start": [
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   4,
+   3,
+   3,
+   3
+  ],
+  "note": "boss_leap 收招中被打到短僵直（STAGGER 0.3 秒）：播 starts[pose_start[i]]，最後一張是扛劍站著"
+ },
+ "boss_leap_bounce_break": {
+  "source": "boss_leap_bounce",
+  "starts": [
+   {
+    "sheet": "boss_leap_break",
+    "group": 5,
+    "rows": [
+     20,
+     21,
+     22,
+     23
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 61,
+    "from_sheet": "boss_leap",
+    "from_pose": 79,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 49
+   },
+   {
+    "sheet": "boss_leap_bounce_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 67,
+    "from_sheet": "boss_leap_bounce",
+    "from_pose": 7,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 47
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 6,
+    "rows": [
+     24,
+     25,
+     26,
+     27
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 62,
+    "from_sheet": "boss_leap",
+    "from_pose": 83,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 41
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 7,
+    "rows": [
+     28,
+     29,
+     30,
+     31
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 63,
+    "from_sheet": "boss_leap",
+    "from_pose": 86,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 31
+   },
+   {
+    "sheet": "boss_leap_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 56,
+    "from_sheet": "boss_leap",
+    "from_pose": 7,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 37
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 0,
+    "rows": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 0,
+    "from_sheet": "boss_c1",
+    "from_pose": 0,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 29
+   },
+   {
+    "sheet": "boss_c1_break",
+    "group": 4,
+    "rows": [
+     16,
+     17,
+     18,
+     19
+    ],
+    "cell": [
+     384,
+     336
+    ],
+    "anchor": [
+     192,
+     272
+    ],
+    "start": 4,
+    "from_sheet": "boss_c1",
+    "from_pose": 31,
+    "holds": [
+     3,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     4
+    ],
+    "frames": 27
+   }
+  ],
+  "pose_start": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   3,
+   4,
+   4,
+   4,
+   3,
+   3,
+   5,
+   5,
+   6,
+   6,
+   6,
+   6,
+   6,
+   5,
+   5
+  ],
+  "then": {
+   "BROKEN": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ],
+   "DEAD": [
+    {
+     "sheet": "boss_kneel_down",
+     "columns": [
+      4,
+      5,
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "sheet": "boss_death",
+     "columns": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  "note": "boss_leap_bounce 出招／被彈開中失衡或死亡：Boss 正在顯示 boss_leap_bounce 的第 i 張時被打斷，就播 starts[pose_start[i]]（-1：騰空中打不到）；有些 start 是別招做的（from_sheet），圖在它的 sheet。播完接 boss_kneel_down 第 5、6、7、8、9 欄（BROKEN，之後跪著喘）；DEAD 再接 boss_death 第 10、11、12 欄。第一張是被打的一震，遊戲的停頓、閃光、震動蓋在上面"
  }
 }
