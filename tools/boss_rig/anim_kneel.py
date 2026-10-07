@@ -1025,24 +1025,37 @@ def breathe():
 
 
 def executed():
-    """EXECUTED (1.0 s, PlayerData.EXECUTE_TIME): kneeling until the execution lands at 0.2 s
-    (EXECUTE_HIT_TIME), then the jolt - the chest pushed back, the head snapped up - he slumps
-    lower over the sword and settles back into the kneel (RISING follows)."""
+    """EXECUTED (3.0 s, PlayerData.EXECUTE_TIME; 2026-10-05 the knight's leap and stab, the user: keep the
+    approved reaction, only stretched to the new time, a twitch on each twist). The approved poses (1.0 s:
+    kneel 0.2 s, the jolt - the chest pushed back, the head snapped up - slumped over the sword, back to
+    the kneel) on the knight's beats (PlayerData / tools/sprite_rig/execute.py):
+      0-0.8 s   kneeling, breathing; from 0.4 s (the knight leaps) the head comes up to watch him
+      0.8 s     the blade goes in (EXECUTE_HIT_TIME): the jolt, as approved, held while the knight sinks
+                onto the hilt; then pinned, the head still back (SETTLE: between the jolt and the kneel)
+      1.25, 1.7 s  each twist (EXECUTE_TWIST_TIMES): the jolt again
+      2.0 s     the knight kicks off and pulls the sword out (EXECUTE_KICK_TIME): he slumps forward over
+                his sword, as approved, and slowly comes back to the kneel (RISING follows at 3.0 s)"""
     tf = KNEEL_SWORD_LEAN
+    JOLT = dict(D=D_KNEEL - 1, lx=-5.0, bow=-12.0, ck=3.0, tilt_from=tf)
+    PEAK = dict(D=D_KNEEL - 1, lx=-7.0, bow=-16.0, ck=4.0, tilt_from=tf)
+    SETTLE = dict(D=D_KNEEL - 1, lx=-3.0, bow=-6.0, ck=2.0, tilt_from=tf)
     return _seq('executed', [
-        (6, dict(br=0)), (6, dict(br=1)),
-        (4, dict(D=D_KNEEL - 1, lx=-5.0, bow=-12.0, ck=3.0, tilt_from=tf)),
-        (5, dict(D=D_KNEEL - 1, lx=-7.0, bow=-16.0, ck=4.0, tilt_from=tf)),
-        (3, dict(D=D_KNEEL, lx=3.0, bow=10.0, ck=1.0, tilt_from=tf)),
-        (6, dict(D=D_KNEEL + 2, lx=12.0, bow=34.0, ck=-2.0, tilt_from=tf)),
-        (8, dict(D=D_KNEEL + 2, lx=11.0, bow=31.0, tilt_from=tf)),
-        (8, dict(D=D_KNEEL + 1, lx=10.0, bow=28.0, tilt_from=tf)),
-        (8, dict(D=D_KNEEL + 1, lx=9.0, bow=26.0, tilt_from=tf)),
-        (3, dict()), (3, dict()),
+        # 0-48: breathing (the kneel_breathe's rise), the head coming up from 24 (the leap)
+        (6, dict(br=0)), (6, dict(br=1)), (6, dict(br=2)), (6, dict(br=2)),
+        (6, dict(br=2, bow=20.0)), (6, dict(br=1, bow=16.0)), (6, dict(br=1, bow=12.0)), (6, dict(br=0, bow=10.0)),
+        # 48: the blade goes in
+        (5, JOLT), (10, PEAK), (12, SETTLE),
+        # 75, 102: the twists
+        (3, JOLT), (6, PEAK), (18, SETTLE),
+        (3, JOLT), (6, PEAK), (9, SETTLE),
+        # 120: the knight kicks off: the approved slump and the way back to the kneel, slowed down
+        (4, dict(D=D_KNEEL, lx=3.0, bow=10.0, ck=1.0, tilt_from=tf)),
+        (10, dict(D=D_KNEEL + 2, lx=12.0, bow=34.0, ck=-2.0, tilt_from=tf)),
+        (12, dict(D=D_KNEEL + 2, lx=11.0, bow=31.0, tilt_from=tf)),
+        (12, dict(D=D_KNEEL + 1, lx=10.0, bow=28.0, tilt_from=tf)),
+        (12, dict(D=D_KNEEL + 1, lx=9.0, bow=26.0, tilt_from=tf)),
+        (5, dict()), (5, dict()),
     ], lambda k: kneel_pose())
-
-
-
 
 
 def rise(name='rise', holds=(8, 9, 9, 8, 8, 8, 5, 5), extra=None):

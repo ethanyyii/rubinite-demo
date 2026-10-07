@@ -103,6 +103,22 @@ func test_quick_two_hit_finisher_bounce_is_0_8s() -> void:
 	assert_eq(sim.combat_frame - start, Frames.of(0.8), "輕擊最後一擊彈開 0.8 秒")
 
 
+func test_quick_combo_second_slash_can_be_parried_after_parrying_the_first() -> void:
+	# 2026-10-06 使用者：快斬第二斬怎麼擋都沒辦法完美格擋。人的按法：第一斬完美彈返，看到彈開 0.25 秒後放開，
+	# 第二斬前 4 幀再按 → 第二斬也要是完美彈返（重新開窗 0.3 秒時只剩普通格擋）
+	_start(&"quick_combo_2")
+	var hits := VeltharisData.move(1, &"quick_combo_2").hit_start_frames()
+	var results := []
+	while boss().state == BS.ATTACK and boss().state_elapsed() < hits[1] + 3:
+		var e := boss().state_elapsed()
+		held["block"] = (e >= hits[0] - 4 and e < hits[0] + Frames.of(0.25)) or e >= hits[1] - 4
+		advance(1)
+	for ev in event_log:
+		if ev["type"] == &"boss_hit_result":
+			results.append(ev["result"])
+	assert_eq(results, [CombatSim.BlockResult.PERFECT, CombatSim.BlockResult.PERFECT], "兩斬都完美彈返")
+
+
 func test_perfect_parry_of_middle_hit_continues_combo() -> void:
 	# 雙斬第一擊彈掉：Boss 繼續出第二擊（第 102 幀）
 	_start(&"twin_slash")

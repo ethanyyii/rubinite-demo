@@ -16,7 +16,9 @@ func test_arena_scene_builds_and_steps() -> void:
 	assert_eq(arena.sim.frame, 30)
 	assert_true(arena.get_node_or_null("World/Player") != null, "有主角")
 	assert_true(arena.get_node_or_null("World/Boss") != null, "有 Boss")
-	assert_eq(arena.get_node("World").get_child_count(), ArenaGeometry.PILLARS.size() + 2)
+	# 柱子、場景物件（2026-10-05 正式美術：兩側與南邊的碎石、矮牆、斷劍、灌木；2026-10-06 加料）、烏鴉、主角、Boss
+	assert_eq(arena.get_node("World").get_child_count(),
+		ArenaGeometry.PILLARS.size() + ArenaLayout.PROPS.size() + ArenaLayout.PERCHES.size() + 2)
 	tree.root.remove_child(arena)
 	arena.free()
 

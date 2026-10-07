@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>處決：躍起下刺</title>
+<style>
+  :root { --bg: #1b1d21; --card: #25282e; --text: #e8e6e1; --muted: #a3a09a; --accent: #7fa8f5; --warn: #f0b35a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(27,29,33,.95); border-bottom: 1px solid #333; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  header h1 { font-size: 17px; margin: 0; }
+  .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { background: #333842; color: var(--text); border: 1px solid #4a505c; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .intro { color: var(--muted); max-width: 900px; }
+  h2.sec { font-size: 16px; margin: 28px 0 10px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; }
+  .card.ask { outline: 2px solid var(--warn); }
+  .card h3 { font-size: 15px; margin: 0 0 6px; }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  video, img { width: 100%; image-rendering: pixelated; border-radius: 6px; background: #000; display: block; }
+  table { border-collapse: collapse; margin: 8px 0; }
+  td, th { border: 1px solid #3a3d44; padding: 4px 10px; text-align: left; }
+  @media (max-width: 460px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>處決：躍起下刺（3 秒）</h1>
+  <div class="controls">
+    <button data-rate="1" class="on">正常速度</button>
+    <button data-rate="0.5">半速</button>
+    <button data-rate="0.25">1/4 速</button>
+    <button id="pause">全部暫停</button>
+    <button id="back">◀ 一格</button>
+    <button id="step">一格 ▶</button>
+  </div>
+</header>
+<main>
+<p class="intro">Boss 跪地失衡時在他身邊按攻擊：騎士衝上前、壓低身體、躍起，雙手把劍反握舉過頭，從上面把劍插進 Boss 的胸口／肩頸，掛在劍上往下壓、把劍轉兩次（每轉一次 Boss 抽一下、傷口噴火星），然後一腳蹬在他身上把劍拔出來往後跳，蹲著落地、站起來。整段 3 秒，傷害在劍插進去的那一刻（0.8 秒）。Boss 的反應用之前核准的「被處決」那幾個姿勢，只是拉長、對齊新的時間。</p>
+<table>
+  <tr><th>時間</th><th>騎士</th><th>Boss</th></tr>
+  <tr><td>0–0.4 秒</td><td>衝上前、壓低蓄勢</td><td>跪著喘</td></tr>
+  <tr><td>0.4–0.8 秒</td><td>躍起，劍舉過頭、劍尖朝下</td><td>抬頭看他</td></tr>
+  <tr><td>0.8 秒</td><td>插下去：停頓、白光、震動、扣血</td><td>被刺中往後仰、頭往上甩</td></tr>
+  <tr><td>0.8–2.0 秒</td><td>掛在劍上，1.25 秒、1.7 秒各轉一次劍</td><td>每轉一次抽一下</td></tr>
+  <tr><td>2.0–2.5 秒</td><td>一腳蹬開、拔劍往後跳</td><td>往前垂</td></tr>
+  <tr><td>2.5–3.0 秒</td><td>蹲著落地、站起來</td><td>慢慢回到跪姿，接著起身</td></tr>
+</table>
+
+<h2 class="sec">遊戲裡錄的（2 倍，含停頓；新的場景）</h2>
+<div class="grid">
+  <div class="card"><h3>從正面</h3><video src="ingame/executed.mp4" autoplay loop muted playsinline></video><p>最常見的角度：騎士背對我們，掛在 Boss 胸口。劍被他自己的身體擋住，看得到轉劍時傷口噴的火星、Boss 往後仰。</p></div>
+  <div class="card"><h3>從側面（Boss 面向騎士）</h3><video src="ingame/executed_side.mp4" autoplay loop muted playsinline></video><p>劍看得最清楚：一道亮的劍身從騎士的雙拳斜插進 Boss 的胸口。</p></div>
+  <div class="card"><h3>從另一側</h3><video src="ingame/executed_side_left.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>從背後</h3><video src="ingame/executed_back.mp4" autoplay loop muted playsinline></video><p>騎士在 Boss 背後：躍上去時從他頭上露出來，落地後被擋住，照之前的規則畫成藍色剪影。</p></div>
+  <div class="card"><h3>從側面，但 Boss 面向下方</h3><video src="ingame/executed_side_vs_front.mp4" autoplay loop muted playsinline></video><p>這時劍插在 Boss 的肩膀上。</p></div>
+  <div class="card ask"><h3>處決把 Boss 打死</h3><video src="ingame/executed_kills.mp4" autoplay loop muted playsinline></video><p>扣血照舊在插下去那一刻，但 Boss 等騎士蹬開、落地（3 秒）之後才倒下：騎士還掛在他身上時先倒會穿幫。這是規則上新加的一點，請看。</p></div>
+  <div class="card"><h3>處決把 HP 打到一半以下</h3><video src="ingame/executed_half.mp4" autoplay loop muted playsinline></video><p>處決完直接接第二階段的轉場（和以前一樣），場景跟著變暗變紅。</p></div>
+</div>
+
+<h2 class="sec">和 Boss 一起看（照遊戲的時間，2 倍）</h2>
+<div class="grid">
+  <div class="card"><h3>從正面</h3><img src="with_boss_front.gif"></div>
+  <div class="card"><h3>從側面</h3><img src="with_boss_side.gif"></div>
+  <div class="card"><h3>從背後（剪影）</h3><img src="with_boss_back.gif"></div>
+  <div class="card"><h3>Boss 面向下方：刺在肩上</h3><img src="with_boss_side_shoulder.gif"></div>
+</div>
+<div class="grid" style="margin-top:16px">
+  <div class="card"><h3>重點那幾格（正面）</h3><img src="with_boss_front.png"></div>
+  <div class="card"><h3>重點那幾格（側面）</h3><img src="with_boss_side.png"></div>
+</div>
+
+<h2 class="sec">騎士本身：四個方向</h2>
+<div class="grid">
+  <div class="card"><h3>四個方向並排</h3><img src="execute_four.gif"><p>地面格子照遊戲移動騎士的方式捲動（往 Boss 衝、躍上去、往回跳）；陰影留在地上、越高越小。</p></div>
+  <div class="card"><h3>朝下</h3><img src="execute_south.gif"></div>
+  <div class="card"><h3>朝右</h3><img src="execute_east.gif"></div>
+  <div class="card"><h3>朝上</h3><img src="execute_north.gif"></div>
+  <div class="card"><h3>朝左（不是朝右的鏡像）</h3><img src="execute_west.gif"></div>
+</div>
+
+<h2 class="sec">逐張（6 倍）</h2>
+<div class="grid">
+  <div class="card"><img src="execute_south_6x_1.png"><img src="execute_south_6x_2.png"><img src="execute_south_6x_3.png"><img src="execute_south_6x_4.png"></div>
+  <div class="card"><img src="execute_east_6x_1.png"><img src="execute_east_6x_2.png"><img src="execute_east_6x_3.png"><img src="execute_east_6x_4.png"></div>
+  <div class="card"><img src="execute_north_6x_1.png"><img src="execute_north_6x_2.png"><img src="execute_north_6x_3.png"><img src="execute_north_6x_4.png"></div>
+  <div class="card"><img src="execute_west_6x_1.png"><img src="execute_west_6x_2.png"><img src="execute_west_6x_3.png"><img src="execute_west_6x_4.png"></div>
+</div>
+
+<h2 class="sec">檢查用的圖</h2>
+<div class="grid">
+  <div class="card"><h3>握劍的雙手和劍（四方向並排）</h3><img src="hands.png"></div>
+  <div class="card"><h3>腿單獨畫出來（朝右）</h3><img src="legs_east.png"></div>
+  <div class="card"><h3>腿（朝左）</h3><img src="legs_west.png"></div>
+  <div class="card"><h3>腿（朝下）</h3><img src="legs_south.png"></div>
+  <div class="card"><h3>腿（朝上）</h3><img src="legs_north.png"></div>
+  <div class="card"><h3>頸部以上</h3><img src="head_check.png"></div>
+</div>
+<div class="grid" style="margin-top:16px">
+  <div class="card ask" style="grid-column:1/-1"><h3>和設計圖的動作小圖並排（同比例，6 倍；交件後補的）</h3><img src="concept_compare.png"><p>設計圖的「跳躍」「蹲下」整個人壓得很低、縮成一團；我做的起跳前和落地只是上身往前傾，腿幾乎是直的，蹲得比設計圖淺很多。這是交件後重讀審查標準時才發現的，還沒改。</p></div>
+</div>
+</main>
+<script>
+  const vids = () => [...document.querySelectorAll('video')];
+  document.querySelectorAll('[data-rate]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-rate]').forEach(x => x.classList.toggle('on', x === b));
+    vids().forEach(v => { v.playbackRate = +b.dataset.rate; v.play(); });
+    document.getElementById('pause').textContent = '全部暫停';
+  }));
+  document.getElementById('pause').addEventListener('click', e => {
+    const paused = vids().some(v => !v.paused);
+    vids().forEach(v => paused ? v.pause() : v.play());
+    e.target.textContent = paused ? '全部播放' : '全部暫停';
+  });
+  const nudge = d => { vids().forEach(v => { v.pause(); v.currentTime = Math.max(0, v.currentTime + d / 60); });
+    document.getElementById('pause').textContent = '全部播放'; };
+  document.getElementById('step').addEventListener('click', () => nudge(1));
+  document.getElementById('back').addEventListener('click', () => nudge(-1));
+</script>
+</body>
+</html>

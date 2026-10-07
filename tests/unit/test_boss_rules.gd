@@ -143,13 +143,22 @@ func test_execution_within_48px() -> void:
 	assert_eq(player().state, S.EXECUTE, "按攻擊觸發處決")
 	assert_eq(boss().state, BS.EXECUTED)
 	assert_true(player().is_invulnerable(), "處決期間玩家無敵")
-	advance(Frames.of(PlayerData.EXECUTE_HIT_TIME))
-	assert_eq(boss().hp, hp0 - roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO), "處決傷害為最大 HP 的 15%（tuning-log：10.5%）")
+	var start := player().state_start
+	# 2026-10-05 使用者：處決 3 秒（躍起下刺），0.8 秒插下去才扣血
+	while sim.combat_frame - start < Frames.of(PlayerData.EXECUTE_HIT_TIME) - 1:
+		advance(1)
+		assert_eq(boss().hp, hp0, "插下去之前不扣血（第 %d 幀）" % (sim.combat_frame - start))
+	advance(1)
+	assert_eq(sim.combat_frame - start, Frames.of(PlayerData.EXECUTE_HIT_TIME))
+	var dmg := roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO)
+	assert_eq(boss().hp, hp0 - dmg, "處決傷害為最大 HP 的 15%（tuning-log：10.5%）")
 	assert_eq(sim.hitstop, Frames.of(0.25), "處決頓幀 0.25 秒")
 	while player().state == S.EXECUTE:
-		assert_true(player().is_invulnerable())
+		assert_true(player().is_invulnerable(), "全程無敵（第 %d 幀）" % (sim.combat_frame - start))
+		assert_eq(boss().hp, hp0 - dmg, "只扣一次血")
+		assert_eq(boss().state, BS.EXECUTED, "Boss 被處決到最後一幀")
 		advance(1)
-	assert_eq(sim.combat_frame - player().state_start, 0)
+	assert_eq(sim.combat_frame - start, Frames.of(PlayerData.EXECUTE_TIME), "處決 3 秒")
 	assert_eq(boss().state, BS.RISING, "處決後 Boss 起身")
 	assert_near(boss().toughness, VeltharisData.MAX_TOUGHNESS, 0.001, "韌性回滿")
 	var rise_start := boss().state_start
@@ -158,6 +167,99 @@ func test_execution_within_48px() -> void:
 	while boss().state == BS.RISING:
 		advance(1)
 	assert_eq(sim.combat_frame - rise_start, Frames.of(VeltharisData.RISE_TIME), "起身 1 秒")
+
+
+## 處決的時間軸（2026-10-05 使用者同意的分配）：衝上前蓄勢 → 躍起 → 0.8 秒插下去 → 轉劍兩次 → 2.0 秒蹬開 → 2.5 秒落地 → 3 秒站好
+func _start_execution_from(offset: Vector2) -> int:
+	sim.boss.toughness = 1.0
+	sim.boss.receive_player_hit(PlayerData.light_attacks()[0])
+	sim.player.pos = sim.boss.pos + offset
+	sim.player.facing = -offset.normalized()
+	press(&"attack")
+	assert_eq(player().state, S.EXECUTE)
+	return player().state_start
+
+
+func _advance_to(start: int, f: int) -> void:
+	advance(start + f - sim.combat_frame)
+
+
+func test_execution_twists_the_sword_twice() -> void:
+	var start := _start_execution_from(Vector2(0, 70))
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_TIME))
+	var twists: Array[int] = []
+	for e in event_log:
+		if e["type"] == &"execution_twist":
+			twists.append(int(e["frame"]) - start)
+	assert_eq(twists, PlayerData.execute_twist_frames(), "轉劍兩次，在插下去和蹬開之間")
+	for f in twists:
+		assert_true(f > Frames.of(PlayerData.EXECUTE_HIT_TIME) and f < Frames.of(PlayerData.EXECUTE_KICK_TIME), "第 %d 幀" % f)
+	var shakes := 0
+	for e in event_log:
+		if e["type"] == &"feedback" and e["event"] == &"execution_twist":
+			shakes += 1
+			assert_true(e["shake"] > 0.0 and e["shake"] < FeedbackData.shake(&"execution"), "轉劍：小的震動")
+	assert_eq(shakes, 2)
+	assert_eq(FeedbackData.hitstop_frames(&"execution_twist"), 0, "轉劍不頓幀（Boss 抽動和騎士的動作對齊戰鬥時間）")
+
+
+func test_execution_leaps_onto_the_boss_and_jumps_back_off() -> void:
+	var dir := Vector2(0.6, 0.8)
+	var start := _start_execution_from(dir * 78.0)
+	var contact := VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS + 2.0
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_LEAP_TIME))
+	assert_near(player().pos.distance_to(boss().pos), contact, 0.5, "0.4 秒：衝到身體接觸處（起跳點）")
+	var prev := player().pos.distance_to(boss().pos)
+	while sim.combat_frame - start < Frames.of(PlayerData.EXECUTE_HIT_TIME):
+		advance(1)
+		var d := player().pos.distance_to(boss().pos)
+		assert_true(d <= prev + 0.001, "躍起時越來越近")
+		prev = d
+	assert_near(player().pos.distance_to(boss().pos), PlayerData.EXECUTE_PERCH, 0.5, "插下去時在 Boss 肩上（影子在他身邊）")
+	assert_near((player().pos - boss().pos).normalized().dot(dir), 1.0, 0.01, "從哪一邊來就刺哪一邊")
+	var perch := player().pos
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_KICK_TIME))
+	assert_true(player().pos.is_equal_approx(perch), "掛在劍上：不被推開")
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_LAND_TIME))
+	assert_near(player().pos.distance_to(boss().pos), PlayerData.EXECUTE_LAND_DIST, 0.5, "2.5 秒落地")
+	var land := player().pos
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_TIME))
+	assert_true(player().pos.is_equal_approx(land), "落地後蹲著站起來，不再移動")
+	assert_near(player().facing.dot(-dir), 1.0, 0.01, "全程面向 Boss")
+	assert_eq(player().state, S.IDLE)
+
+
+func test_execution_landing_stays_in_the_arena() -> void:
+	# Boss 靠著南邊的牆，主角從牆那一側來：往回跳會跳出場地，改往旁邊跳
+	sim.boss.pos = Vector2(0, ArenaGeometry.HALF_SIZE.y - VeltharisData.HURT_RADIUS - 20.0)
+	var start := _start_execution_from(Vector2(0, 52))
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_LAND_TIME))
+	var p := player().pos
+	assert_true(ArenaGeometry.resolve(p, PlayerData.HURT_RADIUS).is_equal_approx(p), "落在場地裡、不在柱子裡：%s" % p)
+	assert_near(p.distance_to(boss().pos), PlayerData.EXECUTE_LAND_DIST, 0.5)
+	# 靠著柱子：落點不在柱子裡
+	sim = CombatSim.new(1)
+	event_log.clear()
+	var pillar: Vector2 = ArenaGeometry.PILLARS[0]["pos"]
+	sim.boss.pos = pillar + Vector2(80, 0)
+	start = _start_execution_from(Vector2(-50, 0))
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_LAND_TIME))
+	p = player().pos
+	assert_true(ArenaGeometry.resolve(p, PlayerData.HURT_RADIUS).is_equal_approx(p), "不在柱子裡：%s" % p)
+
+
+func test_lethal_execution_kills_after_the_knight_jumps_off() -> void:
+	sim.boss.hp = 30  # 失衡那一下（第 1 段 11）之後剩 19，處決（164）打到 0
+	var start := _start_execution_from(Vector2(0, 70))
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_HIT_TIME))
+	assert_eq(boss().hp, 0, "插下去那一刻 HP 歸零")
+	assert_eq(boss().state, BS.EXECUTED, "等騎士蹬開、落地才倒下")
+	_advance_to(start, Frames.of(PlayerData.EXECUTE_TIME) - 1)
+	assert_eq(boss().state, BS.EXECUTED)
+	assert_false(logged(&"boss_dead"))
+	advance(1)
+	assert_eq(boss().state, BS.DEAD, "處決 3 秒結束時死亡")
+	assert_true(logged(&"boss_dead"))
 
 
 func test_no_execution_beyond_48px() -> void:
@@ -169,7 +271,12 @@ func test_no_execution_beyond_48px() -> void:
 
 
 func test_execution_frame_counts() -> void:
-	assert_eq(Frames.of(PlayerData.EXECUTE_TIME), 60)
+	assert_eq(Frames.of(PlayerData.EXECUTE_TIME), 180, "處決 3 秒（2026-10-05 使用者：1 秒太快）")
+	assert_eq(Frames.of(PlayerData.EXECUTE_LEAP_TIME), 24, "0–0.4 秒衝上前、壓低蓄勢")
+	assert_eq(Frames.of(PlayerData.EXECUTE_HIT_TIME), 48, "0.8 秒插下去")
+	assert_eq(PlayerData.execute_twist_frames(), [75, 102], "轉劍兩次")
+	assert_eq(Frames.of(PlayerData.EXECUTE_KICK_TIME), 120, "2.0 秒蹬開")
+	assert_eq(Frames.of(PlayerData.EXECUTE_LAND_TIME), 150, "2.5 秒落地")
 	assert_eq(Frames.of(VeltharisData.BREAK_TIME), 180)
 	assert_eq(Frames.of(VeltharisData.RISE_TIME), 60)
 	assert_eq(roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO), 164, "1560 × 10.5% = 163.8 → 164（tuning-log）")

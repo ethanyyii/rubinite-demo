@@ -78,7 +78,7 @@ func _process(delta: float) -> void:
 	if b.state == BS.DEAD and anim.done_at >= 0:
 		alpha = 1.0 - clampf(float(b.state_elapsed() - anim.done_at) / Frames.of(FADE_TIME), 0.0, 1.0)
 	_mat.set_shader_parameter("alpha", alpha)
-	_mat.set_shader_parameter("mix_amount", 0.8 if _flash_white > 0.0 else 0.0)
+	_mat.set_shader_parameter("mix_amount", FeedbackData.BOSS_FLASH_AMOUNT if _flash_white > 0.0 else 0.0)
 	_mat.set_shader_parameter("darken", 0.45 if b.state in [BS.BROKEN, BS.EXECUTED] else 0.0)
 	if anim.frame_id >= 0:
 		var f := S.frame(anim.frame_id)

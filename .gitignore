@@ -16,9 +16,8 @@ export_presets.cfg
 # MCP config holds the PixelLab token - never commit
 .mcp.json
 
-# Python bytecode from the sprite tools
-tools/sprite_rig/__pycache__/
-tools/boss_rig/__pycache__/
+# Python bytecode from the art tools
+__pycache__/
 
 # Work files of the Boss rig (plans, rendered pieces)
 tools/boss_rig/.work/

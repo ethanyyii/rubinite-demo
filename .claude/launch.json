@@ -4,14 +4,38 @@
     {
       "name": "art-preview",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "docs/art-preview/player"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "docs/art-preview/player"
+      ],
       "port": 8765
     },
     {
       "name": "boss-preview",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "docs/art-preview/boss"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--directory",
+        "docs/art-preview/boss"
+      ],
       "port": 8766
+    },
+    {
+      "name": "arena-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8767",
+        "--directory",
+        "docs/art-preview/arena"
+      ],
+      "port": 8767
     }
   ]
 }

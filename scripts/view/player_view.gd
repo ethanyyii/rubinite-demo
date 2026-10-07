@@ -38,6 +38,8 @@ var _flash_white := 0.0
 ## 擊敗 Boss 後鎧甲多一道紅色裂紋（combat-design §15、player-knight §1）；重試後保留
 var ember_crack := false
 var _textures := {}
+## Y 排序用的位移：處決時從側面掛在 Boss 身上，要畫在 Boss 上面（節點往下移、畫的東西往上移回來）
+var _sort_dy := 0.0
 
 
 func setup(owner_arena: CombatArena) -> void:
@@ -90,13 +92,21 @@ func sim_stepped() -> void:
 func _process(delta: float) -> void:
 	var p: PlayerSim = arena.sim.player
 	anim.update(p)
-	position = p.pos.round()
+	_sort_dy = _execution_sort_dy(p)
+	position = p.pos.round() + Vector2(0, _sort_dy)
 	var real_dt := delta  # delta 已受 time_scale 影響；頓幀只停戰鬥模擬，不影響這裡
 	_flash_red = maxf(_flash_red - real_dt, 0.0)
 	_flash_white = maxf(_flash_white - real_dt, 0.0)
 	_apply_body(p)
+	overlay.position = Vector2(0, -anim.drawn_lift() - _sort_dy)
 	queue_redraw()
 	overlay.queue_redraw()
+
+
+## 處決時劍插進 Boss 的那一點（世界座標）：幀表的 wound（每個方向一個，掛在劍上那段都是同一點）
+func wound_point() -> Vector2:
+	var w: Array = KnightSheets.SHEETS["execute"]["wound"]
+	return arena.sim.player.pos.round() + anim.offset + Vector2(w[anim.row])
 
 
 func flash_hurt() -> void:
@@ -109,7 +119,17 @@ func flash_charge() -> void:
 
 ## 精靈圖畫在腳底加上選格給的偏移（攻擊前進時換圖才跟上、擊飛的高度），取整後相對節點的位置
 func _feet_offset(p: PlayerSim, extra := Vector2.ZERO) -> Vector2:
-	return (p.pos + anim.offset + extra).round() - p.pos.round()
+	return (p.pos + anim.offset + extra).round() - p.pos.round() - Vector2(0, _sort_dy)
+
+
+## 處決（2026-10-05 躍起下刺）：從側面（朝右、朝左那兩列）躍到 Boss 身上、掛在劍上到落地之前，
+## 主角和 Boss 在地上差不多同一列，照腳底排序會被 Boss 蓋住一半；他在 Boss 的身側、比 Boss 的身體靠外，
+## 所以這段時間排在 Boss 前面（節點往下移到 Boss 腳底下一列，畫的東西照原位）。從正面、背後來照原本的排序
+func _execution_sort_dy(p: PlayerSim) -> float:
+	if p.state != S.EXECUTE or anim.row not in [1, 3] or not p.passing_through():
+		return 0.0
+	var b: BossSim = arena.sim.boss
+	return maxf(0.0, roundf(b.pos.y) + 1.0 - roundf(p.pos.y))
 
 
 func _apply_body(p: PlayerSim) -> void:
@@ -125,7 +145,7 @@ func _apply_body(p: PlayerSim) -> void:
 	(body.material as ShaderMaterial).set_shader_parameter(&"tint", _tint(p))
 	var b: BossSim = arena.sim.boss
 	silhouette.visible = p.state != S.DEAD and b.state != BossSim.State.DEAD \
-		and hidden_by_boss(p.pos + anim.offset, b.pos, BossView.body_rect(b))
+		and hidden_by_boss(p.pos + anim.offset + Vector2(0, _sort_dy), b.pos, BossView.body_rect(b), anim.drawn_lift())
 	if silhouette.visible:
 		silhouette.texture = body.texture
 		silhouette.region_rect = body.region_rect
@@ -134,11 +154,12 @@ func _apply_body(p: PlayerSim) -> void:
 
 
 ## 主角（腳底 feet）在 Boss（腳底 boss_feet，身體範圍 boss_rect 相對腳底）後方、畫面上被擋住一半以上：
-## Y 排序會被 Boss 擋住（progress.md 已知問題），要畫剪影。只擦到邊時看得到主角，不必畫
-static func hidden_by_boss(feet: Vector2, boss_feet: Vector2, boss_rect: Rect2) -> bool:
+## Y 排序會被 Boss 擋住（progress.md 已知問題），要畫剪影。只擦到邊時看得到主角，不必畫。
+## lift：精靈圖裡畫的離地高度（處決的躍起），身體範圍跟著往上
+static func hidden_by_boss(feet: Vector2, boss_feet: Vector2, boss_rect: Rect2, lift := 0.0) -> bool:
 	if feet.y >= boss_feet.y:
 		return false
-	var me := Rect2(feet + Vector2(-BODY_HALF_WIDTH, -BODY_HEIGHT), Vector2(2 * BODY_HALF_WIDTH, BODY_HEIGHT))
+	var me := Rect2(feet + Vector2(-BODY_HALF_WIDTH, -BODY_HEIGHT - lift), Vector2(2 * BODY_HALF_WIDTH, BODY_HEIGHT))
 	var boss := Rect2(boss_feet + boss_rect.position, boss_rect.size)
 	return me.intersection(boss).get_area() >= me.get_area() * 0.5
 
@@ -159,7 +180,9 @@ func _tint(p: PlayerSim) -> Color:
 func _draw() -> void:
 	var p: PlayerSim = arena.sim.player
 	var shadow_r := Vector2(20, 4) if anim.lying else Vector2(PlayerData.HURT_RADIUS + 3, 4)
-	DrawUtil.fill_ellipse(self, Vector2(0, 1), shadow_r, Palette.SHADOW, 16)
+	# 離地越高影子越小（處決的躍起；最小 60%）
+	shadow_r *= 1.0 - 0.4 * clampf(anim.drawn_lift() / 80.0, 0.0, 1.0)
+	DrawUtil.fill_ellipse(self, Vector2(0, 1 - _sort_dy), shadow_r, Palette.SHADOW, 16)
 	if p.state == S.DODGE and p.state_elapsed() < Frames.of(PlayerData.DODGE_TIME):
 		_draw_afterimages(p)
 	if p.state == S.CHARGE:

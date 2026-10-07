@@ -94,6 +94,11 @@ var _thrust_stopped := false
 ## 突刺還剩多少距離；打中 Boss 時剩下的夠穿過他的身體，就穿過去（身體不互相推開）
 var _thrust_left := 0.0
 var _thrust_through := false
+## 處決：從哪一側躍上去（Boss → 主角）、插在肩上的位置、落地點
+var _exec_dir := Vector2.DOWN
+var _exec_from := 0.0
+var _exec_perch := Vector2.ZERO
+var _exec_land := Vector2.ZERO
 
 ## §5：加速 5 幀、減速 4 幀
 var _accel_frames := Frames.of(PlayerData.ACCEL_TIME)
@@ -210,9 +215,63 @@ func _can_pass_through() -> bool:
 	return ArenaGeometry.resolve(land, PlayerData.HURT_RADIUS).is_equal_approx(land)
 
 
-## 突刺正在穿過 Boss（CombatSim 這時不把兩個身體推開）
+## 突刺正在穿過 Boss、處決時躍上他的肩頭（CombatSim 這時不把兩個身體推開）
 func passing_through() -> bool:
+	if state == State.EXECUTE:
+		var e := state_elapsed()
+		return e > Frames.of(PlayerData.EXECUTE_LEAP_TIME) and e < Frames.of(PlayerData.EXECUTE_LAND_TIME)
 	return state == State.THRUST and _thrust_through and state_elapsed() < _thrust_frames
+
+
+## 處決的每一幀（時間軸見 _start_execute）
+func _tick_execute(e: int) -> void:
+	var boss_pos := sim.boss.pos
+	var leap := Frames.of(PlayerData.EXECUTE_LEAP_TIME)
+	var hit_at := Frames.of(PlayerData.EXECUTE_HIT_TIME)
+	var kick := Frames.of(PlayerData.EXECUTE_KICK_TIME)
+	var land := Frames.of(PlayerData.EXECUTE_LAND_TIME)
+	if e <= leap:
+		# 衝到身體接觸處（起跳點）
+		var to := boss_pos - pos
+		var gap := to.length() - (VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS + 2.0)
+		if gap > 0.0:
+			pos += to.normalized() * gap / (leap - e + 1)
+		if e == leap:
+			if (pos - boss_pos).length_squared() > 0.01:
+				_exec_dir = (pos - boss_pos).normalized()
+			_exec_from = pos.distance_to(boss_pos)
+			_exec_perch = boss_pos + _exec_dir * PlayerData.EXECUTE_PERCH
+	elif e <= hit_at:
+		# 躍起：影子從起跳點移到他的肩下
+		var k := float(e - leap) / (hit_at - leap)
+		pos = boss_pos + _exec_dir * lerpf(_exec_from, PlayerData.EXECUTE_PERCH, k)
+		if e == hit_at:
+			sim.boss.receive_execution()
+	elif e <= kick:
+		pos = _exec_perch
+		var twist := PlayerData.execute_twist_frames().find(e)
+		if twist >= 0:
+			sim.feedback(&"execution_twist", boss_pos)
+			sim.emit(&"execution_twist", {"pos": pos, "index": twist})
+		if e == kick:
+			_exec_land = _execute_landing(boss_pos)
+	elif e <= land:
+		pos = _exec_perch.lerp(_exec_land, float(e - kick) / (land - kick))
+
+
+## 蹬開後的落地點：往回跳 EXECUTE_LAND_DIST；落點或路上在場地外、撞進柱子時，依序改往旁邊轉
+func _execute_landing(boss_pos: Vector2) -> Vector2:
+	for deg: float in PlayerData.EXECUTE_LAND_TURNS:
+		var target := boss_pos + _exec_dir.rotated(deg_to_rad(deg)) * PlayerData.EXECUTE_LAND_DIST
+		var ok := true
+		for i in range(1, 5):
+			var q := _exec_perch.lerp(target, i / 4.0)
+			if not ArenaGeometry.resolve(q, PlayerData.HURT_RADIUS).is_equal_approx(q):
+				ok = false
+				break
+		if ok:
+			return target
+	return ArenaGeometry.resolve(boss_pos + _exec_dir * PlayerData.EXECUTE_LAND_DIST, PlayerData.HURT_RADIUS)
 
 
 # --- 輸入與動作 -------------------------------------------------------------------
@@ -366,14 +425,17 @@ func _start_attack(input: InputFrame) -> void:
 	sim.emit(&"player_attack", {"stage": combo_index, "pos": pos, "dir": facing})
 
 
-## §11.4 處決：失衡的 Boss 受擊圓邊緣 48px 內按攻擊，不限方向。歷時 1 秒、全程無敵，
-## 突刺在 0.2 秒時命中（最大 HP 的 15%），接頓幀、震動與白色閃光。
+## §11.4 處決：失衡的 Boss 受擊圓邊緣 48px 內按攻擊，不限方向。躍起下刺，歷時 3 秒、全程無敵
+## （2026-10-05 使用者：1 秒 → 3 秒）：0.4 秒衝到身體接觸處、躍起，0.8 秒插進他的肩頸（最大 HP 的 15%，
+## 接頓幀、震動與白色閃光），掛在劍上轉兩次，2.0 秒蹬開往後跳，2.5 秒落地。
+## 騰空的高度畫在精靈圖裡；程式只移動腳底（影子）：從來的那一側移到 Boss 肩下，再跳回落地點。
 func _start_execute() -> void:
 	_clear_intent()
 	vel = Vector2.ZERO
 	var to := sim.boss.pos - pos
 	if to.length_squared() > 0.01:
 		facing = to.normalized()
+	_exec_dir = -facing
 	enter_state(State.EXECUTE)
 	sim.boss.begin_execution()
 	sim.emit(&"player_execute", {"pos": pos, "dir": facing})
@@ -453,15 +515,7 @@ func _run_state_frame(input: InputFrame) -> void:
 			if e < _dodge_frames:
 				pos += dodge_dir * (PlayerData.DODGE_DISTANCE / _dodge_frames)
 		State.EXECUTE:
-			var hit_at := Frames.of(PlayerData.EXECUTE_HIT_TIME)
-			if e < hit_at:
-				# 突刺貼近 Boss（停在身體接觸處）
-				var to := sim.boss.pos - pos
-				var gap := to.length() - (VeltharisData.HURT_RADIUS + PlayerData.HURT_RADIUS + 2.0)
-				if gap > 0.0:
-					pos += to.normalized() * gap / (hit_at - e)
-			elif e == hit_at:
-				sim.boss.receive_execution()
+			_tick_execute(e)
 		_:
 			if state in LOCOMOTION_STATES:
 				_tick_locomotion(input)
@@ -471,7 +525,7 @@ func _run_state_frame(input: InputFrame) -> void:
 # --- 格擋（§6） -----------------------------------------------------------------------
 
 ## 追蹤格擋鍵的按下與放開。回傳這一幀是否按下。
-## 按下時決定這次有沒有完美窗口：距離上次放開不到 0.3 秒（18 幀）就只算普通格擋（★ 重新開窗）。
+## 按下時決定這次有沒有完美窗口：距離上次放開不到 0.2 秒（12 幀）就只算普通格擋（★ 重新開窗；2026-10-06 原 0.3 秒）。
 ## 頓幀期間的按下／放開會合併到頓幀後的第一幀送來。同一幀同時有放開與按下時，一律當作「先放開、再按下」
 ## （兩者相隔 0 幀 → 只算普通格擋），所以頓幀不能用來繞過重新開窗。
 func _track_block_edges(input: InputFrame) -> bool:

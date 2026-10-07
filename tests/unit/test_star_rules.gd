@@ -207,12 +207,14 @@ func test_star8_delayed_hits_have_hold_and_own_telegraph() -> void:
 
 
 ## ★9 每一種攻擊都能被完美彈返或閃身應對
-## - 可格擋：連段中相鄰兩擊之間，玩家要「擋完放開 → 等 0.3 秒重新開窗 → 再按」，
-##   所以兩擊間隔至少 放開 1 幀 + 重新開窗 18 幀 + 瞄準窗口中間 4 幀；否則第二擊不可能完美彈返。
+## - 可格擋：連段中相鄰兩擊之間，玩家要「擋完放開 → 等重新開窗 → 再按」。人要看到彈開才放開：
+##   兩擊間隔至少 反應 0.25 秒（15 幀，和下面危險預兆用的一樣）＋ 重新開窗 ＋ 瞄準窗口中間 4 幀；否則第二擊人做不到完美彈返。
+##   （2026-10-06 使用者：快斬第二斬怎麼擋都沒辦法完美格擋。原本這裡算「放開 1 幀」——機器人的速度——所以沒抓到：
+##   0.6 秒的間隔裡，0.3 秒的重新開窗加上人的反應就不夠了。重新開窗改成 0.2 秒，見 tuning-log。）
 ## - 不可格擋：★5 已確認閃身躲得掉；危險預兆夠長，來得及反應（0.25 秒反應 + 按鍵）；相鄰兩個環之間閃身冷卻來得及。
 ## 完整的實證是完美機器人對每一招零傷害（test_bots）。
 func test_star9_every_hit_is_parryable_or_dodgeable() -> void:
-	var min_gap := 1 + Frames.of(PlayerData.REARM_TIME) + 4
+	var min_gap := Frames.of(0.25) + Frames.of(PlayerData.REARM_TIME) + 4
 	for m in _all_moves():
 		for i in m.hits.size():
 			var h: BossHitData = m.hits[i]

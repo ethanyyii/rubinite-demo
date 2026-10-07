@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>競技場場景</title>
+<style>
+  :root { --bg: #1b1d21; --card: #25282e; --text: #e8e6e1; --muted: #a3a09a; --accent: #7fa8f5; --warn: #f0b35a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(27,29,33,.95); border-bottom: 1px solid #333; padding: 12px 16px; }
+  header h1 { font-size: 17px; margin: 0; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px; }
+  .intro { color: var(--muted); max-width: 980px; }
+  h2.sec { font-size: 16px; margin: 28px 0 10px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; }
+  .card.ask { outline: 2px solid var(--warn); }
+  .card h3 { font-size: 15px; margin: 0 0 6px; }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  video, img { width: 100%; image-rendering: pixelated; border-radius: 6px; background: #000; display: block; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header><h1>競技場：森林深處王城廢墟的中庭（第一、二階段）</h1></header>
+<main>
+<p class="intro"><b>2026-10-06 修改</b>：畫面四角的樹葉拿掉了，畫面上不再放任何場景的東西（只剩血條這些介面）。豐富感改由場景本身撐：
+廣場的石磚有不同石材，一條從北邊拱門經過王座到南邊的大石板路，王座外一圈太陽紋石，從王座往外燒黑的痕跡、劍的刮痕、被重擊碎裂的石板、
+陣亡挑戰者留下的盾牌頭盔和骨頭；北邊廢墟和大樹的長影子斜斜壓進廣場；場地外圈每個角一組火盆、石頭、蕨類、長草、倒木、挑戰者的墳，
+兩側有倒在草裡的老國王石像頭。會動的：地上穿過樹葉晃動的小光斑、植物隨風擺、飄落的葉子、白蛾、螢火蟲、火盆的細煙、會被主角嚇飛的烏鴉。
+第二階段：火盆被 Boss 的火點燃、烏鴉全部飛走、飄落的變成灰燼，加上原本的變暗變紅、中央暗紅的光、滿場火星、旗子燒起來。<br><br>
+參考圖只拿來抓氛圍（森林裡的王城廢墟、穿過樹冠的暖色陽光、破紅旗、插在地上的斷劍、燒成灰的王座），場地是重新設計的打鬥場：
+戰鬥區就是一個圓形石磚廣場，邊上一圈大塊的邊石剛好壓在角色走不出去的地方；高的東西（斷牆、拱門、柱子、旗竿、大樹）全在北邊的場地外，
+角色永遠站在它們前面；南邊只有膝蓋高的東西；四根柱子位置、碰撞都沒動。紅色留給 Boss（旗子、血跡都是暗褐紅）。所有圖都是程式畫的，沒有從參考圖切任何東西。</p>
+
+<h2 class="sec">和參考圖並排（構圖、物件都是自己設計的）</h2>
+<div class="card"><img src="compare_reference.png"></div>
+
+<h2 class="sec">會動的東西（遊戲裡錄的，2 倍；鏡頭固定）</h2>
+<div class="grid">
+  <div class="card"><h3>中央：地上的光斑慢慢晃、葉子飄下來</h3><video src="ambient_center.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>西北角：植物擺動、火盆冒細煙、白蛾、螢火蟲</h3><video src="ambient_nw.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>主角走近，停在石頭和倒木上的烏鴉飛走</h3><video src="ambient_crows.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>轉場：烏鴉一起飛走、火盆點燃、旗子燒起來</h3><video src="ambient_transition.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>第二階段：燒著的火盆、飄落的灰燼</h3><video src="ambient_p2_se.mp4" autoplay loop muted playsinline></video></div>
+</div>
+
+<h2 class="sec">打一段（擬人機器人代打，2 倍）</h2>
+<div class="grid">
+  <div class="card"><h3>第一階段</h3><video src="fight_phase1.mp4" autoplay loop muted playsinline></video></div>
+  <div class="card"><h3>第二階段</h3><video src="fight_phase2.mp4" autoplay loop muted playsinline></video></div>
+</div>
+
+<h2 class="sec">遊戲畫面（1 倍；點開是 2 倍）</h2>
+<div class="grid">
+  <div class="card"><h3>第一階段：中央</h3><a href="shot_center_2x.png"><img src="shot_center.png"></a></div>
+  <div class="card"><h3>第二階段：中央</h3><a href="shot_center_p2_2x.png"><img src="shot_center_p2.png"></a></div>
+  <div class="card"><h3>北邊（廢墟、旗子、樹林；廢墟的影子壓進廣場）</h3><a href="shot_north_2x.png"><img src="shot_north.png"></a></div>
+  <div class="card"><h3>第二階段的北邊（旗子燒起來）</h3><a href="shot_north_p2_2x.png"><img src="shot_north_p2.png"></a></div>
+  <div class="card"><h3>Boss 站在北邊緣</h3><a href="shot_boss_north_edge_2x.png"><img src="shot_boss_north_edge.png"></a></div>
+  <div class="card"><h3>南邊緣</h3><a href="shot_south_2x.png"><img src="shot_south.png"></a></div>
+  <div class="card"><h3>西邊緣</h3><a href="shot_west_2x.png"><img src="shot_west.png"></a></div>
+  <div class="card"><h3>東邊緣</h3><a href="shot_east_2x.png"><img src="shot_east.png"></a></div>
+</div>
+
+<h2 class="sec">轉場時場景的變化</h2>
+<div class="card"><img src="transition_strip.png"></div>
+
+<h2 class="sec">看得到的邊界＝走不出去的地方</h2>
+<div class="card"><img src="edge_walk.png"><p>主角沿著場地邊緣 16 個位置，每一張都停在那一圈邊石上；兩側的碎石、斷劍都在邊石外面，不會在看起來空的地方被擋住。</p></div>
+
+<h2 class="sec">鏡頭跑到最邊（不會露出空白；每個角一組火盆、石頭、蕨類、墳）</h2>
+<div class="grid">
+  <div class="card"><h3>西北角</h3><a href="shot_nw_corner_2x.png"><img src="shot_nw_corner.png"></a></div>
+  <div class="card"><h3>東北角</h3><a href="shot_ne_corner_2x.png"><img src="shot_ne_corner.png"></a></div>
+  <div class="card"><h3>西南角</h3><a href="shot_sw_corner_2x.png"><img src="shot_sw_corner.png"></a></div>
+  <div class="card"><h3>東南角</h3><a href="shot_se_corner_2x.png"><img src="shot_se_corner.png"></a></div>
+</div>
+
+<h2 class="sec">柱子</h2>
+<div class="grid">
+  <div class="card"><h3>主角在柱子後面：柱子變半透明</h3><a href="shot_pillar_behind_2x.png"><img src="shot_pillar_behind.png"></a></div>
+  <div class="card"><h3>主角在柱子前面</h3><a href="shot_pillar_front_2x.png"><img src="shot_pillar_front.png"></a></div>
+</div>
+
+<h2 class="sec">特效在新地面上看不看得清楚</h2>
+<div class="card"><img src="effects_on_floor.png"><p>由左到右：白色衝擊環（第一階段）、延遲下劈劍上的預兆紅光、第二階段的雙重衝擊環、墜王之躍的紅色落點（第二階段）。</p></div>
+</main>
+</body>
+</html>

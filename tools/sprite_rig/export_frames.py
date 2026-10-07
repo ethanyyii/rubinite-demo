@@ -18,12 +18,14 @@ import batch1 as B1
 import batch3 as B3
 import batch4 as B4
 import combo4 as C4
+import execute as EX
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 OUT = os.path.join(ROOT, 'scripts', 'view', 'knight_sheets.gd')
 VIEWS = list(B1.VIEWS)
 SMALL = ((56, 56), (28, 53))
 LARGE = ((88, 72), (44, 61))
+EXEC = ((88, 152), (44, 141))
 
 
 def sheet(name, size, rows, names, durs, **extra):
@@ -69,6 +71,13 @@ def build():
         out.append(sheet(action, SMALL, list(B4.ROWS), [n for n, _, _ in table], [d for _, d, _ in table]))
     for stage in (1, 2, 3, 4):
         out.append(attack(stage))
+    # the execution (2026-10-05, execute.py): the feet's height off the floor per column (drawn into the
+    # picture; the game draws the shadow on the floor) and, per row, where the blade goes into the Boss
+    fr = {v: EX.frames(v) for v in VIEWS}
+    assert all([f.name for f in fr[v]] == [f.name for f in fr['south']] for v in VIEWS)
+    assert all([f.air for f in fr[v]] == [f.air for f in fr['south']] for v in VIEWS)
+    out.append(sheet('execute', EXEC, VIEWS, [f.name for f in fr['south']], [f.dur for f in fr['south']],
+                     lift=[f.air for f in fr['south']], wound=[EX.wound(v) for v in VIEWS]))
     return dict(out)
 
 

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>戰鬥介面</title>
+<style>
+  :root { --bg: #1b1d21; --card: #25282e; --text: #e8e6e1; --muted: #a3a09a; --accent: #7fa8f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(27,29,33,.95); border-bottom: 1px solid #333; padding: 12px 16px; }
+  header h1 { font-size: 17px; margin: 0; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px; }
+  .intro { color: var(--muted); max-width: 980px; }
+  h2.sec { font-size: 16px; margin: 28px 0 10px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; }
+  .card h3 { font-size: 15px; margin: 0 0 6px; }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  img { width: 100%; image-rendering: pixelated; border-radius: 6px; background: #000; display: block; margin-top: 6px; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header><h1>戰鬥介面美化、Boss 血條分兩管、受擊閃白減弱</h1></header>
+<main>
+<p class="intro">左上：主角的徽章（用他自己正面的頭盔和藍羽飾）、鐵框的血條和架勢條、藍色的回血瓶（主角的顏色是藍色、治療時身上發藍光，用掉的瓶子變成暗的空玻璃瓶）。
+下方：Boss 的名字兩側有金線，名字右邊兩顆紅色的標記＝兩管血；血條的鐵框上下有金邊，兩端是像他的王冠的端蓋（金色尖角、暗紅寶石），中間一頂王冠；
+紅色的血條有一道淡淡的光每 4 秒流過去。第一階段一管血，打空之後進入第二階段的轉場，轉場的 1.5 秒裡血條回滿（亮的白邊往右推），標記熄掉一顆，第二階段再一管。
+只是顯示：遊戲規則（HP 一半進第二階段）沒改。</p>
+
+<h2 class="sec">前後對照（上：原本／改後的左上，下：原本／改後的 Boss 血條）</h2>
+<div class="card"><img src="before_after.png"></div>
+
+<h2 class="sec">遊戲畫面（2 倍）</h2>
+<div class="grid">
+  <div class="card"><h3>開場：都是滿的</h3><a href="ui_start_2x.png"><img src="ui_start_2x.png"></a></div>
+  <div class="card"><h3>雙方剛受傷：淡黃色是剛扣掉、還在往下追的血；回血瓶用掉一瓶</h3><a href="ui_hurt_2x.png"><img src="ui_hurt_2x.png"></a></div>
+  <div class="card"><h3>第一管快打空（Boss HP 53%）</h3><a href="ui_bar1_low_2x.png"><img src="ui_bar1_low_2x.png"></a></div>
+  <div class="card"><h3>轉場中：血條回滿（白邊往右推），名字旁的標記熄掉一顆</h3><a href="ui_refill_2x.png"><img src="ui_refill_2x.png"></a></div>
+  <div class="card"><h3>第二階段：第二管（Boss HP 30%＝第二管剩六成）；回血瓶用完</h3><a href="ui_phase2_2x.png"><img src="ui_phase2_2x.png"></a></div>
+  <div class="card"><h3>Boss 失衡：韌性條閃爍（和原本一樣）</h3><a href="ui_broken_2x.png"><img src="ui_broken_2x.png"></a></div>
+</div>
+
+<h2 class="sec">放大（左上 4 倍、Boss 血條 3 倍）</h2>
+<div class="grid">
+  <div class="card"><h3>開場</h3><img src="ui_start_player_4x.png"><img src="ui_start_boss_3x.png"></div>
+  <div class="card"><h3>剛受傷</h3><img src="ui_hurt_player_4x.png"><img src="ui_hurt_boss_3x.png"></div>
+  <div class="card"><h3>轉場中回滿</h3><img src="ui_refill_player_4x.png"><img src="ui_refill_boss_3x.png"></div>
+  <div class="card"><h3>第二階段</h3><img src="ui_phase2_player_4x.png"><img src="ui_phase2_boss_3x.png"></div>
+</div>
+
+<h2 class="sec">Boss 受擊閃白（左：沒閃，右：閃的那一下）</h2>
+<div class="card"><img src="boss_flash.png" style="max-width:728px"><p>原本整隻往白色混 80%，幾乎變成白色剪影。現在最亮的地方（劍、紅布條、金飾）往白色混 30%、深色的盔甲只有一成左右，看起來像盔甲反光一下；整隻一樣白的話，深色盔甲會變成和地面一樣的灰，像半透明。閃的時間照舊 0.06 秒。</p></div>
+</main>
+</body>
+</html>

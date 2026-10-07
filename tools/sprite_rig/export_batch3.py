@@ -4,7 +4,7 @@
     python3 tools/sprite_rig/export_batch3.py run        the run sheet and its 2 / 3 / 4 comparison only
 
 Writes (previews for review; nothing is wired into the game):
-  assets/sprites/player/knight_<run, charge, charge_walk, thrust, execute, dash, backstep,
+  assets/sprites/player/knight_<run, charge, charge_walk, thrust, dash, backstep,
       walk_locked>.png                     rows S / E / N / W; columns as in batch3.ACTIONS;
                                            56 x 56 (28, 53) or 88 x 72 (44, 61) as batch3.CANVAS
   docs/art-preview/player/batch3/
@@ -223,7 +223,7 @@ def run_html(sheet):
     return path
 
 
-SHEET_NAMES = {'run': 'run', 'charge': 'charge', 'charge_walk': 'charge_walk', 'thrust': 'thrust', 'execute': 'execute',
+SHEET_NAMES = {'run': 'run', 'charge': 'charge', 'charge_walk': 'charge_walk', 'thrust': 'thrust',
                'dash': 'dash', 'backstep': 'backstep', 'walk_locked': 'walk_locked'}
 
 
@@ -383,22 +383,6 @@ def scene_charge_cancel(v):
     return t
 
 
-def scene_execute(v, approach=30.0):
-    t = TL(v)
-    fwd = B3.FWD_SCREEN[v]
-    t.hold('idle', 0, 12)
-    fr = B3.frames('execute', v)
-    q = 0
-    for i, f in enumerate(fr):
-        sp = [approach / 12 if q + k < 12 else 0.0 for k in range(f.dur)]
-        if q == 12:
-            t.hold('execute', i, 15)          # the hit: 15 frames of hitstop (appendix A)
-        t.hold('execute', i, f.dur, fwd, sp)
-        q += f.dur
-    t.hold('idle', 0, 18)
-    return t
-
-
 def scene_dodge(action, back=False, locked_side=False):
     def build(v):
         t = TL(v)
@@ -436,7 +420,6 @@ SCENES = [
     ('heal_walk', '治療移動 30px/s：前進、後退、往左、往右（每張 3 模擬幀）', scene_slow('heal_walk', ('heal', 'hold 1'), 30.0)),
     ('charge_thrust', '蓄力 → 蓄滿放開 → 突刺（0–11 每幀 6px）→ 收招 → 待機', scene_charge_thrust),
     ('charge_cancel', '蓄力沒蓄滿就放開 → 收勢 → 待機', scene_charge_cancel),
-    ('execute', '處決：貼近 30px → 第 12 幀命中、頓幀 15 → 收招 → 待機', scene_execute),
     ('dash', '閃身：衝刺 56px → 煞停 → 待機', scene_dodge('dash')),
     ('backstep', '閃身：後跳 56px → 落地 → 待機', scene_dodge('backstep', back=True)),
     ('dodge_side', '鎖定時往角色左邊閃：衝刺畫閃身方向，收招轉回面向、用落地', scene_dodge('dash', locked_side=True)),
@@ -650,7 +633,6 @@ def to_canvas(px, src_canvas, dst_canvas):
 
 ONION = [(('charge', 'hold 1'), ('thrust', 'f1 蹬地')), (('thrust', 'f1 蹬地'), ('thrust', 'f2 前撲')),
          (('thrust', 'f3 保持 2'), ('thrust', 'f4 收劍 1')), (('thrust', 'f5 回站姿 2'), ('idle', 'idle 1')),
-         (('idle', 'idle 1'), ('execute', '起步 1')), (('execute', '起步 1'), ('execute', '起步 2')),
          (('dash', '衝刺 2'), ('dash', '煞停 1')), (('dash', '煞停 1'), ('dash', '煞停 2')),
          (('backstep', '後跳 2'), ('backstep', '落地 1')), (('run', 'run 2'), ('run', '停步 1A')),
          (('run', '停步 1A'), ('run', '停步 2')), (('charge', 'hold 1'), ('charge', 'out 1'))]

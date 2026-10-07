@@ -496,10 +496,10 @@ ACTIONS = {
                        _locked_upper(v), v, 'side', i, rev=rev, tables=(LOCKED_SIDE_FB, LOCKED_SIDE_SIDE))))
                     for nm, rev in (('side', False), ('rside', True)) for i in range(4)],
     'thrust': THRUST_FRAMES,
-    'execute': [('起步 1', EXEC_TIMING[0], lambda v: exec_start(v, 0)), ('起步 2', EXEC_TIMING[1], lambda v: exec_start(v, 1))] +
-               [(n, d, b) for (n, _, b), d in zip(THRUST_FRAMES[1:], EXEC_TIMING[2:])],
+    # (2026-10-05) the execution is its own 3 s leap and stab now (execute.py, export_execute.py); the 1 s one
+    # that reused the thrust (exec_start + the thrust's f2-f5 on EXEC_TIMING) is no longer exported
 }
-CANVAS = {'run': 'small', 'charge': 'large', 'charge_walk': 'large', 'thrust': 'large', 'execute': 'large',
+CANVAS = {'run': 'small', 'charge': 'large', 'charge_walk': 'large', 'thrust': 'large',
           'dash': 'small', 'backstep': 'small', 'walk_locked': 'small'}
 TITLES = {'run': '奔跑（循環 1–8，起跑 1–2，停步 1A／1B、2、3）',
           'charge': '蓄力（進入、按住 1–4、沒蓄滿放開的收勢 1–2）',
@@ -508,7 +508,7 @@ TITLES = {'run': '奔跑（循環 1–8，起跑 1–2，停步 1A／1B、2、3�
           'dash': '閃身：衝刺 1、2，煞停 1–3',
           'walk_locked': '鎖定走路（後退 1–8、往左側移 1–4、往右側移 1–4；前進用 knight_walk.png）',
           'backstep': '閃身：後跳 1、2，落地 1–3（鎖定時往側邊閃的收招也用落地）',
-          'execute': '處決（起步 1、2 另畫，之後共用突刺 f2–f5，時間不同）'}
+}
 
 
 class Frame(B1.Frame):
@@ -517,7 +517,7 @@ class Frame(B1.Frame):
 
 # actions whose blade may turn a little to stay >= 3:1 against what is behind it (batch 2's
 # readable(); not the charge: its walk must keep the hold's upper body pixel for pixel)
-READABLE = ('thrust', 'execute', 'dash', 'backstep', 'run')
+READABLE = ('thrust', 'dash', 'backstep', 'run')
 
 
 _CACHE = {}

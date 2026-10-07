@@ -41,7 +41,22 @@ func scenes() -> Array:
 		["sweep_staggered", 1, Vector2(0, -120), [[10, {}], [1, {"move": &"royal_sweep"}], [75, {}], [1, {"stagger": true}],
 			[60, {}]], []],
 		["thrust_dies", 1, Vector2(-200, 0), [[10, {}], [1, {"move": &"judgment_thrust"}], [25, {}], [1, {"die": true}], [200, {}]], []],
-		["executed", 1, Vector2(0, -60), [[10, {}], [1, {"break": true}], [40, {}], [1, {"execute": true}], [140, {}]], [60]],
+		# 處決（2026-10-05：3 秒的躍起下刺）：從正面、側面、背後；Boss 面向主角（失衡前轉過來）或面向下方；靠牆時往旁邊跳；
+		# 打死；HP 跨過一半（處決完轉場）。截圖範圍放大（第 6 欄）：躍起的高度、往回跳的落點都在裡面
+		["executed", 1, Vector2(0, -66), [[10, {}], [1, {"break": true}], [40, {}], [1, {"execute": true}], [210, {}]], [60, 100],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_side", 1, Vector2(70, 0), [[10, {}], [1, {"break": true}], [40, {}], [1, {"execute": true}], [210, {}]], [60, 100],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_side_left", 1, Vector2(-70, 0), [[10, {}], [1, {"break": true}], [40, {}], [1, {"execute": true}], [210, {}]], [60, 100],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_back", 1, Vector2(0, 70), [[10, {}], [1, {"break": true}], [40, {}], [1, {"execute": true}], [210, {}]], [60, 100],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_side_vs_front", 1, Vector2(70, 0), [[10, {}], [1, {"break": true, "face": Vector2.DOWN}], [40, {}], [1, {"execute": true}], [210, {}]], [100],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_kills", 1, Vector2(0, -66), [[10, {}], [1, {"break": true, "hp": 60}], [40, {}], [1, {"execute": true}], [300, {}]], [],
+			Vector2i(440, 400), Vector2i(220, 250)],
+		["executed_half", 1, Vector2(0, -66), [[10, {}], [1, {"break": true, "hp": roundi(VeltharisData.MAX_HP * 0.5) + 80}], [40, {}],
+			[1, {"execute": true}], [300, {}]], [], Vector2i(440, 400), Vector2i(220, 250)],
 		["transition", 1, Vector2(0, -150), [[10, {}], [1, {"hp_half": true}], [110, {}]], [50]],
 		["triple", 2, Vector2(0, -120), [[10, {}], [1, {"move": &"triple_slash"}], [240, {}]], []],
 		["double_impact", 2, Vector2(0, -150), [[10, {}], [1, {"move": &"double_impact"}], [205, {}]], []],
@@ -121,6 +136,8 @@ func _scene(arena: CombatArena, out: String, sc: Array) -> void:
 	for s: Array in segs:
 		n += int(s[0])
 	var fulls: Array = sc[4]
+	var crop_size: Vector2i = sc[5] if sc.size() > 5 else CROP
+	var feet_at: Vector2i = sc[6] if sc.size() > 6 else FEET_AT
 	var crops: Array[Image] = []
 	var names: Array[String] = []
 	var rows := []
@@ -150,13 +167,15 @@ func _scene(arena: CombatArena, out: String, sc: Array) -> void:
 		t += 1
 		var img := arena.get_viewport().get_texture().get_image()
 		var feet := Vector2i((arena.boss_view as Node2D).get_global_transform_with_canvas().origin.round())
-		var crop := Image.create(CROP.x, CROP.y, false, img.get_format())
-		crop.blit_rect(img, Rect2i(feet - FEET_AT, CROP), Vector2i.ZERO)
+		var crop := Image.create(crop_size.x, crop_size.y, false, img.get_format())
+		crop.blit_rect(img, Rect2i(feet - feet_at, crop_size), Vector2i.ZERO)
 		crops.append(crop)
 		names.append(dir.path_join("f%04d.png" % t))
 		var b := sim.boss
 		var a: BossAnim = arena.boss_view.anim
-		rows.append("%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d" % [t, sim.combat_frame, b.state_name(), b.state_elapsed(), a.clip, a.row, a.col, sim.hitstop])
+		var pa: PlayerAnim = arena.player_view.anim
+		rows.append("%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\t%s\t%d\t%d" % [t, sim.combat_frame, b.state_name(), b.state_elapsed(), a.clip, a.row, a.col, sim.hitstop,
+			sim.player.state_name(), sim.player.state_elapsed(), pa.sheet, pa.row, pa.col])
 		if t in fulls:
 			crops.append(img)
 			names.append(dir.path_join("full_%04d.png" % t))
@@ -165,7 +184,7 @@ func _scene(arena: CombatArena, out: String, sc: Array) -> void:
 	for i in crops.size():
 		crops[i].save_png(names[i])
 	var fh := FileAccess.open(dir.path_join("log.tsv"), FileAccess.WRITE)
-	fh.store_string("frame\tcombat\tstate\telapsed\tsheet\trow\tcol\thitstop\n" + "\n".join(rows) + "\n")
+	fh.store_string("frame\tcombat\tstate\telapsed\tsheet\trow\tcol\thitstop\tp_state\tp_elapsed\tp_sheet\tp_row\tp_col\n" + "\n".join(rows) + "\n")
 	fh.close()
 	print("%s: %d frames" % [scene_name, rows.size()])
 
@@ -183,6 +202,10 @@ func _act(arena: CombatArena, o: Dictionary, bot: Idle) -> void:
 	if o.has("engage"):
 		b.move = null
 		b.engage(VeltharisData.move(b.phase, o["engage"]))
+	if o.has("hp"):
+		b.hp = int(o["hp"])
+	if o.has("face"):
+		b.facing = o["face"]
 	if o.get("break", false):
 		b._lose_toughness(9999.0)
 	if o.get("die", false):
@@ -200,5 +223,7 @@ func _act(arena: CombatArena, o: Dictionary, bot: Idle) -> void:
 		bot.heavy_dir = (b.pos - sim.player.pos).normalized()
 		sim.player.facing = bot.heavy_dir
 	if o.get("execute", false):
-		sim.player.pos = b.pos + Vector2(0, 40)
+		# 處決範圍內（受擊圓邊緣 48px），方向照這個場景主角原本在的那一側
+		var side := (sim.player.pos - b.pos).normalized() if sim.player.pos.distance_to(b.pos) > 1.0 else Vector2.DOWN
+		sim.player.pos = b.pos + side * 70.0
 		bot.press_attack_at = bot.frame

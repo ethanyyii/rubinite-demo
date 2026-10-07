@@ -227,7 +227,8 @@ func test_feedback_table_matches_doc() -> void:
 	# combat-design §12：[頓幀, 震動]
 	var table := {&"light_hit": [0.04, 0.0], &"finisher_hit": [0.07, 2.0], &"heavy_hit": [0.10, 4.0],
 		&"perfect_parry": [0.08, 3.0], &"player_stagger": [0.06, 2.0], &"player_knockdown": [0.08, 5.0],
-		&"boss_break": [0.15, 4.0], &"execution": [0.25, 6.0], &"normal_block": [0.0, 0.0]}
+		&"boss_break": [0.15, 4.0], &"execution": [0.25, 6.0], &"normal_block": [0.0, 0.0],
+		&"execution_twist": [0.0, 2.5]}
 	for ev: StringName in table:
 		assert_near(FeedbackData.TABLE[ev]["hitstop"], table[ev][0], 0.0001, "%s 頓幀" % ev)
 		assert_near(FeedbackData.shake(ev), table[ev][1], 0.0001, "%s 震動" % ev)
@@ -351,7 +352,7 @@ func test_player_constants_match_doc() -> void:
 	# §3、§6
 	assert_near(PlayerData.INPUT_BUFFER, 0.15)
 	assert_near(PlayerData.PERFECT_WINDOW, 0.15)
-	assert_near(PlayerData.REARM_TIME, 0.3)
+	assert_near(PlayerData.REARM_TIME, 0.2)  # 2026-10-06 使用者：0.3 → 0.2
 	assert_near(PlayerData.BLOCK_ARC_DEG, 180.0)
 	assert_near(PlayerData.BLOCK_PUSHBACK, 8.0)
 	# §7
@@ -389,5 +390,5 @@ func test_player_constants_match_doc() -> void:
 	assert_near(PlayerData.DOWN_INVULN_AFTER_GETUP, 0.3)
 	# §11.4、§14
 	assert_near(PlayerData.EXECUTE_RANGE, 48.0)
-	assert_near(PlayerData.EXECUTE_TIME, 1.0)
+	assert_near(PlayerData.EXECUTE_TIME, 3.0)  # 2026-10-05 使用者：1 秒 → 3 秒
 	assert_near(PlayerData.DEATH_TIME, 1.5)

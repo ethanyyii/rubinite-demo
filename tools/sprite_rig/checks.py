@@ -1827,19 +1827,12 @@ def batch3_checks():
                     # 0.25 px: the ankles are exact here (batch 2's 1 px on screen is a quarter of the run's step, 75 % of this one)
                     out(max(sl) <= 0.25, f'charge_walk {view} {kind}: planted feet keep to the floor ({ground:.2f} px a frame, +-0.25)',
                         f'off by at most {max(sl):.2f} px')
-    # ---- thrust and execution (decision 5)
+    # ---- thrust (decision 5; the execution has its own checks since 2026-10-05: checks_execute.py)
     if 'thrust' in B3.ACTIONS:
-        print('-- thrust, execution (appendix C, batch 3; appendix A: thrust 45 sim frames (2026-10-05: 15 of lunge), execution 60, hit on 12)')
+        print('-- thrust (appendix C, batch 3; appendix A: thrust 45 sim frames (2026-10-05: 15 of lunge); the execution: checks_execute.py)')
         tt = sum(f.dur for f in B3.frames('thrust', 'south'))
         rec = sum(f.dur for f in B3.frames('thrust', 'south')[2:])
         out(tt == 45 and rec == 30, 'thrust: 45 sim frames, back to the stance within the 30 of recovery', f'{tt} / {rec}')
-        ex = B3.frames('execute', 'south')
-        t_, at12 = 0, None
-        for f in ex:
-            if t_ <= 12 < t_ + f.dur:
-                at12 = f.name
-            t_ += f.dur
-        out(t_ == 60 and at12 == 'f3 保持 1', 'execute: 60 sim frames, the hit (sim frame 12) on the first hold frame', f'{t_}, frame 12 shows {at12}')
         for view in B3.VIEWS:
             fr = B3.frames('thrust', view)
             f2 = fr[1]
@@ -1880,27 +1873,6 @@ def batch3_checks():
             for w in [f for f in B3.frames('charge_walk', view) if f.name.startswith('fwd ')][:1]:
                 m = screen_moves(pt(w), pt(fr[0]))
                 out(None, f'thrust {view}: released while walking ({w.name} -> f1)', _fmt_moves(m))
-            # execution: its own starts, then the thrust's f2 on
-            ef = B3.frames('execute', view)
-            idle = named('idle', view, 'idle 1')
-            steps = [(idle, ef[0]), (ef[0], ef[1]), (ef[1], ef[2])]
-            bad, worst = [], {}
-            for a_, b_ in steps:
-                m = screen_moves(pt(a_), pt(b_))
-                if not inlim(m, body=SWING_JUMP, sword=a_ is not idle):
-                    bad.append(f'{a_.name} -> {b_.name}: {_fmt_moves(m)}')
-                for k, v_ in m.items():
-                    if v_ is not None:
-                        worst[k] = max(worst.get(k, 0), v_)
-            out(not bad, f'execute {view}: idle -> start 1 -> start 2 -> lunge (head / torso {SWING_JUMP} px; the sword free on the first)',
-                '; '.join(bad) or 'largest ' + _fmt_moves(worst))
-            for label, src in [('guard hold 1', named('guard', view, 'hold 1'))] + \
-                    [(f'stage {st} {f.name}', f) for st in (1, 2) for f in __import__('batch2').frames(st, view)[4:]]:
-                p_src = _Pt(src, *src.screen_offset()) if hasattr(src, 'screen_offset') else pt(src)
-                if hasattr(src, 'screen_offset'):
-                    p_src = _Pt(src, 0, 0)
-                m = screen_moves(p_src, pt(ef[0]))
-                out(None, f'execute {view}: {label} -> start 1 (reported)', _fmt_moves(m))
     # ---- dodge (decision 4)
     if 'dash' in B3.ACTIONS:
         print('-- dodge (appendix C, batch 3; decision 4: entering is not limited, every step after is)')

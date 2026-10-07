@@ -1,6 +1,6 @@
 extends SimTestCase
 ## M3：combat-design §6 格擋與彈返、§4 架勢。
-## 完美窗口：按下後 9 幀內（第 0–8 幀）被擊中；放開後 18 幀內再按只算普通格擋。
+## 完美窗口：按下後 9 幀內（第 0–8 幀）被擊中；放開後 12 幀內再按只算普通格擋（2026-10-06 原 18 幀）。
 
 const S := PlayerSim.State
 const R := CombatSim.BlockResult
@@ -44,7 +44,7 @@ func _block_then_hit(k: int, hit: BossHitData) -> int:
 
 func test_frames() -> void:
 	assert_eq(Frames.of(PlayerData.PERFECT_WINDOW), 9)
-	assert_eq(Frames.of(PlayerData.REARM_TIME), 18)
+	assert_eq(Frames.of(PlayerData.REARM_TIME), 12)
 
 
 func test_block_starts_on_press_frame() -> void:
@@ -75,9 +75,9 @@ func test_press_on_hit_frame_is_perfect() -> void:
 	assert_eq(sim.apply_boss_hit(_heavy_mid(), sim.boss.pos), R.PERFECT)
 
 
-func test_rearm_within_18_frames_is_normal_block() -> void:
-	# 按 → 放開 → 17 幀後再按：普通格擋；18 幀後再按：完美
-	for case in [[17, R.BLOCKED], [18, R.PERFECT]]:
+func test_rearm_within_12_frames_is_normal_block() -> void:
+	# 按 → 放開 → 11 幀後再按：普通格擋；12 幀後再按：完美
+	for case in [[11, R.BLOCKED], [12, R.PERFECT]]:
 		sim = CombatSim.new(1)
 		before_each_positions()
 		held["block"] = true
@@ -362,11 +362,11 @@ func test_rearm_cannot_be_bypassed_during_parry_hitstop() -> void:
 	while sim.hitstop > 0:
 		sim.step(make_input())
 	advance(1)
-	assert_eq(sim.apply_boss_hit(_heavy_mid(), sim.boss.pos), R.BLOCKED, "頓幀中放開再按不能繞過 0.3 秒重新開窗")
+	assert_eq(sim.apply_boss_hit(_heavy_mid(), sim.boss.pos), R.BLOCKED, "頓幀中放開再按不能繞過 0.2 秒重新開窗")
 
 
 func test_tap_during_hitstop_registers_release() -> void:
-	# 頓幀中點按（按下又放開）：恢復後再按也要等 18 幀才有完美窗口
+	# 頓幀中點按（按下又放開）：恢復後再按也要等 12 幀才有完美窗口
 	held["block"] = false
 	press(&"attack")
 	place_near_boss(50.0)
@@ -381,7 +381,7 @@ func test_tap_during_hitstop_registers_release() -> void:
 		sim.step(make_input())
 	advance(10)
 	held["block"] = true
-	advance(1)  # 點按後 11 幀再按：未滿 18 幀
+	advance(1)  # 點按後 11 幀再按：未滿 12 幀
 	assert_false(player().block_press_perfect, "點按的放開也算在重新開窗內")
 
 

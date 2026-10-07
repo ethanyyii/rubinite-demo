@@ -25,7 +25,10 @@ import sword as SW
 
 # ------------------------------------------------------------------ canvases (fixed, 2026-09-27)
 # the foot anchor sits 25 px below the canvas centre in both
-CANVAS = {'small': (56, 56, 28, 53), 'large': (88, 72, 44, 61)}
+CANVAS = {'small': (56, 56, 28, 53), 'large': (88, 72, 44, 61),
+          # (2026-10-05) the execution's leap: the body is drawn up to ~75 px off the floor (pose 'air') with
+          # the arms raised over the head, so the canvas is taller; the foot anchor is still 11 px over its foot
+          'exec': (88, 152, 44, 141)}
 
 # ------------------------------------------------------------------ projection
 # Depth (toward / away from the camera) is foreshortened. The reference views are close to
@@ -654,7 +657,12 @@ class PoseRig:
             sh_w = apply(upper, *v['sh'][s_])
             hand3 = hand_rel(view, s_, spec)
             hint = spec.get('elbow', (0, 0, -1))
-            el3 = ik3((0, 0, 0), hand3, UPPER, FORE, hint)
+            # (2026-10-05, the execution) a pose may draw the arms longer (arm_k, a factor or {side: factor}):
+            # the 40 px knight's arms (13 px) only reach his brow, so a sword raised over the head needs
+            # them longer in that pose (animation-review §4.3, as the Boss's overhead cleave). Others: 1
+            ak = pose.get('arm_k', 1.0)
+            ak = ak.get(s_, 1.0) if isinstance(ak, dict) else ak
+            el3 = ik3((0, 0, 0), hand3, UPPER * ak, FORE * ak, hint)
             el_w = vadd(sh_w, proj(view, el3))
             hd_w = vadd(sh_w, proj(view, hand3))
             hands_w[s_] = hd_w
@@ -735,7 +743,7 @@ class PoseRig:
                 ln = math.hypot(*d2)
                 # the tip never goes below the floor: past the ground row the blade reads as
                 # planted, so it is shortened to touch the floor (animation-review §4.4)
-                floor_tip = floor_hilt = float(A.GROUND)
+                floor_tip = floor_hilt = float(self._floor)
                 if pose.get('floor3d') and not side:
                     # (2026-09-28 fix) the floor where the blade is: in front / back views a point
                     # nearer the camera sits lower on screen, so a level blade pointing at the
@@ -766,16 +774,22 @@ class PoseRig:
                 br = view in sw['bright'] if 'bright' in sw else True
                 hilt_dep = sw.get('hilt_depth', {}).get(view)
 
+                # (2026-10-05, the execution) a blade driven into the Boss shows only `show` of its length (the
+                # rest is inside him: the Boss is drawn behind, so the cut end reads as the wound); a hilt turned
+                # in the fists shows its crossguard end-on (guard_half). Others: whole blade, 2 px each side
+                ln = ln * sw.get('show', 1.0)
+                gh = sw.get('guard_half', SW.GUARD_HALF)
+
                 def draw_sword(px, hand=hand, d2=d2, ln=ln, w=sw.get('width', {}).get(view, 2), gb=gb, br=br, fh=floor_hilt,
-                               hilt_only=False):
-                    spx, blade = SW.sword_pixels(hand, d2, ln, w, gb, br)
+                               hilt_only=False, gh=gh):
+                    spx, blade = SW.sword_pixels(hand, d2, ln, w, gb, br, guard_half=gh)
                     # a low hand can still put the guard or pommel under the floor: the whole
                     # sword slides up in the fist (as the walk does), whole pixels only
-                    if fh != A.GROUND:
+                    if fh != self._floor:
                         # floor3d: only the hilt is held to the floor under the hand
                         sink = max(y for q, y in ((q, q[1]) for q in spx) if q not in blade) - int(math.floor(fh))
                     else:
-                        sink = max(y for (_, y) in spx) - A.GROUND
+                        sink = max(y for (_, y) in spx) - self._floor
                     if sink > 0:
                         spx = {(x, y - sink): c for (x, y), c in spx.items()}
                         blade = {(x, y - sink) for (x, y) in blade}
@@ -821,9 +835,9 @@ class PoseRig:
             if not name.startswith('leg') and not (name == 'sword' and pose.get('floor3d')):
                 # cloth (or a tasset corner) that a lean swings past the floor rests on it (a
                 # floor3d blade was already held to the floor at its own depth)
-                for k in [k for k in tmp if k[1] > A.GROUND]:
+                for k in [k for k in tmp if k[1] > self._floor]:
                     c = tmp.pop(k)
-                    tmp.setdefault((k[0], A.GROUND), c)
+                    tmp.setdefault((k[0], self._floor), c)
             self._out.update(tmp)
             self.pieces.setdefault(name, {}).update(tmp)
             for k in tmp:
@@ -971,7 +985,7 @@ class PoseRig:
     def _finish(self, canvas):
         W_, H_, cx, gy = CANVAS[canvas]
         dx, dy = self.canvas_offset()
-        gy += self._shift[1]
+        gy += self._shift[1] + getattr(self, '_air', 0)
         px = {(x + dx, y + dy): c for (x, y), c in self._out.items()}
         drawn = set(px)
         reconnect_specks(px)
@@ -998,6 +1012,14 @@ class PoseRig:
         # Everything - pixels, trace, pieces, debug through canvas_offset() - moves with it; none
         # of the earlier poses has it, so they draw as before
         self._shift = tuple(int(v) for v in pose.get('screen_shift', (0, 0)))
+        # (2026-10-05, the execution's leap) a pose may be drawn off the floor (air, whole px): it is drawn as if
+        # standing (feet, knees, cloth as usual) and the whole picture moves up, while the floor that the
+        # cloth rests on and the blade stops at stays where it is, `air` px under the feet (as the Boss's
+        # leap draws its lift). None of the earlier poses has it, so they draw as before
+        self._air = int(round(pose.get('air', 0)))
+        self._floor = A.GROUND + self._air
+        if self._air:
+            self._shift = (self._shift[0], self._shift[1] - self._air)
         return self.render(pose, canvas)
 
     def canvas_offset(self):

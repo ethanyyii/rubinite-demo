@@ -121,6 +121,10 @@ func _tick_state() -> void:
 				_check_phase_transition()  # 失衡期間 HP 被打到一半以下：起身直接換成轉場
 		State.EXECUTED:
 			if e >= Frames.of(PlayerData.EXECUTE_TIME):
+				if hp <= 0:
+					# 處決打到 0：騎士蹬開、落地之後才倒下（2026-10-05，處決改成 3 秒）
+					_die()
+					return
 				toughness = VeltharisData.MAX_TOUGHNESS
 				enter_state(State.RISING)
 				_check_phase_transition()  # 處決把 HP 打到一半以下：起身直接換成轉場
@@ -674,17 +678,15 @@ func _can_short_stagger() -> bool:
 
 # --- 處決（§11.4） --------------------------------------------------------------------
 
-## 玩家開始處決：Boss 倒地，和玩家的處決動作同步 1 秒
+## 玩家開始處決：Boss 跪著被刺，和玩家的處決動作同步 3 秒
 func begin_execution() -> void:
 	enter_state(State.EXECUTED)
 	sim.emit(&"execution_start", {"pos": pos})
 
 
-## 處決突刺命中：最大 HP 的 15%
+## 處決插下去：最大 HP 的 15%。打到 0 時等處決的 3 秒結束才死亡（EXECUTED 的結尾）
 func receive_execution() -> void:
 	var dmg := roundi(VeltharisData.MAX_HP * VeltharisData.EXECUTE_DAMAGE_RATIO)
 	hp = maxi(hp - dmg, 0)
 	sim.feedback(&"execution", pos + Vector2(0, -VeltharisData.HEIGHT / 3.0))
 	sim.emit(&"execution_hit", {"pos": pos, "damage": dmg})
-	if hp <= 0:
-		_die()

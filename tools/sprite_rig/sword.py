@@ -57,7 +57,7 @@ def line(x0, y0, x1, y1):
     return out
 
 
-def sword_pixels(hand, d, length=1.0, width=2, grip_back=GRIP_BACK, bright=False):
+def sword_pixels(hand, d, length=1.0, width=2, grip_back=GRIP_BACK, bright=False, guard_half=GUARD_HALF):
     """Pixels of the whole sword. d = screen direction of the blade (any length);
     length = on-screen fraction of the full blade (foreshortening toward / away from the
     camera). bright = both rows of a 2 px blade in the lit colours: a blade held flat in
@@ -90,8 +90,8 @@ def sword_pixels(hand, d, length=1.0, width=2, grip_back=GRIP_BACK, bright=False
                 blade.add(q)
     # crossguard: a short bar across the blade
     perp = (-uy, ux)
-    ends = line(gx - perp[0] * GUARD_HALF, gy - perp[1] * GUARD_HALF,
-                gx + perp[0] * GUARD_HALF, gy + perp[1] * GUARD_HALF)
+    ends = line(gx - perp[0] * guard_half, gy - perp[1] * guard_half,
+                gx + perp[0] * guard_half, gy + perp[1] * guard_half)
     for j, q in enumerate(ends):
         px[q] = GUARD_END if j in (0, len(ends) - 1) else GUARD_MID
     # grip (mostly under the fist) and pommel

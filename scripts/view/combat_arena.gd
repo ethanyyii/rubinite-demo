@@ -5,6 +5,10 @@ extends Node2D
 
 const FloorView := preload("res://scripts/view/arena_floor_view.gd")
 const PillarView := preload("res://scripts/view/pillar_view.gd")
+const PropView := preload("res://scripts/view/arena_prop_view.gd")
+const LightView := preload("res://scripts/view/arena_light_view.gd")
+const LifeView := preload("res://scripts/view/arena_life_view.gd")
+const CrowView := preload("res://scripts/view/arena_crow_view.gd")
 const PlayerView := preload("res://scripts/view/player_view.gd")
 const BossView := preload("res://scripts/view/boss_view.gd")
 const CameraView := preload("res://scripts/view/combat_camera.gd")
@@ -39,6 +43,8 @@ var fx: Node2D
 var sfx: Node
 var screen_flash: Control
 var pillar_views: Array[Node2D] = []
+## 和角色一起排序的場景物件（場地兩側、南邊；2026-10-05 正式美術）
+var prop_views: Array[Node2D] = []
 
 ## §14 死亡與重試、勝利演出：&"" 戰鬥中、&"death"、&"victory"
 var end_state := &""
@@ -57,6 +63,7 @@ func _ready() -> void:
 func _build() -> void:
 	var floor_view := FloorView.new()
 	floor_view.name = "ArenaFloor"
+	floor_view.setup(self)
 	add_child(floor_view)
 
 	var preview: Node2D = HitboxPreview.new()
@@ -76,6 +83,19 @@ func _build() -> void:
 		world.add_child(pv)
 		pillar_views.append(pv)
 
+	for prop: Dictionary in ArenaLayout.PROPS:
+		var prv: Node2D = PropView.new()
+		prv.name = "Prop%d" % prop_views.size()
+		prv.setup(prop, self)
+		world.add_child(prv)
+		prop_views.append(prv)
+
+	for i in ArenaLayout.PERCHES.size():
+		var cv: Node2D = CrowView.new()
+		cv.name = "Crow%d" % i
+		cv.setup(ArenaLayout.PERCHES[i], self, 40 + i)
+		world.add_child(cv)
+
 	boss_view = BossView.new()
 	boss_view.name = "Boss"
 	boss_view.setup(self)
@@ -90,6 +110,16 @@ func _build() -> void:
 	fx.name = "Fx"
 	fx.setup(self)
 	add_child(fx)
+
+	var life: Node2D = LifeView.new()
+	life.name = "ArenaLife"
+	life.setup(self)
+	add_child(life)
+
+	var light: Node2D = LightView.new()
+	light.name = "ArenaLight"
+	light.setup(self)
+	add_child(light)
 
 	var debug_world: Node2D = DebugWorldView.new()
 	debug_world.name = "DebugWorld"
@@ -273,12 +303,19 @@ func _dispatch(e: Dictionary) -> void:
 		&"player_execute":
 			sfx.play(&"swing_heavy", 0.0, 0.8)
 		&"execution_hit":
-			# 處決：白色閃光（§11.4、§12）
+			# 處決：白色閃光（§11.4、§12）；火花從劍插進去的地方噴出來（2026-10-05 躍起下刺）
 			sfx.play(&"execution")
 			screen_flash.flash(Color(1, 1, 1, 0.85), 0.35)
-			fx.sparks(e["pos"] + Vector2(0, -40), Color(1, 1, 1), 30, 180.0, 0.5)
-			fx.sparks(e["pos"] + Vector2(0, -40), Palette.BOSS_EMBER, 20, 120.0, 0.6)
+			var w: Vector2 = player_view.wound_point()
+			fx.sparks(w, Color(1, 1, 1), 30, 180.0, 0.5)
+			fx.sparks(w, Palette.BOSS_EMBER, 20, 120.0, 0.6)
 			boss_view.flash_hit()
+		&"execution_twist":
+			# 處決時轉劍（2026-10-05）：傷口噴出一小團火星（程式畫的特效），金屬摩擦聲
+			var w: Vector2 = player_view.wound_point()
+			fx.sparks(w, Palette.BOSS_EMBER, 14, 110.0, 0.45)
+			fx.sparks(w, Color(1.0, 0.9, 0.7), 6, 80.0, 0.25)
+			sfx.play(&"hit", -3.0, 0.7)
 
 
 ## 重置戰鬥（F5；死亡後重試也走這裡）
@@ -287,6 +324,9 @@ func reset_battle() -> void:
 	sim.reset(randi())
 	hud.reset_trails()
 	fx.clear()
+	for c in world.get_children():
+		if c.has_method("perch_again"):
+			c.perch_again()
 	if bot_driver != null:
 		bot_driver.reset()
 	_apply_boss_mode()

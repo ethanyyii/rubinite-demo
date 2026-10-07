@@ -172,6 +172,12 @@ static func side_row(p: PlayerSim) -> int:
 	return ROW_ATTACKER_RIGHT if x >= 0.0 else ROW_ATTACKER_LEFT
 
 
+## 精靈圖裡畫的離地高度（處決的躍起，2026-10-05：高度畫在圖裡，陰影留在地上；幀表的 lift）
+func drawn_lift() -> float:
+	var s: Dictionary = SHEETS[sheet]
+	return float(s["lift"][col]) if s.has("lift") else 0.0
+
+
 func _show(key: String, r: int, c: int) -> void:
 	sheet = key
 	row = r

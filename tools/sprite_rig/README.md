@@ -59,6 +59,14 @@ python3 tools/sprite_rig/checks.py --combo4
 ```
 
 ```bash
+python3 tools/sprite_rig/export_execute.py
+```
+
+```bash
+python3 tools/sprite_rig/checks_execute.py
+```
+
+```bash
 python3 tools/sprite_rig/export_frames.py
 ```
 
@@ -100,6 +108,8 @@ python3 tools/sprite_rig/extract_reference.py
 | `checks.py --batch4` | 第 4 批的自動檢查：每幀技術品質（躺姿用躺姿的那一套）、踉蹌（後仰、離地、頭晚一拍）、倒地（往外倒、摔倒 8px、著地 10px、布料）、擊飛（兩張身體相同）、起身（跪姿骨盆、30 幀）、架勢崩潰（跪姿、搖晃與布料延遲、劍插地）、時間 |
 | `export_combo4.py` | 四段輕攻擊（2026-09-29 第五版：間隔調整、第 4 段轉身中砍到）：精靈圖 `knight_attack{1,2,3,4}.png`（88×72，每段後面接「從站姿」的開頭）；幀序列（標出扭轉／轉身用哪個方向的圖）、剪影對照 `combo4_silhouettes.png`、腿單獨、場景 GIF（連按、上一版的連按、慢節奏、各段）、`combo4_player.html`（60fps）、第 4 段和第四版的對照（`combo4/v4/` 的精靈圖）、設計圖 C1–C4／D2／D3（參考）、頸部以上，寫到 `docs/art-preview/player/combo4/` |
 | `checks.py --combo4` | 四段輕攻擊的自動檢查（`checks_combo4.py`）：每一幀的技術檢查（在畫好的圖上量，扭轉的幀每個零件對照自己那個方向的零件庫）與腿的規則、攻擊站姿、第 3 段的高姿勢、位移（例外表 `EXEMPT`：揮劍、扭轉、轉身，各有上限與理由）、站地的腳、所有接段與進場、時間、身體有轉、四段只看剪影分得開、劍看得到多少 |
+| `export_execute.py [sheet]` | 處決（2026-10-05：3 秒的躍起下刺，`execute.py`）：精靈圖 `knight_execute.png`（一格 88×152、腳底 (44, 141)；四列朝下、朝右、朝上、朝左）；不加 `sheet` 時另外寫預覽到 `docs/art-preview/player/execute/`（`preview_execute.py`：每方向逐張 6 倍、照遊戲時間的 GIF、四方向並排、和跪著的 Boss 疊在一起的 GIF 與重點幾格、腿單獨、握劍的雙手、頸部以上）。約 20 秒。之後重跑 `export_frames.py` |
+| `checks_execute.py [--selftest]` | 處決的自動檢查：時間和節拍（起跳、插下去、兩次轉劍、蹬開、落地：從 `player_data.gd` 讀）、離地高度（地上→起跳→最高→插下去在 Boss 胸口高→落地，每幀的變化不超過拋體的速度）、每一步的位移（地上照 4px／20px，騰空加上拋體，四個節拍另有上限和理由）、劍柄在 Boss 身上不動（右拳 ±1px）、劍插進去的那一點不動、轉劍時護手從橫的變正對再轉回來、手臂畫長的上限（1.7 倍，只在劍舉過頭時）、地上的腿（不超出腿長、膝蓋在髖下面）、沒有東西在真正的地面下、`checks.pose_rows` 的技術列。全過結束碼 0。`--selftest` 先確定沒弄壞的會過，再刻意弄壞六種 |
 | `export_frames.py` | 遊戲用的幀表：從產生精靈圖的程式讀出每張圖每一欄的名字與停幾個模擬幀（攻擊另有第一幀、是否回站姿、前進量、從站姿的開頭），加上奔跑的停步表，寫成 `scripts/view/knight_sheets.gd`（`KnightSheets`）。**重新輸出任何精靈圖之後都要重跑**（約 40 秒），`tests/unit/test_player_sprites.gd` 會比對圖的大小與戰鬥資料的時間 |
 | `ingame_preview.py 截圖資料夾 輸出資料夾` | 把 `tests/sim/capture_player_sprites.gd`（遊戲裡照腳本操作、每個物理幀截一張）的輸出做成 60fps 的 mp4（要 ffmpeg）與整個畫面的截圖；`--sheet=N` 另外輸出逐幀標註的總覽圖、`--gif` 輸出 GIF |
 | `inspect_parts.py out.png` | 把每個部件的切割範圍用顏色疊在 40px 圖上，用來確認切割 |
@@ -198,7 +208,7 @@ python3 tools/sprite_rig/extract_reference.py
 
 **共用的幀**
 - 第 3 段輕攻擊 = 第 1 段的 f2–f6，只換時間。
-- 處決 = 突刺的幀，只換時間。
+- ~~處決 = 突刺的幀，只換時間。~~ 2026-10-05 起處決是自己的 3 秒躍起下刺（`execute.py`，見下面「處決：躍起下刺」）。
 - 死亡 = 倒地的 f1–f4，時間拉長。
 - 擊飛著地之後 = 倒地。
 
@@ -409,6 +419,14 @@ python3 tools/sprite_rig/extract_reference.py
 - 改了某個動作的畫格（張數、順序、每張停幾幀）：重新輸出精靈圖 → 重跑 `export_frames.py` → `tests/check.sh`（幀表和戰鬥資料對不上會失敗）→ 需要時重錄遊戲裡的預覽。
 - 新增一張精靈圖：`export_frames.py` 的 `build()` 加一行，`player_anim.gd` 決定什麼時候播。
 - 遊戲裡錄影：`godot --path . -s res://tests/sim/capture_player_sprites.gd -- --out=<資料夾> [--only=場景名]`（要有畫面，不能 `--headless`）。截圖先留在記憶體、場景結束才存檔：每一步都存檔會拖慢畫面，特效照真實時間計時就會被拉長。Godot 4.7 的 `Engine.time_scale` 只放慢畫面的計時、不放慢物理幀，所以不要用慢動作錄。
+
+### 處決：躍起下刺（2026-10-05，`execute.py`）
+
+- 時間、每個部位怎麼動寫在 `execute.py` 檔頭。關鍵姿勢：`STEP`、`CROUCH`、`COIL`（蓄勢）、`TAKEOFF`、`RAISE`（最高點：雙拳在頭盔上面、劍尖往前下從臉前面經過）、`PLUNGE`（插下去）、`HANG`（掛在劍上：雙拳在胸前往前伸到劍柄、身體往後仰、腳蹬在 Boss 胸口）、`wind(k)`／`twist(k)`（轉劍前、轉劍）、`BRACE`、`KICK`、`FLY`、`LAND`；`FRAMES` 是 48 張（名字、第一個模擬幀、怎麼畫）。`mix()` 在兩個關鍵姿勢之間內插（`batch1.lerp_pose` 加上離地、手臂畫長、劍露出多少、護手寬度）。
+- **離地高度畫在圖裡**（`pose_rig` 的 `air`）：照站著畫、整張往上移，布料停的地面、劍縮短的地面留在真正的地面（離腳 `air` px）。遊戲只移動腳底（影子），幀表的 `lift` 給畫面算剪影和影子大小。
+- **劍插在 Boss 身上的那段**：劍柄是騎士空間裡固定的一點（`HILT`，從插進去的點 `ENTRY` 沿劍往回推），每張畫完後 `pin_fist()` 把右拳移到那一點在這個方向的投影（從胸口座標推會差 2–3px）。劍露出 `SHOW` 0.6，剩下的在 Boss 身體裡（Boss 畫在後面，劍的斷口就是傷口）。
+- `pose_rig` 新加的鍵都是選用的（沒有就和以前一樣）：`air`、`arm_k`（手臂畫長，數字或 `{R, L}`）、劍的 `show`、`guard_half`；畫格 `exec`（88×152、腳底 (44, 141)）。
+- 坑：騎士的頭盔佔身高快一半，手在臉的高度時整個被擋住（側面看不到劍）——要讀的劍和手放到頭盔外面（頭頂上、或胸前往前伸）；腿只有約 6px，髖低超過 1px 側面的膝蓋就高過髖（蓄勢靠前傾和手往後甩）。
 
 ### 程式怎麼串起來
 

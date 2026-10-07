@@ -52,7 +52,12 @@ func test_every_sheet_matches_its_table() -> void:
 		assert_eq(Vector2i(tex.get_width(), tex.get_height()), Vector2i(cell.x * (t["names"] as Array).size(),
 			cell.y * (t["rows"] as Array).size()), "%s 的大小 ＝ 格子 × 欄 × 列" % key)
 		var anchor: Vector2i = t["anchor"]
-		assert_eq(anchor, Vector2i(28, 53) if cell == Vector2i(56, 56) else Vector2i(44, 61), "%s 的腳底對齊點" % key)
+		# 兩種畫格（2026-09-27 定案）的腳底都在畫格中心下方 25px；處決（2026-10-05）的畫格往上加高，躍起的高度畫在圖裡，
+		# 腳底仍在畫格底下 11px、左右置中
+		var want := Vector2i(28, 53) if cell == Vector2i(56, 56) else Vector2i(44, 61)
+		if key == "execute":
+			want = Vector2i(44, cell.y - 11)
+		assert_eq(anchor, want, "%s 的腳底對齊點" % key)
 
 
 func test_attack_frames_tile_each_stage() -> void:
@@ -79,8 +84,7 @@ func test_attack_frames_tile_each_stage() -> void:
 func test_timed_actions_match_program_lengths() -> void:
 	assert_eq(PlayerAnim.durs_sum(_durs("thrust")), Frames.of(PlayerData.THRUST_TIME) + Frames.of(PlayerData.heavy_thrust().recovery), "突刺")
 	assert_eq(PlayerAnim.durs_sum(_durs("thrust"), 0, 2), Frames.of(PlayerData.THRUST_TIME), "突刺：蹬地、前撲 ＝ 判定與位移")
-	assert_eq(PlayerAnim.durs_sum(_durs("execute")), Frames.of(PlayerData.EXECUTE_TIME), "處決")
-	assert_eq(PlayerAnim.durs_sum(_durs("execute"), 0, 3), Frames.of(PlayerData.EXECUTE_HIT_TIME), "處決：命中那一幀換成保持")
+	assert_eq(PlayerAnim.durs_sum(_durs("execute")), Frames.of(PlayerData.EXECUTE_TIME), "處決 3 秒")
 	var dodge_total := Frames.of(PlayerData.DODGE_TIME) + Frames.of(PlayerData.DODGE_RECOVERY)
 	for key: String in ["dash", "backstep"]:
 		assert_eq(PlayerAnim.durs_sum(_durs(key)), dodge_total, key)
@@ -499,6 +503,29 @@ func test_posture_break_sways_twice() -> void:
 	assert_eq(anim.col, 3, "第二輪搖晃 1")
 	advance(24)
 	assert_eq(anim.col, 7, "撐起")
+
+
+## 躍起下刺（2026-10-05）：插下去、轉劍、蹬開、落地都是新的一張，從遊戲的那一幀開始
+func test_execution_frames_meet_the_game_beats() -> void:
+	var durs := _durs("execute")
+	var starts := {}
+	var acc := 0
+	for d: int in durs:
+		starts[acc] = true
+		acc += d
+	var beats := {"插下去": Frames.of(PlayerData.EXECUTE_HIT_TIME), "蹬開": Frames.of(PlayerData.EXECUTE_KICK_TIME),
+		"落地": Frames.of(PlayerData.EXECUTE_LAND_TIME), "起跳": Frames.of(PlayerData.EXECUTE_LEAP_TIME)}
+	for i in PlayerData.execute_twist_frames().size():
+		beats["轉劍 %d" % (i + 1)] = PlayerData.execute_twist_frames()[i]
+	for name: String in beats:
+		assert_true(starts.has(beats[name]), "%s（第 %d 幀）換一張" % [name, beats[name]])
+	var lift: Array = SH["execute"]["lift"]
+	assert_eq(lift.size(), durs.size(), "每一張都有離地高度")
+	assert_eq(int(lift[0]), 0, "從地上開始")
+	assert_eq(int(lift[lift.size() - 1]), 0, "落在地上")
+	var hit_col := PlayerAnim.span_col(durs, Frames.of(PlayerData.EXECUTE_HIT_TIME))
+	assert_true(int(lift[hit_col]) >= 60, "插下去時躍到 Boss 肩頭的高度：%d" % int(lift[hit_col]))
+	assert_eq(int(lift[PlayerAnim.span_col(durs, Frames.of(PlayerData.EXECUTE_LAND_TIME))]), 0, "2.5 秒落地")
 
 
 # --- 畫面 --------------------------------------------------------------------------

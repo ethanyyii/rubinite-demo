@@ -4,18 +4,30 @@ extends Node2D
 var pillar: Dictionary
 var arena: CombatArena
 var _alpha := 1.0
+var sprite: Sprite2D
 
 
 func setup(data: Dictionary, owner_arena: CombatArena) -> void:
 	pillar = data
 	arena = owner_arena
 	position = data["pos"]
+	# 正式美術（2026-10-05，tools/arena_art/）：斷柱，照 ArenaGeometry.PILLARS 的順序
+	var art: Dictionary = ArenaLayout.PILLARS[ArenaGeometry.PILLARS.find(data)]
+	sprite = Sprite2D.new()
+	sprite.centered = false
+	sprite.texture = load(art["texture"])
+	sprite.offset = -(art["anchor"] as Vector2)
+	add_child(sprite)
 
 
 func _process(delta: float) -> void:
 	var target := 0.45 if _occludes_someone() else 1.0
 	_alpha = move_toward(_alpha, target, delta * 4.0)
-	modulate.a = _alpha
+	var floor_view: Node = arena.get_node_or_null("ArenaFloor") if arena != null else null
+	var tint := Color(1, 1, 1)
+	if floor_view != null:
+		tint = Color(1, 1, 1).lerp(floor_view.SCENE_TINT, floor_view.scene_phase())
+	modulate = Color(tint.r, tint.g, tint.b, _alpha)
 
 
 func _occludes_someone() -> bool:
@@ -35,21 +47,5 @@ func is_translucent() -> bool:
 
 
 func _draw() -> void:
-	var h: float = pillar["height"]
-	var w := ArenaGeometry.PILLAR_WIDTH
-	DrawUtil.fill_ellipse(self, Vector2(0, 1), Vector2(w * 0.7, 5), Palette.SHADOW, 16)
-	# 柱基
-	draw_rect(Rect2(-w * 0.5 - 3, -8, w + 6, 8), Palette.PILLAR_DARK)
-	# 柱身
-	draw_rect(Rect2(-w * 0.5, -h, w, h - 8), Palette.PILLAR)
-	draw_rect(Rect2(-w * 0.5, -h, 4, h - 8), Palette.PILLAR_DARK)
-	draw_rect(Rect2(w * 0.5 - 5, -h, 5, h - 8), Palette.FLOOR_LIGHT)
-	for y in range(int(-h) + 14, -8, 14):
-		draw_line(Vector2(-w * 0.5, y), Vector2(w * 0.5, y), Palette.PILLAR_DARK, 1.0)
-	# 斷口
-	var top := PackedVector2Array([Vector2(-w * 0.5, -h), Vector2(-w * 0.5 + 5, -h - 6),
-		Vector2(-2, -h - 2), Vector2(4, -h - 8), Vector2(w * 0.5, -h - 3), Vector2(w * 0.5, -h)])
-	draw_colored_polygon(top, Palette.PILLAR)
-	# 藤蔓
-	draw_polyline(PackedVector2Array([Vector2(-w * 0.5, -h * 0.8), Vector2(-3, -h * 0.62),
-		Vector2(5, -h * 0.5), Vector2(-4, -h * 0.3), Vector2(2, -12)]), Palette.VINE, 2.0)
+	# 柱腳的影子（柱子本身是精靈圖）
+	DrawUtil.fill_ellipse(self, Vector2(0, 1), Vector2(ArenaGeometry.PILLAR_WIDTH * 0.75, 5), Palette.SHADOW, 16)

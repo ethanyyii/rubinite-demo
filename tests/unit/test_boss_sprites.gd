@@ -63,6 +63,20 @@ func test_every_hit_starts_on_its_pose() -> void:
 				assert_eq(int(hits[i]["start"]), starts[i], "%s 第 %d 擊開始的幀" % [id, i + 1])
 
 
+## 被處決（2026-10-05：3 秒）：被刺中那一張從騎士插下去那一幀開始，轉劍時各抽一下
+func test_executed_follows_the_knights_beats() -> void:
+	var holds: Array = SP.clip("executed")["holds"]
+	assert_eq(SP.total(holds), Frames.of(PlayerData.EXECUTE_TIME), "被處決 3 秒")
+	var starts := {}
+	var acc := 0
+	for h: int in holds:
+		starts[acc] = true
+		acc += h
+	assert_true(starts.has(Frames.of(PlayerData.EXECUTE_HIT_TIME)), "被刺中那一張從第 48 幀開始")
+	for f: int in PlayerData.execute_twist_frames():
+		assert_true(starts.has(f), "轉劍（第 %d 幀）抽一下" % f)
+
+
 func test_bounces_last_the_bounce() -> void:
 	for phase in [1, 2]:
 		var ms := VeltharisData.moves(phase)

@@ -33,7 +33,9 @@ const INPUT_BUFFER := 0.15
 
 # §6 格擋與彈返
 const PERFECT_WINDOW := 0.15
-const REARM_TIME := 0.3
+## ★ 重新開窗：放開後這段時間內再按只算普通格擋（防狂按）。2026-10-06 使用者：0.3 → 0.2——快斬兩斬只隔 0.6 秒，
+## 0.3 秒加上人看到彈開才放開的反應，第二斬做不到完美彈返（tuning-log 2026-10-06）
+const REARM_TIME := 0.2
 const BLOCK_ARC_DEG := 180.0
 const BLOCK_PUSHBACK := 8.0
 ## 普通格擋被推後的位移分幾幀完成（文件未定）
@@ -93,11 +95,23 @@ const DOWN_INVULN_AFTER_GETUP := 0.3
 ## 踉蹌與倒地的擊退位移分幾秒完成（文件未定）
 const KNOCKBACK_TIME := 0.1
 
-# §11.4 處決
+# §11.4 處決（2026-10-05 使用者：1 秒 → 3 秒，躍起下刺）
 const EXECUTE_RANGE := 48.0
-const EXECUTE_TIME := 1.0
-## 處決突刺命中的時間點（文件未定：突刺＋頓幀＋閃光）
-const EXECUTE_HIT_TIME := 0.2
+const EXECUTE_TIME := 3.0
+## 0–0.4 秒衝到身體接觸處、壓低蓄勢，0.4 秒起跳
+const EXECUTE_LEAP_TIME := 0.4
+## 0.8 秒插下去：傷害、頓幀、震動、白光都在這一刻
+const EXECUTE_HIT_TIME := 0.8
+## 掛在劍上轉劍兩次（Boss 每轉一次抽一下）
+const EXECUTE_TWIST_TIMES: Array[float] = [1.25, 1.7]
+## 2.0 秒一腳蹬開、拔劍往後跳，2.5 秒落地，蹲著站起來到 3 秒
+const EXECUTE_KICK_TIME := 2.0
+const EXECUTE_LAND_TIME := 2.5
+## 插在 Boss 肩上時，主角的腳底（影子）離 Boss 中心多遠（主角來的那一側）
+const EXECUTE_PERCH := 28.0
+## 落地點離 Boss 中心多遠：往回跳；跳出場地或撞進柱子時改往旁邊跳（EXECUTE_LAND_TURNS）
+const EXECUTE_LAND_DIST := 72.0
+const EXECUTE_LAND_TURNS: Array[float] = [0.0, 30.0, -30.0, 60.0, -60.0, 90.0, -90.0, 120.0, -120.0, 150.0, -150.0, 180.0]
 
 # §14 死亡與重試
 const DEATH_TIME := 1.5
@@ -164,3 +178,11 @@ static func _atk(id: StringName, startup: float, active: float, recovery: float,
 ## 一次治療回多少 HP（最大 HP 的 HEAL_RATIO，四捨五入）
 static func heal_amount(max_hp: int = MAX_HP) -> int:
 	return roundi(max_hp * HEAL_RATIO)
+
+
+## 轉劍的兩個時間點（處決開始後第幾個戰鬥幀）
+static func execute_twist_frames() -> Array[int]:
+	var out: Array[int] = []
+	for t: float in EXECUTE_TWIST_TIMES:
+		out.append(Frames.of(t))
+	return out
